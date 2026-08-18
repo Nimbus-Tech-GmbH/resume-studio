@@ -1,5 +1,7 @@
 import { useStore } from 'zustand';
 import { useEditorStore } from '../state/editorStore.js';
+import { Button } from '../components/ui/button.js';
+import { Undo2, Redo2 } from 'lucide-react';
 
 export function UndoRedoButtons() {
   const canUndo = useStore(useEditorStore.temporal, (s) => s.pastStates.length > 0);
@@ -10,24 +12,24 @@ export function UndoRedoButtons() {
 
   return (
     <div className="flex gap-1">
-      <button
-        type="button"
+      <Button
+        size="icon"
+        variant="ghost"
         onClick={undo}
         disabled={!canUndo}
         title="Undo (⌘Z)"
-        className="rounded border border-neutral-300 bg-white px-2 py-1 text-xs disabled:opacity-40"
       >
-        ↶
-      </button>
-      <button
-        type="button"
+        <Undo2 className="h-4 w-4" />
+      </Button>
+      <Button
+        size="icon"
+        variant="ghost"
         onClick={redo}
         disabled={!canRedo}
         title="Redo (⌘⇧Z)"
-        className="rounded border border-neutral-300 bg-white px-2 py-1 text-xs disabled:opacity-40"
       >
-        ↷
-      </button>
+        <Redo2 className="h-4 w-4" />
+      </Button>
     </div>
   );
 }

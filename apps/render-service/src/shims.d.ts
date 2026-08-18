@@ -1,6 +1,4 @@
-declare module 'jsonresume-theme-brutalist' {
-  export function render(resume: unknown): string | Promise<string>;
-}
+
 declare module 'jsonresume-theme-claude' {
   export function render(resume: unknown): string | Promise<string>;
 }

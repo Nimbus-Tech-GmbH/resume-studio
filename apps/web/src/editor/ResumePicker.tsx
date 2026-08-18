@@ -3,6 +3,7 @@ import { ClientError } from 'graphql-request';
 import { fromCms } from '@resume-studio/transformer';
 import { useResume, useResumeList } from '../graphql/useResume.js';
 import { useEditorStore } from '../state/editorStore.js';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select.js';
 
 export function ResumePicker() {
   const { data: list, isLoading, error } = useResumeList();
@@ -23,31 +24,32 @@ export function ResumePicker() {
     }
   }, [list, resumeId, setResumeId]);
 
-  if (isLoading) return <span className="text-xs text-neutral-500">Loading…</span>;
+  if (isLoading) return <span className="text-xs text-muted-foreground">Loading…</span>;
   if (error) {
     const msg = extractGqlError(error);
     return (
-      <span className="text-xs text-red-600" title={msg}>
+      <span className="text-xs text-destructive" title={msg}>
         Keystone error: {msg.slice(0, 80)}
       </span>
     );
   }
   if (!list || list.length === 0) {
-    return <span className="text-xs text-neutral-500">No resumes</span>;
+    return <span className="text-xs text-muted-foreground">No resumes</span>;
   }
 
   return (
-    <select
-      value={resumeId ?? ''}
-      onChange={(e) => setResumeId(e.target.value || null)}
-      className="rounded border border-neutral-300 bg-white px-2 py-1 text-sm"
-    >
-      {list.map((r) => (
-        <option key={r.id} value={r.id}>
-          {r.title ?? r.basicInformation?.name ?? r.id} ({r.language?.value ?? r.language?.label ?? '—'})
-        </option>
-      ))}
-    </select>
+    <Select value={resumeId ?? ''} onValueChange={(v) => setResumeId(v || null)}>
+      <SelectTrigger className="h-7 w-48 text-xs">
+        <SelectValue placeholder="Select resume" />
+      </SelectTrigger>
+      <SelectContent>
+        {list.map((r) => (
+          <SelectItem key={r.id} value={r.id}>
+            {r.title ?? r.basicInformation?.name ?? r.id} ({r.language?.value ?? r.language?.label ?? '—'})
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   );
 }
 

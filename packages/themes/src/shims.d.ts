@@ -1,4 +1,4 @@
-declare module 'jsonresume-theme-brutalist';
+
 declare module 'jsonresume-theme-claude';
 declare module 'jsonresume-theme-developer-mono';
 declare module 'jsonresume-theme-flat';

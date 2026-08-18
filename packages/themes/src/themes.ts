@@ -4,7 +4,6 @@ import type { ThemeId } from './registry.js';
 export type ThemeRenderFn = (resume: unknown) => string | Promise<string>;
 
 const loaders: Record<ThemeId, () => Promise<{ render: ThemeRenderFn }>> = {
-  brutalist: () => import('jsonresume-theme-brutalist') as Promise<{ render: ThemeRenderFn }>,
   claude: () => import('jsonresume-theme-claude') as Promise<{ render: ThemeRenderFn }>,
   'developer-mono': () =>
     import('jsonresume-theme-developer-mono') as Promise<{ render: ThemeRenderFn }>,

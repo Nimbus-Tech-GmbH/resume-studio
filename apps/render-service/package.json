@@ -19,7 +19,7 @@
     "@resume-studio/transformer": "workspace:*",
     "fastify": "^5.0.0",
     "handlebars": "^4.7.9",
-    "jsonresume-theme-brutalist": "workspace:*",
+
     "jsonresume-theme-claude": "workspace:*",
     "jsonresume-theme-developer-mono": "workspace:*",
     "jsonresume-theme-flat": "workspace:*",

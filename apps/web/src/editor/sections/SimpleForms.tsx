@@ -6,17 +6,51 @@ import type {
   JsonResumeVolunteer,
 } from '@resume-studio/transformer';
 import type { ReactNode } from 'react';
-import type { ListSection } from '../../state/editorStore.js';
 import { useEditorStore } from '../../state/editorStore.js';
-import { KeywordsField, TextAreaField, TextField } from '../fields/Fields.js';
+import { TextField, KeywordsField, TextAreaField } from '../fields/Fields.js';
 import { AddButton, RemoveButton } from '../fields/ListButtons.js';
-
-/**
- * Simple (non-DnD) forms for the smaller sections. Reordering these lands in
- * a follow-up — they are typically short and re-order less often.
- */
+import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/card.js';
 
 const EMPTY: never[] = [];
+
+function List<T>({
+  section,
+  items,
+  empty,
+  addLabel,
+  onAdd,
+  onRemove,
+  title,
+  render,
+}: {
+  section: string;
+  items: T[];
+  empty: string;
+  addLabel: string;
+  onAdd: () => void;
+  onRemove: (i: number) => void;
+  title: (it: T, i: number) => string;
+  render: (item: T, idx: number) => ReactNode;
+}) {
+  return (
+    <div className="space-y-3">
+      {items.length === 0 ? (
+        <p className="text-xs text-muted-foreground">{empty}</p>
+      ) : (
+        items.map((item, idx) => (
+          <Card key={idx}>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3">
+              <CardTitle className="text-xs font-medium">{title(item, idx)}</CardTitle>
+              <RemoveButton onClick={() => onRemove(idx)} />
+            </CardHeader>
+            <CardContent className="space-y-3 p-3 pt-0">{render(item, idx)}</CardContent>
+          </Card>
+        ))
+      )}
+      <AddButton label={addLabel} onClick={onAdd} />
+    </div>
+  );
+}
 
 export function InterestsForm() {
   const raw = useEditorStore((s) => s.resume.interests);
@@ -45,13 +79,11 @@ export function InterestsForm() {
             value={item.name}
             onChange={(v) => update(idx, { ...item, name: v })}
           />
-          <div className="mt-3">
-            <KeywordsField
-              label="Keywords"
-              value={item.keywords}
-              onChange={(v) => update(idx, { ...item, keywords: v })}
-            />
-          </div>
+          <KeywordsField
+            label="Keywords"
+            value={item.keywords}
+            onChange={(v) => update(idx, { ...item, keywords: v })}
+          />
         </>
       )}
     />
@@ -110,20 +142,16 @@ export function VolunteerForm() {
               onChange={(v) => update(idx, { ...item, endDate: v })}
             />
           </div>
-          <div className="mt-3">
-            <TextAreaField
-              label="Summary"
-              value={item.summary}
-              onChange={(v) => update(idx, { ...item, summary: v })}
-            />
-          </div>
-          <div className="mt-3">
-            <KeywordsField
-              label="Highlights"
-              value={item.highlights}
-              onChange={(v) => update(idx, { ...item, highlights: v })}
-            />
-          </div>
+          <TextAreaField
+            label="Summary"
+            value={item.summary}
+            onChange={(v) => update(idx, { ...item, summary: v })}
+          />
+          <KeywordsField
+            label="Highlights"
+            value={item.highlights}
+            onChange={(v) => update(idx, { ...item, highlights: v })}
+          />
         </>
       )}
     />
@@ -177,25 +205,16 @@ export function ProjectsForm() {
               onChange={(v) => update(idx, { ...item, endDate: v })}
             />
           </div>
-          <div className="mt-3">
-            <TextAreaField
-              label="Description"
-              value={item.description}
-              onChange={(v) => update(idx, { ...item, description: v })}
-            />
-          </div>
-          <div className="mt-3 grid grid-cols-2 gap-3">
-            <KeywordsField
-              label="Highlights"
-              value={item.highlights}
-              onChange={(v) => update(idx, { ...item, highlights: v })}
-            />
-            <KeywordsField
-              label="Keywords"
-              value={item.keywords}
-              onChange={(v) => update(idx, { ...item, keywords: v })}
-            />
-          </div>
+          <TextAreaField
+            label="Description"
+            value={item.description}
+            onChange={(v) => update(idx, { ...item, description: v })}
+          />
+          <KeywordsField
+            label="Highlights"
+            value={item.highlights}
+            onChange={(v) => update(idx, { ...item, highlights: v })}
+          />
         </>
       )}
     />
@@ -231,30 +250,17 @@ export function CertificatesForm() {
               onChange={(v) => update(idx, { ...item, name: v })}
             />
             <TextField
-              label="Issuer"
-              value={item.issuer}
-              onChange={(v) => update(idx, { ...item, issuer: v })}
-            />
-            <TextField
               label="URL"
               type="url"
               value={item.url}
               onChange={(v) => update(idx, { ...item, url: v })}
             />
-            <TextField
-              label="Date"
-              value={item.date}
-              placeholder="YYYY-MM-DD"
-              onChange={(v) => update(idx, { ...item, date: v })}
-            />
           </div>
-          <div className="mt-3">
-            <TextAreaField
-              label="Summary"
-              value={item.summary}
-              onChange={(v) => update(idx, { ...item, summary: v })}
-            />
-          </div>
+          <TextAreaField
+            label="Summary"
+            value={item.summary}
+            onChange={(v) => update(idx, { ...item, summary: v })}
+          />
         </>
       )}
     />
@@ -296,41 +302,5 @@ export function LanguagesForm() {
         </div>
       )}
     />
-  );
-}
-
-interface ListProps<T> {
-  section: ListSection;
-  items: T[];
-  empty: string;
-  addLabel: string;
-  onAdd: () => void;
-  onRemove: (idx: number) => void;
-  title: (item: T, idx: number) => string;
-  render: (item: T, idx: number) => ReactNode;
-}
-
-function List<T>({ items, empty, addLabel, onAdd, onRemove, title, render }: ListProps<T>) {
-  return (
-    <div className="flex flex-col gap-3">
-      {items.length === 0 ? (
-        <p className="rounded border border-dashed border-neutral-300 p-4 text-center text-xs text-neutral-500">
-          {empty}
-        </p>
-      ) : (
-        items.map((item, idx) => (
-          <div key={idx} className="rounded border border-neutral-200 bg-white p-3">
-            <div className="mb-2 flex items-center justify-between">
-              <span className="text-xs font-medium text-neutral-500">
-                {title(item, idx)}
-              </span>
-              <RemoveButton onClick={() => onRemove(idx)} />
-            </div>
-            {render(item, idx)}
-          </div>
-        ))
-      )}
-      <AddButton label={addLabel} onClick={onAdd} />
-    </div>
   );
 }

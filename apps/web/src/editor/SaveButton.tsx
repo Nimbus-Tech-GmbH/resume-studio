@@ -4,6 +4,8 @@ import { toCms } from '@resume-studio/transformer';
 import { useEditorStore } from '../state/editorStore.js';
 import { executeSave, type OpResult } from '../graphql/executeSave.js';
 import { useValidation } from '../validation/useValidation.js';
+import { Button } from '../components/ui/button.js';
+import { Loader2, Save } from 'lucide-react';
 
 interface SaveState {
   running: boolean;
@@ -51,9 +53,10 @@ export function SaveButton() {
     const failed = results.filter((r) => !r.ok);
     setState({
       running: false,
-      message: failed.length === 0
-        ? `Saved ${results.length} op(s).`
-        : `${failed.length}/${results.length} op(s) failed.`,
+      message:
+        failed.length === 0
+          ? `Saved ${results.length} op(s).`
+          : `${failed.length}/${results.length} op(s) failed.`,
       results,
     });
     if (failed.length === 0) {
@@ -63,17 +66,21 @@ export function SaveButton() {
 
   return (
     <div className="flex flex-col items-end gap-1">
-      <button
-        type="button"
+      <Button
+        size="sm"
         onClick={onClick}
         disabled={state.running || !canSave}
-        className="rounded bg-neutral-900 px-3 py-1 text-sm font-medium text-white hover:bg-neutral-700 disabled:opacity-40"
         title={canSave ? 'Save changes' : 'Fix validation errors first'}
       >
+        {state.running ? (
+          <Loader2 className="animate-spin" />
+        ) : (
+          <Save className="h-3.5 w-3.5" />
+        )}
         {state.running ? 'Saving…' : 'Save'}
-      </button>
+      </Button>
       {state.message && (
-        <span className="text-[10px] text-neutral-500">{state.message}</span>
+        <span className="text-[10px] text-muted-foreground">{state.message}</span>
       )}
     </div>
   );

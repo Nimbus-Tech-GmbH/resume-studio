@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import { clsx } from 'clsx';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs.js';
 import { BasicsForm } from './sections/BasicsForm.js';
 import { WorkForm } from './sections/WorkForm.js';
 import { EducationForm } from './sections/EducationForm.js';
@@ -36,24 +36,24 @@ export function EditorPane() {
 
   return (
     <div className="flex h-full flex-col">
-      <nav className="flex flex-wrap gap-1 border-b border-neutral-200 bg-white px-3 py-2">
-        {TABS.map((tab) => (
-          <button
-            key={tab.id}
-            type="button"
-            onClick={() => setActive(tab.id)}
-            className={clsx(
-              'rounded px-2 py-1 text-xs',
-              active === tab.id
-                ? 'bg-neutral-900 text-white'
-                : 'text-neutral-600 hover:bg-neutral-100',
-            )}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </nav>
-      <div className="flex-1 overflow-y-auto p-4">{activeTab.render()}</div>
+      <Tabs value={active} onValueChange={setActive} className="flex-1 overflow-hidden">
+        <div className="flex h-10 shrink-0 items-center border-b bg-card px-2">
+          <TabsList className="h-7 p-0.5">
+            {TABS.map((tab) => (
+              <TabsTrigger key={tab.id} value={tab.id} className="h-6 px-2">
+                {tab.label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </div>
+        <div className="flex-1 overflow-y-auto p-4">
+          {TABS.map((tab) => (
+            <TabsContent key={tab.id} value={tab.id} className="mt-0">
+              {tab.render()}
+            </TabsContent>
+          ))}
+        </div>
+      </Tabs>
     </div>
   );
 }

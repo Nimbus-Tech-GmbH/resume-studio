@@ -12,8 +12,7 @@ export type ThemeId =
   | 'graph-paper-grid'
   | 'monochrome-noir'
   | 'new-york-editorial'
-  | 'claude'
-  | 'brutalist';
+  | 'claude';
 
 export interface ThemeEntry {
   id: ThemeId;
@@ -21,16 +20,15 @@ export interface ThemeEntry {
 }
 
 export const THEMES: readonly ThemeEntry[] = [
-  { id: 'developer-mono', label: 'Developer Mono' },
-  { id: 'flat', label: 'Flat' },
-  { id: 'modern-classic', label: 'Modern Classic' },
-  { id: 'writers-portfolio', label: "Writer's Portfolio" },
   { id: 'nordic-minimal', label: 'Nordic Minimal' },
+  { id: 'modern-classic', label: 'Modern Classic' },
+  { id: 'developer-mono', label: 'Developer Mono' },
   { id: 'graph-paper-grid', label: 'Graph Paper Grid' },
   { id: 'monochrome-noir', label: 'Monochrome Noir' },
   { id: 'new-york-editorial', label: 'New York Editorial' },
+  { id: 'writers-portfolio', label: "Writer's Portfolio" },
+  { id: 'flat', label: 'Flat' },
   { id: 'claude', label: 'Claude' },
-  { id: 'brutalist', label: 'Brutalist' },
 ];
 
 export const DEFAULT_THEME: ThemeId = 'nordic-minimal';

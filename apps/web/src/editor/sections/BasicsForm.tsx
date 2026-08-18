@@ -1,5 +1,5 @@
 import { useEditorStore } from '../../state/editorStore.js';
-import { TextAreaField, TextField } from '../fields/Fields.js';
+import { TextField, TextAreaField } from '../fields/Fields.js';
 
 export function BasicsForm() {
   const basics = useEditorStore((s) => s.resume.basics) ?? {};
@@ -15,7 +15,7 @@ export function BasicsForm() {
     }));
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="space-y-4">
       <div className="grid grid-cols-2 gap-3">
         <TextField label="Name" value={basics.name} onChange={(v) => set('name', v)} />
         <TextField label="Label" value={basics.label} onChange={(v) => set('label', v)} />
@@ -34,33 +34,35 @@ export function BasicsForm() {
         onChange={(v) => set('summary', v)}
         rows={4}
       />
-      <fieldset className="grid grid-cols-2 gap-3 rounded border border-neutral-200 p-3">
-        <legend className="px-1 text-xs font-medium text-neutral-500">Location</legend>
-        <TextField
-          label="City"
-          value={basics.location?.city}
-          onChange={(v) => setLocation('city', v)}
-        />
-        <TextField
-          label="Region"
-          value={basics.location?.region}
-          onChange={(v) => setLocation('region', v)}
-        />
-        <TextField
-          label="Country code"
-          value={basics.location?.countryCode}
-          onChange={(v) => setLocation('countryCode', v)}
-        />
-        <TextField
-          label="Postal code"
-          value={basics.location?.postalCode}
-          onChange={(v) => setLocation('postalCode', v)}
-        />
-        <TextField
-          label="Address"
-          value={basics.location?.address}
-          onChange={(v) => setLocation('address', v)}
-        />
+      <fieldset className="space-y-3 rounded-md border p-3">
+        <legend className="px-1 text-xs font-medium text-muted-foreground">Location</legend>
+        <div className="grid grid-cols-2 gap-3">
+          <TextField
+            label="City"
+            value={basics.location?.city}
+            onChange={(v) => setLocation('city', v)}
+          />
+          <TextField
+            label="Region"
+            value={basics.location?.region}
+            onChange={(v) => setLocation('region', v)}
+          />
+          <TextField
+            label="Country code"
+            value={basics.location?.countryCode}
+            onChange={(v) => setLocation('countryCode', v)}
+          />
+          <TextField
+            label="Postal code"
+            value={basics.location?.postalCode}
+            onChange={(v) => setLocation('postalCode', v)}
+          />
+          <TextField
+            label="Address"
+            value={basics.location?.address}
+            onChange={(v) => setLocation('address', v)}
+          />
+        </div>
       </fieldset>
     </div>
   );

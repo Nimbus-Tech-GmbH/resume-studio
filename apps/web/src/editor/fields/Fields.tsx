@@ -1,5 +1,8 @@
 import type { ChangeEvent } from 'react';
-import { clsx } from 'clsx';
+import { Input } from '../../components/ui/input.js';
+import { Textarea } from '../../components/ui/textarea.js';
+import { Label } from '../../components/ui/label.js';
+import { cn } from '../../lib/cn.js';
 
 interface BaseProps {
   label: string;
@@ -19,22 +22,17 @@ export function TextField({
   type = 'text',
 }: BaseProps) {
   return (
-    <label className="flex flex-col gap-1 text-xs">
-      <span className="font-medium text-neutral-600">{label}</span>
-      <input
+    <div className="space-y-1">
+      <Label>{label}</Label>
+      <Input
         type={type}
         value={value ?? ''}
         placeholder={placeholder}
         onChange={(e: ChangeEvent<HTMLInputElement>) => onChange(e.target.value)}
-        className={clsx(
-          'rounded border px-2 py-1 text-sm outline-none focus:ring-2',
-          error
-            ? 'border-red-400 focus:ring-red-200'
-            : 'border-neutral-300 focus:ring-blue-200',
-        )}
+        className={cn(error && 'border-destructive')}
       />
-      {error && <span className="text-[10px] text-red-600">{error}</span>}
-    </label>
+      {error && <p className="text-[10px] text-destructive">{error}</p>}
+    </div>
   );
 }
 
@@ -46,16 +44,15 @@ export function TextAreaField({
   rows = 3,
 }: BaseProps & { rows?: number }) {
   return (
-    <label className="flex flex-col gap-1 text-xs">
-      <span className="font-medium text-neutral-600">{label}</span>
-      <textarea
+    <div className="space-y-1">
+      <Label>{label}</Label>
+      <Textarea
         value={value ?? ''}
         placeholder={placeholder}
         rows={rows}
         onChange={(e: ChangeEvent<HTMLTextAreaElement>) => onChange(e.target.value)}
-        className="rounded border border-neutral-300 px-2 py-1 text-sm outline-none focus:ring-2 focus:ring-blue-200"
       />
-    </label>
+    </div>
   );
 }
 
@@ -66,9 +63,6 @@ interface KeywordsFieldProps {
   placeholder?: string;
 }
 
-/**
- * Comma / Enter separated tags. Displayed as chips; store as string[].
- */
 export function KeywordsField({ label, value, onChange, placeholder }: KeywordsFieldProps) {
   const items = value ?? [];
   const remove = (idx: number) => onChange(items.filter((_, i) => i !== idx));
@@ -82,19 +76,19 @@ export function KeywordsField({ label, value, onChange, placeholder }: KeywordsF
   };
 
   return (
-    <label className="flex flex-col gap-1 text-xs">
-      <span className="font-medium text-neutral-600">{label}</span>
-      <div className="flex flex-wrap gap-1 rounded border border-neutral-300 p-1">
+    <div className="space-y-1">
+      <Label>{label}</Label>
+      <div className="flex min-h-[2rem] flex-wrap gap-1 rounded-md border border-input bg-transparent p-1">
         {items.map((item, idx) => (
           <span
             key={`${item}-${idx}`}
-            className="flex items-center gap-1 rounded bg-neutral-100 px-2 py-0.5 text-xs"
+            className="inline-flex items-center gap-1 rounded bg-muted px-1.5 py-0.5 text-[10px]"
           >
             {item}
             <button
               type="button"
               onClick={() => remove(idx)}
-              className="text-neutral-400 hover:text-red-500"
+              className="text-muted-foreground hover:text-destructive"
               aria-label={`Remove ${item}`}
             >
               ×
@@ -104,7 +98,7 @@ export function KeywordsField({ label, value, onChange, placeholder }: KeywordsF
         <input
           type="text"
           placeholder={placeholder ?? 'Add…'}
-          className="flex-1 min-w-[6ch] bg-transparent px-1 py-0.5 text-sm outline-none"
+          className="flex-1 min-w-[6ch] bg-transparent px-1 py-0.5 text-xs outline-none"
           onKeyDown={(e) => {
             if (e.key === 'Enter' || e.key === ',') {
               e.preventDefault();
@@ -123,6 +117,6 @@ export function KeywordsField({ label, value, onChange, placeholder }: KeywordsF
           }}
         />
       </div>
-    </label>
+    </div>
   );
 }
