@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { JsonResume } from '@resume-studio/transformer';
 import type { ThemeId } from '@resume-studio/themes';
 import { requestRender } from './preview/renderClient.js';
@@ -8,6 +8,7 @@ import { Loader2, Printer, ArrowLeft } from 'lucide-react';
 export function PrintPage() {
   const [html, setHtml] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -50,7 +51,9 @@ export function PrintPage() {
   }, []);
 
   const handlePrint = () => {
-    window.print();
+    if (iframeRef.current?.contentWindow) {
+      iframeRef.current.contentWindow.print();
+    }
   };
 
   const handleBack = () => {
@@ -86,25 +89,28 @@ export function PrintPage() {
   }
 
   return (
-    <div className="flex h-screen flex-col bg-background print:hidden">
-      <header className="flex h-12 shrink-0 items-center justify-between border-b bg-card px-6 print:hidden">
-        <Button size="sm" variant="ghost" onClick={handleBack}>
-          <ArrowLeft className="h-3.5 w-3.5" />
-          Back
-        </Button>
-        <Button size="sm" onClick={handlePrint}>
-          <Printer className="h-3.5 w-3.5" />
-          Print
-        </Button>
-      </header>
-      <main className="flex-1 overflow-hidden">
-        <iframe
-          title="Print preview"
-          sandbox="allow-same-origin"
-          srcDoc={html}
-          className="h-full w-full border-0 bg-white"
-        />
-      </main>
-    </div>
+    <>
+      <div className="flex h-screen flex-col bg-background">
+        <header className="flex h-12 shrink-0 items-center justify-between border-b bg-card px-6 print:hidden">
+          <Button size="sm" variant="ghost" onClick={handleBack}>
+            <ArrowLeft className="h-3.5 w-3.5" />
+            Back
+          </Button>
+          <Button size="sm" onClick={handlePrint}>
+            <Printer className="h-3.5 w-3.5" />
+            Print
+          </Button>
+        </header>
+        <main className="flex-1 overflow-hidden">
+          <iframe
+            ref={iframeRef}
+            title="Print preview"
+            sandbox="allow-same-origin"
+            srcDoc={html}
+            className="h-full w-full border-0 bg-white"
+          />
+        </main>
+      </div>
+    </>
   );
 }

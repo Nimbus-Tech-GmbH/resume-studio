@@ -57,3 +57,23 @@
     font-feature-settings: 'rlig' 1, 'calt' 1;
   }
 }
+
+@media print {
+  body {
+    margin: 0;
+    padding: 0;
+    background: white;
+  }
+
+  .print\:hidden {
+    display: none !important;
+  }
+
+  iframe {
+    border: none;
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+  }
+}
