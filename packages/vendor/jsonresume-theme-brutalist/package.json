@@ -1,0 +1,16 @@
+{
+  "name": "jsonresume-theme-brutalist",
+  "version": "0.2.5",
+  "type": "module",
+  "main": "./index.jsx",
+  "exports": {
+    ".": "./index.jsx"
+  },
+  "dependencies": {
+    "@jsonresume/core": "^0.3.2",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "styled-components": "^6.1.19"
+  },
+  "license": "MIT"
+}

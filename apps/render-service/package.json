@@ -5,7 +5,7 @@
   "type": "module",
   "main": "./dist/server.js",
   "scripts": {
-    "dev": "tsx watch src/server.ts",
+    "dev": "tsx watch --import ./src/preload.ts src/server.ts",
     "start": "node dist/server.js",
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit",
@@ -13,10 +13,27 @@
   },
   "dependencies": {
     "@fastify/cors": "^10.0.1",
+    "@jsonresume/core": "^0.3.2",
+    "@jsonresume/utils": "^0.2.2",
     "@resume-studio/themes": "workspace:*",
     "@resume-studio/transformer": "workspace:*",
     "fastify": "^5.0.0",
-    "lru-cache": "^11.0.1"
+    "handlebars": "^4.7.9",
+    "jsonresume-theme-brutalist": "workspace:*",
+    "jsonresume-theme-claude": "workspace:*",
+    "jsonresume-theme-developer-mono": "workspace:*",
+    "jsonresume-theme-flat": "workspace:*",
+    "jsonresume-theme-graph-paper-grid": "workspace:*",
+    "jsonresume-theme-modern-classic": "workspace:*",
+    "jsonresume-theme-monochrome-noir": "workspace:*",
+    "jsonresume-theme-new-york-editorial": "workspace:*",
+    "jsonresume-theme-nordic-minimal": "workspace:*",
+    "jsonresume-theme-writers-portfolio": "workspace:*",
+    "lru-cache": "^11.0.1",
+    "markdown-it": "^14.1.1",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "styled-components": "^6.1.19"
   },
   "devDependencies": {
     "@types/node": "^20.14.0",

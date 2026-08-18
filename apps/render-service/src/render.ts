@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import type { JsonResume } from '@resume-studio/transformer';
-import { getThemeRenderer, type ThemeId } from '@resume-studio/themes';
+import { renderTheme, type ThemeId } from '@resume-studio/themes';
 import { htmlCache } from './cache.js';
 import { postProcess } from './postProcess.js';
 
@@ -23,7 +23,7 @@ export async function renderResume(resume: JsonResume, theme: ThemeId): Promise<
 
   let html: string;
   try {
-    html = getThemeRenderer(theme)(resume);
+    html = await renderTheme(theme, resume);
   } catch (err) {
     html = renderErrorCard(theme, err);
   }

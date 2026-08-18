@@ -12,7 +12,16 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@resume-studio/transformer": "workspace:*"
+    "jsonresume-theme-brutalist": "workspace:*",
+    "jsonresume-theme-claude": "workspace:*",
+    "jsonresume-theme-developer-mono": "workspace:*",
+    "jsonresume-theme-flat": "workspace:*",
+    "jsonresume-theme-graph-paper-grid": "workspace:*",
+    "jsonresume-theme-modern-classic": "workspace:*",
+    "jsonresume-theme-monochrome-noir": "workspace:*",
+    "jsonresume-theme-new-york-editorial": "workspace:*",
+    "jsonresume-theme-nordic-minimal": "workspace:*",
+    "jsonresume-theme-writers-portfolio": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.6.2"

@@ -1,0 +1,13 @@
+{
+  "name": "jsonresume-theme-flat",
+  "version": "0.3.7",
+  "type": "module",
+  "main": "./index.js",
+  "exports": {
+    ".": "./index.js"
+  },
+  "dependencies": {
+    "handlebars": "^4.7.9"
+  },
+  "license": "MIT"
+}

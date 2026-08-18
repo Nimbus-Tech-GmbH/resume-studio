@@ -1,0 +1,11 @@
+// Preload: stub CSS imports (ESM + CJS) so React themes that `import './x.css'`
+// at module load can run in Node without a bundler.
+import { register, createRequire } from 'node:module';
+
+register(new URL('./css-hook.mjs', import.meta.url));
+
+const require = createRequire(import.meta.url);
+// @ts-expect-error require.extensions is deprecated/untyped.
+require.extensions['.css'] = (module) => {
+  module.exports = {};
+};

@@ -1,0 +1,10 @@
+declare module 'jsonresume-theme-brutalist';
+declare module 'jsonresume-theme-claude';
+declare module 'jsonresume-theme-developer-mono';
+declare module 'jsonresume-theme-flat';
+declare module 'jsonresume-theme-graph-paper-grid';
+declare module 'jsonresume-theme-modern-classic';
+declare module 'jsonresume-theme-monochrome-noir';
+declare module 'jsonresume-theme-new-york-editorial';
+declare module 'jsonresume-theme-nordic-minimal';
+declare module 'jsonresume-theme-writers-portfolio';

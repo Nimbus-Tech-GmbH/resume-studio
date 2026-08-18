@@ -1,0 +1,14 @@
+{
+  "name": "jsonresume-theme-claude",
+  "version": "1.0.2",
+  "type": "module",
+  "main": "./index.js",
+  "exports": {
+    ".": "./index.js"
+  },
+  "dependencies": {
+    "@jsonresume/utils": "^0.2.2",
+    "markdown-it": "^14.1.1"
+  },
+  "license": "MIT"
+}

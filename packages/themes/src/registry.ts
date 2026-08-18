@@ -1,8 +1,7 @@
 /**
- * Theme registry — in-repo themes rendered by the render service.
+ * Theme registry — dispatches to vendored jsonresume.org theme packages
+ * under `packages/vendor/*`.
  */
-import { themes } from './themes.js';
-import type { ThemeRenderer } from './themes.js';
 
 export type ThemeId =
   | 'developer-mono'
@@ -40,6 +39,5 @@ export function isThemeId(x: unknown): x is ThemeId {
   return typeof x === 'string' && THEMES.some((t) => t.id === x);
 }
 
-export function getThemeRenderer(id: ThemeId): ThemeRenderer {
-  return themes[id];
-}
+export { renderTheme } from './themes.js';
+export type { ThemeRenderFn } from './themes.js';
