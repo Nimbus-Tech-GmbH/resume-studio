@@ -11,6 +11,7 @@ import { ResumePicker } from './editor/ResumePicker.js';
 import { Separator } from './components/ui/separator.js';
 import { Badge } from './components/ui/badge.js';
 import { TooltipProvider } from './components/ui/tooltip.js';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './components/ui/select.js';
 
 export function App() {
   useUndoRedoShortcuts();
@@ -21,29 +22,35 @@ export function App() {
   return (
     <TooltipProvider>
       <div className="flex h-screen w-screen flex-col overflow-hidden bg-background">
-        <header className="flex h-12 shrink-0 items-center justify-between border-b bg-card px-4">
-          <div className="flex items-center gap-3">
-            <img src="/logo.png" alt="resume-studio" className="h-6 w-6 rounded" />
-            <h1 className="text-sm font-semibold tracking-tight">resume-studio</h1>
-            <Separator orientation="vertical" className="h-5" />
+        <header className="flex h-14 shrink-0 items-center justify-between border-b bg-card px-6">
+          <div className="flex items-center gap-4">
+            <img src="/logo.png" alt="resume-studio" className="h-8 w-8 rounded-md" />
+            <div className="flex flex-col">
+              <span className="text-sm font-semibold tracking-tight">resume-studio</span>
+              <span className="text-[10px] text-muted-foreground">Real-time resume editor</span>
+            </div>
+            <Separator orientation="vertical" className="mx-2 h-8" />
             <ResumePicker />
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             <UndoRedoButtons />
-            <Separator orientation="vertical" className="h-5" />
-            <label className="text-xs text-muted-foreground">Theme</label>
-            <select
-              value={theme}
-              onChange={(e) => setTheme(e.target.value as ThemeId)}
-              className="h-8 rounded-md border border-input bg-background px-2 text-xs"
-            >
-              {THEMES.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.label}
-                </option>
-              ))}
-            </select>
-            <Separator orientation="vertical" className="h-5" />
+            <Separator orientation="vertical" className="h-8" />
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">Theme</span>
+              <Select value={theme} onValueChange={(v) => setTheme(v as ThemeId)}>
+                <SelectTrigger className="w-40 h-8 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {THEMES.map((t) => (
+                    <SelectItem key={t.id} value={t.id}>
+                      {t.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <Separator orientation="vertical" className="h-8" />
             <PrintButton />
             <SaveButton />
           </div>
@@ -57,11 +64,15 @@ export function App() {
             <PreviewFrame resume={resume} theme={theme} />
           </section>
         </main>
-        <footer className="flex h-6 shrink-0 items-center justify-between border-t bg-card px-3 text-[10px] text-muted-foreground">
-          <span>
-            Default: <Badge variant="secondary">{DEFAULT_THEME}</Badge>
-          </span>
-          <span>undo ⌘Z · redo ⌘⇧Z</span>
+        <footer className="flex h-7 shrink-0 items-center justify-between border-t bg-card px-6 text-[10px] text-muted-foreground">
+          <div className="flex items-center gap-2">
+            <span>Default theme:</span>
+            <Badge variant="secondary" className="text-[10px]">{DEFAULT_THEME}</Badge>
+          </div>
+          <div className="flex items-center gap-4">
+            <span>undo ⌘Z</span>
+            <span>redo ⌘⇧Z</span>
+          </div>
         </footer>
       </div>
     </TooltipProvider>

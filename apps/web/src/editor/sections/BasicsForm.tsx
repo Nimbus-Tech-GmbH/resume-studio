@@ -1,5 +1,6 @@
 import { useEditorStore } from '../../state/editorStore.js';
 import { TextField, TextAreaField } from '../fields/Fields.js';
+import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card.js';
 
 export function BasicsForm() {
   const basics = useEditorStore((s) => s.resume.basics) ?? {};
@@ -15,55 +16,67 @@ export function BasicsForm() {
     }));
 
   return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-3">
-        <TextField label="Name" value={basics.name} onChange={(v) => set('name', v)} />
-        <TextField label="Label" value={basics.label} onChange={(v) => set('label', v)} />
-        <TextField
-          label="Email"
-          type="email"
-          value={basics.email}
-          onChange={(v) => set('email', v)}
-        />
-        <TextField label="Phone" value={basics.phone} onChange={(v) => set('phone', v)} />
-        <TextField label="URL" type="url" value={basics.url} onChange={(v) => set('url', v)} />
-      </div>
-      <TextAreaField
-        label="Summary"
-        value={basics.summary}
-        onChange={(v) => set('summary', v)}
-        rows={4}
-      />
-      <fieldset className="space-y-3 rounded-md border p-3">
-        <legend className="px-1 text-xs font-medium text-muted-foreground">Location</legend>
-        <div className="grid grid-cols-2 gap-3">
-          <TextField
-            label="City"
-            value={basics.location?.city}
-            onChange={(v) => setLocation('city', v)}
+    <div className="space-y-6">
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm">Personal Information</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <TextField label="Name" value={basics.name} onChange={(v) => set('name', v)} />
+            <TextField label="Label" value={basics.label} onChange={(v) => set('label', v)} />
+            <TextField
+              label="Email"
+              type="email"
+              value={basics.email}
+              onChange={(v) => set('email', v)}
+            />
+            <TextField label="Phone" value={basics.phone} onChange={(v) => set('phone', v)} />
+            <TextField label="URL" type="url" value={basics.url} onChange={(v) => set('url', v)} />
+          </div>
+          <TextAreaField
+            label="Summary"
+            value={basics.summary}
+            onChange={(v) => set('summary', v)}
+            rows={4}
           />
-          <TextField
-            label="Region"
-            value={basics.location?.region}
-            onChange={(v) => setLocation('region', v)}
-          />
-          <TextField
-            label="Country code"
-            value={basics.location?.countryCode}
-            onChange={(v) => setLocation('countryCode', v)}
-          />
-          <TextField
-            label="Postal code"
-            value={basics.location?.postalCode}
-            onChange={(v) => setLocation('postalCode', v)}
-          />
-          <TextField
-            label="Address"
-            value={basics.location?.address}
-            onChange={(v) => setLocation('address', v)}
-          />
-        </div>
-      </fieldset>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm">Location</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 gap-4">
+            <TextField
+              label="City"
+              value={basics.location?.city}
+              onChange={(v) => setLocation('city', v)}
+            />
+            <TextField
+              label="Region"
+              value={basics.location?.region}
+              onChange={(v) => setLocation('region', v)}
+            />
+            <TextField
+              label="Country code"
+              value={basics.location?.countryCode}
+              onChange={(v) => setLocation('countryCode', v)}
+            />
+            <TextField
+              label="Postal code"
+              value={basics.location?.postalCode}
+              onChange={(v) => setLocation('postalCode', v)}
+            />
+            <TextField
+              label="Address"
+              value={basics.location?.address}
+              onChange={(v) => setLocation('address', v)}
+            />
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

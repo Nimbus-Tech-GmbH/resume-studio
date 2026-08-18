@@ -3,8 +3,8 @@ import { Plus, X } from 'lucide-react';
 
 export function AddButton({ label, onClick }: { label: string; onClick: () => void }) {
   return (
-    <Button size="sm" variant="outline" onClick={onClick} className="gap-1">
-      <Plus className="h-3 w-3" />
+    <Button size="sm" variant="outline" onClick={onClick} className="gap-1.5">
+      <Plus className="h-3.5 w-3.5" />
       {label}
     </Button>
   );
@@ -18,9 +18,9 @@ export function RemoveButton({ onClick }: { onClick: () => void }) {
       onClick={onClick}
       aria-label="Remove item"
       title="Remove"
-      className="h-6 w-6"
+      className="h-7 w-7"
     >
-      <X className="h-3 w-3" />
+      <X className="h-3.5 w-3.5" />
     </Button>
   );
 }

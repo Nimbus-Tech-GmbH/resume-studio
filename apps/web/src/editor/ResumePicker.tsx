@@ -39,7 +39,7 @@ export function ResumePicker() {
 
   return (
     <Select value={resumeId ?? ''} onValueChange={(v) => setResumeId(v || null)}>
-      <SelectTrigger className="h-7 w-48 text-xs">
+      <SelectTrigger className="h-8 w-56 text-xs">
         <SelectValue placeholder="Select resume" />
       </SelectTrigger>
       <SelectContent>

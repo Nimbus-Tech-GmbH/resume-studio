@@ -3,7 +3,7 @@ import { useEditorStore } from '../../state/editorStore.js';
 import { TextField, KeywordsField } from '../fields/Fields.js';
 import { SortableList } from '../SortableList.js';
 import { AddButton, RemoveButton } from '../fields/ListButtons.js';
-import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/card.js';
+import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card.js';
 import { GripVertical } from 'lucide-react';
 
 const EMPTY: never[] = [];
@@ -23,9 +23,13 @@ export function SkillsForm() {
     }));
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       {items.length === 0 ? (
-        <p className="text-xs text-muted-foreground">No skills yet.</p>
+        <Card>
+          <CardContent className="py-8 text-center">
+            <p className="text-xs text-muted-foreground">No skills yet.</p>
+          </CardContent>
+        </Card>
       ) : (
         <SortableList
           items={items}
@@ -33,8 +37,8 @@ export function SkillsForm() {
           onReorder={(_next, from, to) => reorderItems('skills', from, to)}
           renderItem={(item, idx, handle) => (
             <Card>
-              <CardHeader className="flex flex-row items-center gap-2 space-y-0 p-3">
-                <div className="flex items-center gap-1">
+              <CardHeader className="flex flex-row items-center gap-3 space-y-0 p-4">
+                <div className="flex items-center gap-2">
                   {handle}
                   <GripVertical className="h-4 w-4 text-muted-foreground" />
                 </div>
@@ -43,8 +47,8 @@ export function SkillsForm() {
                 </CardTitle>
                 <RemoveButton onClick={() => removeItem('skills', idx)} />
               </CardHeader>
-              <CardContent className="space-y-3 p-3 pt-0">
-                <div className="grid grid-cols-2 gap-3">
+              <CardContent className="space-y-4 p-4 pt-0">
+                <div className="grid grid-cols-2 gap-4">
                   <TextField
                     label="Name"
                     value={item.name}

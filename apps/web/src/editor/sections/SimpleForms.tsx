@@ -9,7 +9,7 @@ import type { ReactNode } from 'react';
 import { useEditorStore } from '../../state/editorStore.js';
 import { TextField, KeywordsField, TextAreaField } from '../fields/Fields.js';
 import { AddButton, RemoveButton } from '../fields/ListButtons.js';
-import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/card.js';
+import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card.js';
 
 const EMPTY: never[] = [];
 
@@ -33,17 +33,21 @@ function List<T>({
   render: (item: T, idx: number) => ReactNode;
 }) {
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       {items.length === 0 ? (
-        <p className="text-xs text-muted-foreground">{empty}</p>
+        <Card>
+          <CardContent className="py-8 text-center">
+            <p className="text-xs text-muted-foreground">{empty}</p>
+          </CardContent>
+        </Card>
       ) : (
         items.map((item, idx) => (
           <Card key={idx}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 p-4">
               <CardTitle className="text-xs font-medium">{title(item, idx)}</CardTitle>
               <RemoveButton onClick={() => onRemove(idx)} />
             </CardHeader>
-            <CardContent className="space-y-3 p-3 pt-0">{render(item, idx)}</CardContent>
+            <CardContent className="space-y-4 p-4 pt-0">{render(item, idx)}</CardContent>
           </Card>
         ))
       )}
@@ -112,7 +116,7 @@ export function VolunteerForm() {
       title={(it, i) => it.organization || `Volunteer #${i + 1}`}
       render={(item, idx) => (
         <>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-4">
             <TextField
               label="Organization"
               value={item.organization}
@@ -180,7 +184,7 @@ export function ProjectsForm() {
       title={(it, i) => it.name || `Project #${i + 1}`}
       render={(item, idx) => (
         <>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-4">
             <TextField
               label="Name"
               value={item.name}
@@ -243,7 +247,7 @@ export function CertificatesForm() {
       title={(it, i) => it.name || `Certificate #${i + 1}`}
       render={(item, idx) => (
         <>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-4">
             <TextField
               label="Name"
               value={item.name}
@@ -288,7 +292,7 @@ export function LanguagesForm() {
       onRemove={(i) => removeItem('languages', i)}
       title={(it, i) => it.language || `Language #${i + 1}`}
       render={(item, idx) => (
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-4">
           <TextField
             label="Language"
             value={item.language}

@@ -22,7 +22,7 @@ export function TextField({
   type = 'text',
 }: BaseProps) {
   return (
-    <div className="space-y-1">
+    <div className="space-y-1.5">
       <Label>{label}</Label>
       <Input
         type={type}
@@ -44,7 +44,7 @@ export function TextAreaField({
   rows = 3,
 }: BaseProps & { rows?: number }) {
   return (
-    <div className="space-y-1">
+    <div className="space-y-1.5">
       <Label>{label}</Label>
       <Textarea
         value={value ?? ''}
@@ -76,13 +76,13 @@ export function KeywordsField({ label, value, onChange, placeholder }: KeywordsF
   };
 
   return (
-    <div className="space-y-1">
+    <div className="space-y-1.5">
       <Label>{label}</Label>
-      <div className="flex min-h-[2rem] flex-wrap gap-1 rounded-md border border-input bg-transparent p-1">
+      <div className="flex min-h-[2.25rem] flex-wrap items-center gap-1.5 rounded-md border border-input bg-background px-2 py-1.5">
         {items.map((item, idx) => (
           <span
             key={`${item}-${idx}`}
-            className="inline-flex items-center gap-1 rounded bg-muted px-1.5 py-0.5 text-[10px]"
+            className="inline-flex items-center gap-1 rounded bg-muted px-2 py-0.5 text-[10px]"
           >
             {item}
             <button
@@ -98,7 +98,7 @@ export function KeywordsField({ label, value, onChange, placeholder }: KeywordsF
         <input
           type="text"
           placeholder={placeholder ?? 'Add…'}
-          className="flex-1 min-w-[6ch] bg-transparent px-1 py-0.5 text-xs outline-none"
+          className="flex-1 min-w-[8ch] bg-transparent text-xs outline-none placeholder:text-muted-foreground"
           onKeyDown={(e) => {
             if (e.key === 'Enter' || e.key === ',') {
               e.preventDefault();

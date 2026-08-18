@@ -11,13 +11,14 @@ export function UndoRedoButtons() {
   const redo = () => useEditorStore.temporal.getState().redo();
 
   return (
-    <div className="flex gap-1">
+    <div className="flex items-center gap-1">
       <Button
         size="icon"
         variant="ghost"
         onClick={undo}
         disabled={!canUndo}
         title="Undo (⌘Z)"
+        className="h-8 w-8"
       >
         <Undo2 className="h-4 w-4" />
       </Button>
@@ -27,6 +28,7 @@ export function UndoRedoButtons() {
         onClick={redo}
         disabled={!canRedo}
         title="Redo (⌘⇧Z)"
+        className="h-8 w-8"
       >
         <Redo2 className="h-4 w-4" />
       </Button>

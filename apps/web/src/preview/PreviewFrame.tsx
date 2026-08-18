@@ -23,7 +23,7 @@ export function PreviewFrame({ resume, theme }: PreviewFrameProps) {
     timer.current = window.setTimeout(() => {
       const controller = new AbortController();
       requestRender({ resume, theme }, controller.signal)
-        .then((res) => {
+        .then((res: string) => {
           setHtml(res);
           setError(null);
         })

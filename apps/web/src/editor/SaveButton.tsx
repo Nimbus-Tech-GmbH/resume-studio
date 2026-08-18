@@ -73,7 +73,7 @@ export function SaveButton() {
         title={canSave ? 'Save changes' : 'Fix validation errors first'}
       >
         {state.running ? (
-          <Loader2 className="animate-spin" />
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
         ) : (
           <Save className="h-3.5 w-3.5" />
         )}

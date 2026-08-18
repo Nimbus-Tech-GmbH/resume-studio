@@ -3,7 +3,7 @@ import { useEditorStore } from '../../state/editorStore.js';
 import { TextAreaField, TextField } from '../fields/Fields.js';
 import { SortableList } from '../SortableList.js';
 import { AddButton, RemoveButton } from '../fields/ListButtons.js';
-import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/card.js';
+import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card.js';
 import { Button } from '../../components/ui/button.js';
 import { Input } from '../../components/ui/input.js';
 import { Label } from '../../components/ui/label.js';
@@ -26,9 +26,13 @@ export function WorkForm() {
     }));
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       {work.length === 0 ? (
-        <p className="text-xs text-muted-foreground">No work experience yet.</p>
+        <Card>
+          <CardContent className="py-8 text-center">
+            <p className="text-xs text-muted-foreground">No work experience yet.</p>
+          </CardContent>
+        </Card>
       ) : (
         <SortableList
           items={work}
@@ -36,8 +40,8 @@ export function WorkForm() {
           onReorder={(_next, from, to) => reorderItems('work', from, to)}
           renderItem={(item, idx, handle) => (
             <Card>
-              <CardHeader className="flex flex-row items-center gap-2 space-y-0 p-3">
-                <div className="flex items-center gap-1">
+              <CardHeader className="flex flex-row items-center gap-3 space-y-0 p-4">
+                <div className="flex items-center gap-2">
                   {handle}
                   <GripVertical className="h-4 w-4 text-muted-foreground" />
                 </div>
@@ -46,8 +50,8 @@ export function WorkForm() {
                 </CardTitle>
                 <RemoveButton onClick={() => removeItem('work', idx)} />
               </CardHeader>
-              <CardContent className="space-y-3 p-3 pt-0">
-                <div className="grid grid-cols-2 gap-3">
+              <CardContent className="space-y-4 p-4 pt-0">
+                <div className="grid grid-cols-2 gap-4">
                   <TextField
                     label="Company"
                     value={item.name}
@@ -64,7 +68,7 @@ export function WorkForm() {
                     value={item.url}
                     onChange={(v) => update(idx, { ...item, url: v })}
                   />
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-2 gap-4">
                     <TextField
                       label="Start"
                       value={item.startDate}
@@ -122,14 +126,15 @@ function HighlightsEditor({
             value={h}
             onChange={(e) => update(i, e.target.value)}
             placeholder="Describe achievement…"
+            className="h-8 text-xs"
           />
-          <Button size="icon" variant="ghost" onClick={() => remove(i)}>
-            <X className="h-3 w-3" />
+          <Button size="icon" variant="ghost" onClick={() => remove(i)} className="h-8 w-8">
+            <X className="h-3.5 w-3.5" />
           </Button>
         </div>
       ))}
-      <Button size="sm" variant="outline" onClick={add}>
-        <Plus className="h-3 w-3" />
+      <Button size="sm" variant="outline" onClick={add} className="gap-1.5">
+        <Plus className="h-3.5 w-3.5" />
         Add highlight
       </Button>
     </div>
