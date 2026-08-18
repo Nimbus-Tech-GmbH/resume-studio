@@ -105,7 +105,7 @@ export function PrintPage() {
           <iframe
             ref={iframeRef}
             title="Print preview"
-            sandbox="allow-same-origin"
+            sandbox="allow-same-origin allow-scripts allow-modals"
             srcDoc={html}
             className="h-full w-full border-0 bg-white"
           />

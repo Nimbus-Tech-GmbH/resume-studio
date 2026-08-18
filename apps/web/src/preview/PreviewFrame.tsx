@@ -57,7 +57,7 @@ export function PreviewFrame({ resume, theme }: PreviewFrameProps) {
       )}
       <iframe
         title="Resume preview"
-        sandbox="allow-same-origin"
+        sandbox="allow-same-origin allow-scripts"
         srcDoc={html}
         className="h-full w-full border-0 bg-white"
       />
