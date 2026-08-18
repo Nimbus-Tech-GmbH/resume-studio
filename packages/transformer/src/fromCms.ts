@@ -28,7 +28,7 @@ export function fromCms(cms: CmsResume): JsonResume {
       ? {
           name: bi.name,
           label: bi.label,
-          image: bi.image?.url,
+          image: bi.image?.src,
           email: bi.email,
           phone: bi.phone,
           url: bi.url,

@@ -29,7 +29,7 @@ export const RESUME_FIELDS = /* GraphQL */ `
       summary
       image {
         id
-        url
+        src
       }
       location {
         id

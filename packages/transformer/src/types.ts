@@ -135,7 +135,7 @@ export interface CmsLanguageRef {
 
 export interface CmsImageRef {
   id: string;
-  url?: string;
+  src?: string;
 }
 
 export interface CmsResumeLocation {
