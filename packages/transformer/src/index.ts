@@ -5,6 +5,7 @@ export * from './diff.js';
 export { fromCms } from './fromCms.js';
 export { toCms } from './toCms.js';
 export type {
+  CmsIdMap,
   MutationOp,
   MutationPlan,
   ToCmsInput,

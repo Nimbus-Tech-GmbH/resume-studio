@@ -27,7 +27,7 @@ import { type ReactNode, useId } from 'react';
 interface SortableListProps<T> {
   items: T[];
   getId: (item: T, idx: number) => string;
-  onReorder: (next: T[]) => void;
+  onReorder: (next: T[], from: number, to: number) => void;
   renderItem: (item: T, idx: number, handle: ReactNode) => ReactNode;
 }
 
@@ -50,7 +50,7 @@ export function SortableList<T>({
     const oldIdx = ids.indexOf(String(active.id));
     const newIdx = ids.indexOf(String(over.id));
     if (oldIdx < 0 || newIdx < 0) return;
-    onReorder(arrayMove(items, oldIdx, newIdx));
+    onReorder(arrayMove(items, oldIdx, newIdx), oldIdx, newIdx);
   };
 
   return (

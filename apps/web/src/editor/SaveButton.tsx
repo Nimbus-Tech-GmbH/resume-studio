@@ -19,7 +19,7 @@ export function SaveButton() {
 
   const onClick = async () => {
     const store = useEditorStore.getState();
-    if (!store.originalCms) {
+    if (!store.originalCms || !store.resumeId) {
       setState({ running: false, message: 'No resume loaded', results: [] });
       return;
     }
@@ -27,6 +27,9 @@ export function SaveButton() {
       current: store.resume,
       original: store.original,
       originalCms: store.originalCms,
+      cmsIds: store.cmsIds,
+      originalCmsIds: store.originalCmsIds,
+      resumeId: store.resumeId,
     });
     if (plan.errors.length > 0) {
       setState({

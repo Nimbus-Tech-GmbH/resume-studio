@@ -5,8 +5,11 @@ import type {
   JsonResumeProject,
   JsonResumeVolunteer,
 } from '@resume-studio/transformer';
+import type { ReactNode } from 'react';
+import type { ListSection } from '../../state/editorStore.js';
 import { useEditorStore } from '../../state/editorStore.js';
 import { KeywordsField, TextAreaField, TextField } from '../fields/Fields.js';
+import { AddButton, RemoveButton } from '../fields/ListButtons.js';
 
 /**
  * Simple (non-DnD) forms for the smaller sections. Reordering these lands in
@@ -19,6 +22,8 @@ export function InterestsForm() {
   const raw = useEditorStore((s) => s.resume.interests);
   const interests = raw ?? EMPTY;
   const patch = useEditorStore((s) => s.patchResume);
+  const addItem = useEditorStore((s) => s.addItem);
+  const removeItem = useEditorStore((s) => s.removeItem);
   const update = (idx: number, next: JsonResumeInterest) =>
     patch((r) => ({
       ...r,
@@ -26,8 +31,12 @@ export function InterestsForm() {
     }));
   return (
     <List
+      section="interests"
       items={interests}
       empty="No interests yet."
+      addLabel="+ Add interest"
+      onAdd={() => addItem('interests', {} as JsonResumeInterest)}
+      onRemove={(i) => removeItem('interests', i)}
       title={(it, i) => it.name || `Interest #${i + 1}`}
       render={(item, idx) => (
         <>
@@ -53,6 +62,8 @@ export function VolunteerForm() {
   const raw = useEditorStore((s) => s.resume.volunteer);
   const items = raw ?? EMPTY;
   const patch = useEditorStore((s) => s.patchResume);
+  const addItem = useEditorStore((s) => s.addItem);
+  const removeItem = useEditorStore((s) => s.removeItem);
   const update = (idx: number, next: JsonResumeVolunteer) =>
     patch((r) => ({
       ...r,
@@ -60,8 +71,12 @@ export function VolunteerForm() {
     }));
   return (
     <List
+      section="volunteer"
       items={items}
       empty="No volunteer entries yet."
+      addLabel="+ Add volunteer"
+      onAdd={() => addItem('volunteer', {} as JsonResumeVolunteer)}
+      onRemove={(i) => removeItem('volunteer', i)}
       title={(it, i) => it.organization || `Volunteer #${i + 1}`}
       render={(item, idx) => (
         <>
@@ -119,6 +134,8 @@ export function ProjectsForm() {
   const raw = useEditorStore((s) => s.resume.projects);
   const items = raw ?? EMPTY;
   const patch = useEditorStore((s) => s.patchResume);
+  const addItem = useEditorStore((s) => s.addItem);
+  const removeItem = useEditorStore((s) => s.removeItem);
   const update = (idx: number, next: JsonResumeProject) =>
     patch((r) => ({
       ...r,
@@ -126,8 +143,12 @@ export function ProjectsForm() {
     }));
   return (
     <List
+      section="projects"
       items={items}
       empty="No projects yet."
+      addLabel="+ Add project"
+      onAdd={() => addItem('projects', {} as JsonResumeProject)}
+      onRemove={(i) => removeItem('projects', i)}
       title={(it, i) => it.name || `Project #${i + 1}`}
       render={(item, idx) => (
         <>
@@ -185,6 +206,8 @@ export function CertificatesForm() {
   const raw = useEditorStore((s) => s.resume.certificates);
   const items = raw ?? EMPTY;
   const patch = useEditorStore((s) => s.patchResume);
+  const addItem = useEditorStore((s) => s.addItem);
+  const removeItem = useEditorStore((s) => s.removeItem);
   const update = (idx: number, next: JsonResumeCertificate) =>
     patch((r) => ({
       ...r,
@@ -192,8 +215,12 @@ export function CertificatesForm() {
     }));
   return (
     <List
+      section="certificates"
       items={items}
       empty="No certificates yet."
+      addLabel="+ Add certificate"
+      onAdd={() => addItem('certificates', {} as JsonResumeCertificate)}
+      onRemove={(i) => removeItem('certificates', i)}
       title={(it, i) => it.name || `Certificate #${i + 1}`}
       render={(item, idx) => (
         <>
@@ -238,6 +265,8 @@ export function LanguagesForm() {
   const raw = useEditorStore((s) => s.resume.languages);
   const items = raw ?? EMPTY;
   const patch = useEditorStore((s) => s.patchResume);
+  const addItem = useEditorStore((s) => s.addItem);
+  const removeItem = useEditorStore((s) => s.removeItem);
   const update = (idx: number, next: JsonResumeLanguage) =>
     patch((r) => ({
       ...r,
@@ -245,8 +274,12 @@ export function LanguagesForm() {
     }));
   return (
     <List
+      section="languages"
       items={items}
       empty="No languages yet."
+      addLabel="+ Add language"
+      onAdd={() => addItem('languages', {} as JsonResumeLanguage)}
+      onRemove={(i) => removeItem('languages', i)}
       title={(it, i) => it.language || `Language #${i + 1}`}
       render={(item, idx) => (
         <div className="grid grid-cols-2 gap-3">
@@ -267,30 +300,37 @@ export function LanguagesForm() {
 }
 
 interface ListProps<T> {
+  section: ListSection;
   items: T[];
   empty: string;
+  addLabel: string;
+  onAdd: () => void;
+  onRemove: (idx: number) => void;
   title: (item: T, idx: number) => string;
-  render: (item: T, idx: number) => React.ReactNode;
+  render: (item: T, idx: number) => ReactNode;
 }
 
-function List<T>({ items, empty, title, render }: ListProps<T>) {
-  if (items.length === 0) {
-    return (
-      <p className="rounded border border-dashed border-neutral-300 p-4 text-center text-xs text-neutral-500">
-        {empty}
-      </p>
-    );
-  }
+function List<T>({ items, empty, addLabel, onAdd, onRemove, title, render }: ListProps<T>) {
   return (
     <div className="flex flex-col gap-3">
-      {items.map((item, idx) => (
-        <div key={idx} className="rounded border border-neutral-200 bg-white p-3">
-          <span className="mb-2 block text-xs font-medium text-neutral-500">
-            {title(item, idx)}
-          </span>
-          {render(item, idx)}
-        </div>
-      ))}
+      {items.length === 0 ? (
+        <p className="rounded border border-dashed border-neutral-300 p-4 text-center text-xs text-neutral-500">
+          {empty}
+        </p>
+      ) : (
+        items.map((item, idx) => (
+          <div key={idx} className="rounded border border-neutral-200 bg-white p-3">
+            <div className="mb-2 flex items-center justify-between">
+              <span className="text-xs font-medium text-neutral-500">
+                {title(item, idx)}
+              </span>
+              <RemoveButton onClick={() => onRemove(idx)} />
+            </div>
+            {render(item, idx)}
+          </div>
+        ))
+      )}
+      <AddButton label={addLabel} onClick={onAdd} />
     </div>
   );
 }
