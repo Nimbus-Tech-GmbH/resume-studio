@@ -3,7 +3,7 @@
 import { register, createRequire } from 'node:module';
 import { pathToFileURL } from 'node:url';
 
-register('./css-hook.mjs', pathToFileURL(import.meta.url));
+register(new URL('./css-hook.mjs', import.meta.url));
 
 const require = createRequire(import.meta.url);
 require.extensions['.css'] = (module) => {
