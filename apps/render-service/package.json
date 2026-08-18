@@ -1,0 +1,31 @@
+{
+  "name": "@resume-studio/render-service",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/server.js",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "start": "node dist/server.js",
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "echo no-tests"
+  },
+  "dependencies": {
+    "@fastify/cors": "^10.0.1",
+    "@resume-studio/themes": "workspace:*",
+    "@resume-studio/transformer": "workspace:*",
+    "fastify": "^5.0.0",
+    "jsonresume-theme-elegant": "^1.16.1",
+    "jsonresume-theme-even": "^0.24.0",
+    "jsonresume-theme-stackoverflow": "^2.0.2",
+    "lru-cache": "^11.0.1",
+    "resumed": "^3.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "tsx": "^4.19.1",
+    "typescript": "^5.6.2",
+    "vitest": "^2.1.1"
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "name": "resume-studio",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Real-time resume editor. Edit JSON Resume data from Keystone CMS, live preview across themes, save on demand.",
+  "packageManager": "pnpm@9.0.0",
+  "engines": {
+    "node": ">=20.11.0"
+  },
+  "scripts": {
+    "dev": "pnpm -r --parallel --filter \"./apps/*\" dev",
+    "dev:web": "pnpm --filter @resume-studio/web dev",
+    "dev:render": "pnpm --filter @resume-studio/render-service dev",
+    "build": "pnpm -r build",
+    "test": "pnpm -r test",
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm -r typecheck",
+    "codegen": "pnpm --filter @resume-studio/graphql-client codegen",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "prettier": "^3.3.3",
+    "typescript": "^5.6.2"
+  }
+}

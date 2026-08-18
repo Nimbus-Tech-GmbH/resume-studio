@@ -1,0 +1,21 @@
+# graphql-codegen config.
+# Milestone 3 wires this against a live Keystone schema.
+# For milestone 0 we point at a placeholder path; running codegen requires the
+# Keystone CMS to be exporting its SDL to `../../schema.graphql` or a URL.
+schema: "http://localhost:3000/api/graphql"
+documents:
+  - "src/operations/**/*.graphql"
+generates:
+  src/generated.ts:
+    plugins:
+      - typescript
+      - typescript-operations
+    config:
+      useTypeImports: true
+      avoidOptionals: false
+      enumsAsTypes: true
+      scalars:
+        DateTime: string
+        JSON: unknown
+        Decimal: string
+        ID: string
