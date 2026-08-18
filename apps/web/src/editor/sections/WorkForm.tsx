@@ -3,8 +3,11 @@ import { useEditorStore } from '../../state/editorStore.js';
 import { TextAreaField, TextField } from '../fields/Fields.js';
 import { SortableList } from '../SortableList.js';
 
+const EMPTY: never[] = [];
+
 export function WorkForm() {
-  const work = useEditorStore((s) => s.resume.work ?? []);
+  const workRaw = useEditorStore((s) => s.resume.work);
+  const work = workRaw ?? EMPTY;
   const patch = useEditorStore((s) => s.patchResume);
 
   const update = (idx: number, next: JsonResumeWork) =>

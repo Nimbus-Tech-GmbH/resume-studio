@@ -2,11 +2,12 @@ import {
   CREATE_RESUME_HIGHLIGHT,
   DELETE_RESUME_HIGHLIGHT,
   UPDATE_CERTIFICATION,
-  UPDATE_RESUME,
   UPDATE_RESUME_BASIC_INFORMATION,
   UPDATE_RESUME_EDUCATION,
   UPDATE_RESUME_HIGHLIGHT,
   UPDATE_RESUME_INTEREST,
+  UPDATE_RESUME_LANGUAGE,
+  UPDATE_RESUME_LOCATION,
   UPDATE_RESUME_PROJECT,
   UPDATE_RESUME_SKILL,
   UPDATE_RESUME_VOLUNTEER,
@@ -16,13 +17,15 @@ import type { MutationOp } from '@resume-studio/transformer';
 import { gqlClient } from './client.js';
 
 /**
- * Execute a plan of mutation ops. Ordering rules:
- *   1. creates first (so later `set` reorderings can reference new ids),
+ * Execute a plan of mutation ops.
+ *
+ * Ordering:
+ *   1. creates first (so any later reference by id is safe),
  *   2. then updates,
  *   3. then deletes.
  *
- * Errors surface per-op so the caller can present granular toasts. We do not
- * roll back local state — PLAN §4 accepts last-write-wins.
+ * Errors surface per-op so the caller can present granular toasts.
+ * No local rollback — PLAN §4 accepts last-write-wins.
  */
 export interface OpResult {
   op: MutationOp;
@@ -59,6 +62,9 @@ async function runOne(op: MutationOp): Promise<void> {
     case 'updateResumeBasicInformation':
       await gqlClient.request(UPDATE_RESUME_BASIC_INFORMATION, { id: op.id, data: op.data });
       return;
+    case 'updateResumeLocation':
+      await gqlClient.request(UPDATE_RESUME_LOCATION, { id: op.id, data: op.data });
+      return;
     case 'updateResumeWork':
       await gqlClient.request(UPDATE_RESUME_WORK, { id: op.id, data: op.data });
       return;
@@ -86,11 +92,11 @@ async function runOne(op: MutationOp): Promise<void> {
     case 'updateResumeProject':
       await gqlClient.request(UPDATE_RESUME_PROJECT, { id: op.id, data: op.data });
       return;
+    case 'updateResumeLanguage':
+      await gqlClient.request(UPDATE_RESUME_LANGUAGE, { id: op.id, data: op.data });
+      return;
     case 'updateCertification':
       await gqlClient.request(UPDATE_CERTIFICATION, { id: op.id, data: op.data });
-      return;
-    case 'updateResume':
-      await gqlClient.request(UPDATE_RESUME, { id: op.id, data: op.data });
       return;
     default: {
       const _exhaustive: never = op;

@@ -13,8 +13,11 @@ import { KeywordsField, TextAreaField, TextField } from '../fields/Fields.js';
  * a follow-up — they are typically short and re-order less often.
  */
 
+const EMPTY: never[] = [];
+
 export function InterestsForm() {
-  const interests = useEditorStore((s) => s.resume.interests ?? []);
+  const raw = useEditorStore((s) => s.resume.interests);
+  const interests = raw ?? EMPTY;
   const patch = useEditorStore((s) => s.patchResume);
   const update = (idx: number, next: JsonResumeInterest) =>
     patch((r) => ({
@@ -47,7 +50,8 @@ export function InterestsForm() {
 }
 
 export function VolunteerForm() {
-  const items = useEditorStore((s) => s.resume.volunteer ?? []);
+  const raw = useEditorStore((s) => s.resume.volunteer);
+  const items = raw ?? EMPTY;
   const patch = useEditorStore((s) => s.patchResume);
   const update = (idx: number, next: JsonResumeVolunteer) =>
     patch((r) => ({
@@ -112,7 +116,8 @@ export function VolunteerForm() {
 }
 
 export function ProjectsForm() {
-  const items = useEditorStore((s) => s.resume.projects ?? []);
+  const raw = useEditorStore((s) => s.resume.projects);
+  const items = raw ?? EMPTY;
   const patch = useEditorStore((s) => s.patchResume);
   const update = (idx: number, next: JsonResumeProject) =>
     patch((r) => ({
@@ -177,7 +182,8 @@ export function ProjectsForm() {
 }
 
 export function CertificatesForm() {
-  const items = useEditorStore((s) => s.resume.certificates ?? []);
+  const raw = useEditorStore((s) => s.resume.certificates);
+  const items = raw ?? EMPTY;
   const patch = useEditorStore((s) => s.patchResume);
   const update = (idx: number, next: JsonResumeCertificate) =>
     patch((r) => ({
@@ -229,7 +235,8 @@ export function CertificatesForm() {
 }
 
 export function LanguagesForm() {
-  const items = useEditorStore((s) => s.resume.languages ?? []);
+  const raw = useEditorStore((s) => s.resume.languages);
+  const items = raw ?? EMPTY;
   const patch = useEditorStore((s) => s.patchResume);
   const update = (idx: number, next: JsonResumeLanguage) =>
     patch((r) => ({

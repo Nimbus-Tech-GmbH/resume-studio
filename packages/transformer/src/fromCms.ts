@@ -1,9 +1,10 @@
 /**
  * CMS → JSON Resume.
  *
- * Milestone 1 will port the full converter from
- * `nimbus-tech/scripts/exportResumes/convert.ts`.
- * Milestone 0 wires the shape so downstream packages can typecheck today.
+ * The Keystone schema does not expose an `order` field on any resume relation,
+ * so we preserve the array order returned by GraphQL. If a stable ordering is
+ * ever needed, add `order: Int` to the relevant Keystone lists (PLAN §10.2)
+ * and re-introduce a sort here.
  */
 
 import { decodeDate } from './dateCodec.js';
@@ -21,6 +22,7 @@ import type {
 
 export function fromCms(cms: CmsResume): JsonResume {
   const bi = cms.basicInformation;
+  const loc = bi?.location;
   return {
     basics: bi
       ? {
@@ -31,13 +33,15 @@ export function fromCms(cms: CmsResume): JsonResume {
           phone: bi.phone,
           url: bi.url,
           summary: bi.summary,
-          location: {
-            address: bi.address,
-            postalCode: bi.postalCode,
-            city: bi.city,
-            countryCode: bi.countryCode,
-            region: bi.region,
-          },
+          location: loc
+            ? {
+                address: loc.address,
+                postalCode: loc.postalCode,
+                city: loc.city,
+                countryCode: loc.countryCode,
+                region: loc.region,
+              }
+            : undefined,
           profiles: bi.profiles?.map((p) => ({
             network: p.network,
             username: p.username,
@@ -45,33 +49,27 @@ export function fromCms(cms: CmsResume): JsonResume {
           })),
         }
       : undefined,
-    work: sortByOrder(cms.work).map(mapWork),
-    education: sortByOrder(cms.education).map(mapEducation),
-    skills: sortByOrder(cms.skills).map(mapSkill),
-    interests: sortByOrder(cms.interests).map(mapInterest),
-    volunteer: sortByOrder(cms.volunteer).map(mapVolunteer),
-    projects: sortByOrder(cms.projects).map(mapProject),
-    certificates: sortByOrder(cms.certifications).map((c) => ({
+    work: (cms.work ?? []).map(mapWork),
+    education: (cms.education ?? []).map(mapEducation),
+    skills: (cms.skills ?? []).map(mapSkill),
+    interests: (cms.interests ?? []).map(mapInterest),
+    volunteer: (cms.volunteer ?? []).map(mapVolunteer),
+    projects: (cms.projects ?? []).map(mapProject),
+    certificates: (cms.certificates ?? []).map((c) => ({
       name: c.title,
-      date: decodeDate(c.date),
-      issuer: c.issuer,
       url: c.link,
       summary: c.description,
     })),
-    languages: sortByOrder(cms.languages).map((l) => ({
+    languages: (cms.resumeLanguages ?? []).map((l) => ({
       language: l.language,
       fluency: l.fluency,
     })),
     meta: {
-      language: cms.language,
+      title: cms.title,
+      language: cms.language?.value ?? cms.language?.label,
       lastModified: cms.updatedAt,
     },
   };
-}
-
-function sortByOrder<T extends { order?: number }>(list: readonly T[] | undefined): T[] {
-  if (!list) return [];
-  return [...list].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
 }
 
 function mapWork(w: NonNullable<CmsResume['work']>[number]): JsonResumeWork {
@@ -82,9 +80,7 @@ function mapWork(w: NonNullable<CmsResume['work']>[number]): JsonResumeWork {
     startDate: decodeDate(w.startDate),
     endDate: decodeDate(w.endDate),
     summary: w.summary,
-    highlights: sortByOrder(w.highlights)
-      .map((h) => h.value ?? '')
-      .filter(Boolean),
+    highlights: (w.highlights ?? []).map((h) => h.value ?? '').filter(Boolean),
   };
 }
 
@@ -126,7 +122,6 @@ function mapProject(p: NonNullable<CmsResume['projects']>[number]): JsonResumePr
     name: p.name,
     description: p.description,
     highlights: decodeList(p.highlights),
-    keywords: decodeList(p.keywords),
     startDate: decodeDate(p.startDate),
     endDate: decodeDate(p.endDate),
     url: p.url,

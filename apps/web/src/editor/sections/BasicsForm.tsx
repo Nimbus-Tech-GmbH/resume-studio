@@ -2,7 +2,7 @@ import { useEditorStore } from '../../state/editorStore.js';
 import { TextAreaField, TextField } from '../fields/Fields.js';
 
 export function BasicsForm() {
-  const basics = useEditorStore((s) => s.resume.basics ?? {});
+  const basics = useEditorStore((s) => s.resume.basics) ?? {};
   const patch = useEditorStore((s) => s.patchResume);
 
   const set = <K extends keyof typeof basics>(key: K, val: string) =>

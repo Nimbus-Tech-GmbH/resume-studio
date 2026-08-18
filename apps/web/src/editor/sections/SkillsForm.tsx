@@ -3,8 +3,11 @@ import { useEditorStore } from '../../state/editorStore.js';
 import { KeywordsField, TextField } from '../fields/Fields.js';
 import { SortableList } from '../SortableList.js';
 
+const EMPTY: never[] = [];
+
 export function SkillsForm() {
-  const skills = useEditorStore((s) => s.resume.skills ?? []);
+  const raw = useEditorStore((s) => s.resume.skills);
+  const skills = raw ?? EMPTY;
   const patch = useEditorStore((s) => s.patchResume);
 
   const update = (idx: number, next: JsonResumeSkill) =>

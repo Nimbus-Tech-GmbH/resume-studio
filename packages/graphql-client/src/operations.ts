@@ -1,16 +1,24 @@
 /**
  * Hand-written GraphQL operations against Keystone.
  *
- * These operations mirror the `CmsResume` shape declared in
- * `@resume-studio/transformer`. Once `pnpm codegen` runs against a live
- * Keystone endpoint the generated types can replace these.
+ * These operations mirror the actual `Resume` type in `nt-keystone-cms`
+ * (validated by introspection, see PLAN §10.2). No `orderBy` is used because
+ * the CMS lists have no `order` field yet.
+ *
+ * Running `pnpm codegen` against a live Keystone endpoint replaces the
+ * placeholder in `generated.ts` with strongly-typed variants.
  */
 
 export const RESUME_FIELDS = /* GraphQL */ `
   fragment ResumeFields on Resume {
     id
-    language
+    title
     updatedAt
+    language {
+      id
+      label
+      value
+    }
     basicInformation {
       id
       name
@@ -19,14 +27,17 @@ export const RESUME_FIELDS = /* GraphQL */ `
       phone
       url
       summary
-      address
-      postalCode
-      city
-      countryCode
-      region
       image {
         id
         url
+      }
+      location {
+        id
+        address
+        postalCode
+        city
+        countryCode
+        region
       }
       profiles {
         id
@@ -35,7 +46,7 @@ export const RESUME_FIELDS = /* GraphQL */ `
         url
       }
     }
-    work(orderBy: { order: asc }) {
+    work {
       id
       name
       position
@@ -43,14 +54,12 @@ export const RESUME_FIELDS = /* GraphQL */ `
       startDate
       endDate
       summary
-      order
-      highlights(orderBy: { order: asc }) {
+      highlights {
         id
         value
-        order
       }
     }
-    education(orderBy: { order: asc }) {
+    education {
       id
       institution
       url
@@ -60,22 +69,19 @@ export const RESUME_FIELDS = /* GraphQL */ `
       endDate
       score
       courses
-      order
     }
-    skills(orderBy: { order: asc }) {
+    skills {
       id
       name
       level
       keywords
-      order
     }
-    interests(orderBy: { order: asc }) {
+    interests {
       id
       name
       keywords
-      order
     }
-    volunteer(orderBy: { order: asc }) {
+    volunteer {
       id
       organization
       position
@@ -84,33 +90,26 @@ export const RESUME_FIELDS = /* GraphQL */ `
       endDate
       summary
       highlights
-      order
     }
-    projects(orderBy: { order: asc }) {
+    projects {
       id
       name
       description
       highlights
-      keywords
       startDate
       endDate
       url
-      order
     }
-    certifications(orderBy: { order: asc }) {
+    certificates {
       id
       title
-      date
-      issuer
-      link
       description
-      order
+      link
     }
-    languages(orderBy: { order: asc }) {
+    resumeLanguages {
       id
       language
       fluency
-      order
     }
   }
 `;
@@ -119,8 +118,13 @@ export const LIST_RESUMES = /* GraphQL */ `
   query ListResumes {
     resumes {
       id
-      language
+      title
       updatedAt
+      language {
+        id
+        label
+        value
+      }
       basicInformation {
         id
         name
@@ -139,7 +143,7 @@ export const GET_RESUME = /* GraphQL */ `
   }
 `;
 
-// ─── mutations (per-op) ──────────────────────────────────────────────────
+// ─── mutations ───────────────────────────────────────────────────────────
 
 export const UPDATE_RESUME_BASIC_INFORMATION = /* GraphQL */ `
   mutation UpdateResumeBasicInformation(
@@ -147,6 +151,14 @@ export const UPDATE_RESUME_BASIC_INFORMATION = /* GraphQL */ `
     $data: ResumeBasicInformationUpdateInput!
   ) {
     updateResumeBasicInformation(where: { id: $id }, data: $data) {
+      id
+    }
+  }
+`;
+
+export const UPDATE_RESUME_LOCATION = /* GraphQL */ `
+  mutation UpdateResumeLocation($id: ID!, $data: ResumeLocationUpdateInput!) {
+    updateResumeLocation(where: { id: $id }, data: $data) {
       id
     }
   }
@@ -224,17 +236,17 @@ export const UPDATE_RESUME_PROJECT = /* GraphQL */ `
   }
 `;
 
-export const UPDATE_CERTIFICATION = /* GraphQL */ `
-  mutation UpdateCertification($id: ID!, $data: CertificationUpdateInput!) {
-    updateCertification(where: { id: $id }, data: $data) {
+export const UPDATE_RESUME_LANGUAGE = /* GraphQL */ `
+  mutation UpdateResumeLanguage($id: ID!, $data: ResumeLanguageUpdateInput!) {
+    updateResumeLanguage(where: { id: $id }, data: $data) {
       id
     }
   }
 `;
 
-export const UPDATE_RESUME = /* GraphQL */ `
-  mutation UpdateResume($id: ID!, $data: ResumeUpdateInput!) {
-    updateResume(where: { id: $id }, data: $data) {
+export const UPDATE_CERTIFICATION = /* GraphQL */ `
+  mutation UpdateCertification($id: ID!, $data: CertificationUpdateInput!) {
+    updateCertification(where: { id: $id }, data: $data) {
       id
     }
   }

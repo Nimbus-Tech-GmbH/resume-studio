@@ -1,12 +1,17 @@
 /**
  * Shared types for the CMS ⇄ JSON Resume transformer.
  *
- * `CmsResume` mirrors the Keystone GraphQL shape (denormalized subset).
- * `JsonResume` mirrors the JSON Resume schema (https://jsonresume.org/schema).
- *
- * Milestone 1 will replace `CmsResume` with generated GraphQL types from
- * `@resume-studio/graphql-client` and lock `JsonResume` to the upstream schema.
+ * The CMS shapes below mirror the actual Keystone SDL from `nt-keystone-cms`
+ * (as of milestone 3). Notable divergences from earlier drafts:
+ *   - No `order` field anywhere. Reorder is not persistable in MVP.
+ *   - `ResumeBasicInformation.location` is a relation, not flat scalars.
+ *   - `Resume.certificates` uses `Certification { title, description, link }`
+ *     — no `date` / `issuer`.
+ *   - `Resume.resumeLanguages` (not `languages`) holds spoken languages.
+ *   - `Resume.language` is a `Language` relation for the UI/i18n code.
  */
+
+// ─── JSON Resume shape (kept close to https://jsonresume.org/schema) ─────
 
 export interface JsonResumeBasics {
   name?: string;
@@ -116,23 +121,37 @@ export interface JsonResume {
     lastModified?: string;
     theme?: string;
     language?: string;
+    title?: string;
   };
 }
 
-/** CMS-side shapes. Placeholder — replaced by generated types in milestone 1. */
-export interface CmsResume {
+// ─── CMS shape (real Keystone) ───────────────────────────────────────────
+
+export interface CmsLanguageRef {
   id: string;
-  language?: string;
-  updatedAt?: string;
-  basicInformation?: CmsBasicInformation;
-  work?: CmsWork[];
-  education?: CmsEducation[];
-  skills?: CmsSkill[];
-  interests?: CmsInterest[];
-  volunteer?: CmsVolunteer[];
-  projects?: CmsProject[];
-  certifications?: CmsCertification[];
-  languages?: CmsLanguage[];
+  label?: string;
+  value?: string;
+}
+
+export interface CmsImageRef {
+  id: string;
+  url?: string;
+}
+
+export interface CmsResumeLocation {
+  id: string;
+  address?: string;
+  postalCode?: string;
+  city?: string;
+  countryCode?: string;
+  region?: string;
+}
+
+export interface CmsResumeProfile {
+  id: string;
+  network?: string;
+  username?: string;
+  url?: string;
 }
 
 export interface CmsBasicInformation {
@@ -143,20 +162,14 @@ export interface CmsBasicInformation {
   phone?: string;
   url?: string;
   summary?: string;
-  image?: { id: string; url?: string } | null;
-  address?: string;
-  postalCode?: string;
-  city?: string;
-  countryCode?: string;
-  region?: string;
-  profiles?: CmsProfile[];
+  image?: CmsImageRef | null;
+  location?: CmsResumeLocation | null;
+  profiles?: CmsResumeProfile[];
 }
 
-export interface CmsProfile {
+export interface CmsHighlight {
   id: string;
-  network?: string;
-  username?: string;
-  url?: string;
+  value?: string;
 }
 
 export interface CmsWork {
@@ -167,14 +180,7 @@ export interface CmsWork {
   startDate?: string;
   endDate?: string;
   summary?: string;
-  order?: number;
   highlights?: CmsHighlight[];
-}
-
-export interface CmsHighlight {
-  id: string;
-  value?: string;
-  order?: number;
 }
 
 export interface CmsEducation {
@@ -187,7 +193,6 @@ export interface CmsEducation {
   endDate?: string;
   score?: string;
   courses?: string;
-  order?: number;
 }
 
 export interface CmsSkill {
@@ -195,14 +200,12 @@ export interface CmsSkill {
   name?: string;
   level?: string;
   keywords?: string;
-  order?: number;
 }
 
 export interface CmsInterest {
   id: string;
   name?: string;
   keywords?: string;
-  order?: number;
 }
 
 export interface CmsVolunteer {
@@ -214,7 +217,6 @@ export interface CmsVolunteer {
   endDate?: string;
   summary?: string;
   highlights?: string;
-  order?: number;
 }
 
 export interface CmsProject {
@@ -222,26 +224,36 @@ export interface CmsProject {
   name?: string;
   description?: string;
   highlights?: string;
-  keywords?: string;
   startDate?: string;
   endDate?: string;
   url?: string;
-  order?: number;
 }
 
 export interface CmsCertification {
   id: string;
   title?: string;
-  date?: string;
-  issuer?: string;
-  link?: string;
   description?: string;
-  order?: number;
+  link?: string;
 }
 
-export interface CmsLanguage {
+export interface CmsResumeLanguage {
   id: string;
   language?: string;
   fluency?: string;
-  order?: number;
+}
+
+export interface CmsResume {
+  id: string;
+  title?: string;
+  updatedAt?: string;
+  language?: CmsLanguageRef | null;
+  basicInformation?: CmsBasicInformation;
+  work?: CmsWork[];
+  education?: CmsEducation[];
+  skills?: CmsSkill[];
+  interests?: CmsInterest[];
+  volunteer?: CmsVolunteer[];
+  projects?: CmsProject[];
+  certificates?: CmsCertification[];
+  resumeLanguages?: CmsResumeLanguage[];
 }

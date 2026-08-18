@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { ClientError } from 'graphql-request';
 import { fromCms } from '@resume-studio/transformer';
 import { useResume, useResumeList } from '../graphql/useResume.js';
 import { useEditorStore } from '../state/editorStore.js';
@@ -24,9 +25,10 @@ export function ResumePicker() {
 
   if (isLoading) return <span className="text-xs text-neutral-500">Loading…</span>;
   if (error) {
+    const msg = extractGqlError(error);
     return (
-      <span className="text-xs text-red-600" title={String(error)}>
-        Keystone unreachable
+      <span className="text-xs text-red-600" title={msg}>
+        Keystone error: {msg.slice(0, 80)}
       </span>
     );
   }
@@ -42,9 +44,18 @@ export function ResumePicker() {
     >
       {list.map((r) => (
         <option key={r.id} value={r.id}>
-          {r.basicInformation?.name ?? r.id} ({r.language ?? '—'})
+          {r.title ?? r.basicInformation?.name ?? r.id} ({r.language?.value ?? r.language?.label ?? '—'})
         </option>
       ))}
     </select>
   );
+}
+
+function extractGqlError(err: unknown): string {
+  if (err instanceof ClientError) {
+    const first = err.response?.errors?.[0]?.message;
+    if (first) return first;
+    return `HTTP ${err.response?.status ?? '?'}`;
+  }
+  return err instanceof Error ? err.message : String(err);
 }
