@@ -10,7 +10,7 @@ Real-time resume editor web app. Loads resume data from the Keystone CMS GraphQL
 
 - Edit any JSON Resume section: basics, work (with highlights), education, skills, interests, volunteer, projects, certificates, languages.
 - Live preview updates 300 ms after last keystroke, in a sandboxed iframe.
-- Theme switcher — `stackoverflow`, `even`, `elegant`.
+- Theme switcher — 10 in-repo themes: `developer-mono`, `flat`, `modern-classic`, `writers-portfolio`, `nordic-minimal`, `graph-paper-grid`, `monochrome-noir`, `new-york-editorial`, `claude`, `brutalist`.
 - Undo / redo with `⌘Z` / `⌘⇧Z` and toolbar buttons (last 100 states).
 - Drag-and-drop reorder for work, education, and skills.
 - ajv-backed inline validation banner (emails, URLs, dates).

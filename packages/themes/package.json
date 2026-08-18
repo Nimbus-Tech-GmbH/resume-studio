@@ -12,9 +12,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "jsonresume-theme-elegant": "^1.16.1",
-    "jsonresume-theme-even": "^0.24.0",
-    "jsonresume-theme-stackoverflow": "^2.0.2"
+    "@resume-studio/transformer": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.6.2"

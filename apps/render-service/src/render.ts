@@ -1,18 +1,8 @@
 import { createHash } from 'node:crypto';
-import { render as resumedRender } from 'resumed';
 import type { JsonResume } from '@resume-studio/transformer';
-import type { ThemeId } from '@resume-studio/themes';
+import { getThemeRenderer, type ThemeId } from '@resume-studio/themes';
 import { htmlCache } from './cache.js';
 import { postProcess } from './postProcess.js';
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type ThemeModule = any;
-
-const themePromises: Record<ThemeId, Promise<ThemeModule>> = {
-  stackoverflow: import('jsonresume-theme-stackoverflow'),
-  even: import('jsonresume-theme-even'),
-  elegant: import('jsonresume-theme-elegant'),
-};
 
 function hashKey(resume: JsonResume, theme: ThemeId): string {
   return createHash('sha1')
@@ -23,19 +13,17 @@ function hashKey(resume: JsonResume, theme: ThemeId): string {
 }
 
 /**
- * Render a resume with the given theme. Wraps upstream theme errors in a
- * self-contained HTML error card so the iframe stays functional (the
- * `elegant` theme is known to throw on missing sections — see PLAN §10.4).
+ * Render a resume with the given in-repo theme. Wraps errors in a
+ * self-contained HTML error card so the iframe stays functional.
  */
 export async function renderResume(resume: JsonResume, theme: ThemeId): Promise<string> {
   const key = hashKey(resume, theme);
   const cached = htmlCache.get(key);
   if (cached) return cached;
 
-  const themeModule = await themePromises[theme];
   let html: string;
   try {
-    html = await resumedRender(resume, themeModule.default ?? themeModule);
+    html = getThemeRenderer(theme)(resume);
   } catch (err) {
     html = renderErrorCard(theme, err);
   }

@@ -16,11 +16,7 @@
     "@resume-studio/themes": "workspace:*",
     "@resume-studio/transformer": "workspace:*",
     "fastify": "^5.0.0",
-    "jsonresume-theme-elegant": "^1.16.1",
-    "jsonresume-theme-even": "^0.24.0",
-    "jsonresume-theme-stackoverflow": "^2.0.2",
-    "lru-cache": "^11.0.1",
-    "resumed": "^3.0.1"
+    "lru-cache": "^11.0.1"
   },
   "devDependencies": {
     "@types/node": "^20.14.0",
