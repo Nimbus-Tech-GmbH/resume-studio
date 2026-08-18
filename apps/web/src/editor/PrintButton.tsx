@@ -1,29 +1,67 @@
-import { Button } from '../components/ui/button.js';
-import { Printer } from 'lucide-react';
+import { useState } from 'react';
 import { useEditorStore } from '../state/editorStore.js';
+import { requestRender } from '../preview/renderClient.js';
+import { Button } from '../components/ui/button.js';
+import { Loader2, Printer } from 'lucide-react';
 
 export function PrintButton() {
+  const [loading, setLoading] = useState(false);
   const resume = useEditorStore((s) => s.resume);
   const theme = useEditorStore((s) => s.theme);
 
-  const onClick = () => {
-    const key = `print-${Date.now()}`;
-    const payload = JSON.stringify({ resume, theme });
+  const handlePrint = async () => {
+    setLoading(true);
     try {
-      localStorage.setItem(key, payload);
-    } catch {
-      console.error('Failed to write print payload to localStorage');
-      return;
+      const html = await requestRender({ resume, theme });
+      
+      // Create hidden iframe for printing
+      const iframe = document.createElement('iframe');
+      iframe.style.position = 'fixed';
+      iframe.style.left = '-9999px';
+      iframe.style.top = '0';
+      iframe.style.width = '100%';
+      iframe.style.height = '100%';
+      iframe.style.border = 'none';
+      iframe.style.opacity = '0';
+      iframe.sandbox.add('allow-same-origin', 'allow-scripts', 'allow-modals');
+      
+      document.body.appendChild(iframe);
+      
+      // Write HTML content to iframe
+      iframe.contentDocument?.open();
+      iframe.contentDocument?.write(html);
+      iframe.contentDocument?.close();
+      
+      // Wait for content to load then print
+      iframe.onload = () => {
+        iframe.contentWindow?.print();
+        
+        // Remove iframe after print dialog closes
+        setTimeout(() => {
+          document.body.removeChild(iframe);
+        }, 1000);
+      };
+    } catch (err) {
+      console.error('Print failed:', err);
+    } finally {
+      setLoading(false);
     }
-    const url = new URL('/print', window.location.origin);
-    url.searchParams.set('k', key);
-    window.open(url.toString(), '_blank', 'noopener,noreferrer');
   };
 
   return (
-    <Button size="sm" variant="outline" onClick={onClick} title="Open print view">
-      <Printer className="h-3.5 w-3.5" />
-      Print
+    <Button
+      size="sm"
+      variant="outline"
+      onClick={handlePrint}
+      disabled={loading}
+      title="Print resume"
+    >
+      {loading ? (
+        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+      ) : (
+        <Printer className="h-3.5 w-3.5" />
+      )}
+      {loading ? 'Preparing…' : 'Print'}
     </Button>
   );
 }
