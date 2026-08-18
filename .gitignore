@@ -144,3 +144,7 @@ vite.config.ts.timestamp-*
 
 # Local smoke-test artifacts
 .smoke/
+
+# OS generated files
+.DS_Store
+.DS_Store
