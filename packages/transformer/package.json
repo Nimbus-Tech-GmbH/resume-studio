@@ -15,6 +15,7 @@
     "build": "tsc -p tsconfig.build.json"
   },
   "devDependencies": {
+    "fast-check": "^4.9.0",
     "typescript": "^5.6.2",
     "vitest": "^2.1.1"
   }

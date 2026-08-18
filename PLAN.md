@@ -4,7 +4,7 @@ Real-time resume editor webapp. Loads resume data from the Keystone CMS GraphQL 
 (shared with `nimbus-tech`), renders live previews via multiple JSON Resume themes,
 and persists changes on explicit **Save**.
 
-**Status**: planning → milestone 0 (repo scaffold).
+**Status**: milestones 0-9 complete (local-only MVP). Follow-up phase = auth + public deploy.
 
 ---
 
