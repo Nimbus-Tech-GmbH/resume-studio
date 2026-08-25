@@ -11,43 +11,46 @@ export function PrintPage() {
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const key = params.get('k');
-    if (!key) {
-      setError('Missing print key.');
-      return;
-    }
-    let payload: string;
-    try {
-      payload = localStorage.getItem(key) ?? '';
-    } catch {
-      setError('Failed to read print payload from localStorage.');
-      return;
-    }
-    if (!payload) {
-      setError('Print payload not found or expired.');
-      return;
-    }
-    let data: { resume: JsonResume; theme: ThemeId };
-    try {
-      data = JSON.parse(payload);
-    } catch {
-      setError('Invalid print payload.');
-      return;
-    }
-    requestRender({ resume: data.resume, theme: data.theme })
-      .then((res: string) => {
+    const run = async (): Promise<void> => {
+      const params = new URLSearchParams(window.location.search);
+      const key = params.get('k');
+      if (!key) {
+        setError('Missing print key.');
+        return;
+      }
+      let payload: string;
+      try {
+        payload = localStorage.getItem(key) ?? '';
+      } catch {
+        setError('Failed to read print payload from localStorage.');
+        return;
+      }
+      if (!payload) {
+        setError('Print payload not found or expired.');
+        return;
+      }
+      let data: { resume: JsonResume; theme: ThemeId };
+      try {
+        data = JSON.parse(payload);
+      } catch {
+        setError('Invalid print payload.');
+        return;
+      }
+      try {
+        const res = await requestRender({ resume: data.resume, theme: data.theme });
         setHtml(res);
         setError(null);
-      })
-      .catch((err: unknown) => {
+      } catch (err: unknown) {
         setError(err instanceof Error ? err.message : String(err));
-      })
-      .finally(() => {
+      } finally {
         try {
           localStorage.removeItem(key);
-        } catch {}
-      });
+        } catch {
+          // Payload cleanup is best-effort; ignore storage failures.
+        }
+      }
+    };
+    void run();
   }, []);
 
   const handlePrint = () => {

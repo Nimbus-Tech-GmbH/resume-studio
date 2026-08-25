@@ -3,6 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { toCms } from '@resume-studio/transformer';
 import { useEditorStore } from '../state/editorStore.js';
 import { executeSave, type OpResult } from '../graphql/executeSave.js';
+import { fetchResumeUpdatedAt } from '../graphql/useResume.js';
 import { useValidation } from '../validation/useValidation.js';
 import { Button } from '../components/ui/button.js';
 import { Loader2, Save } from 'lucide-react';
@@ -17,7 +18,7 @@ export function SaveButton() {
   const [state, setState] = useState<SaveState>({ running: false, message: null, results: [] });
   const queryClient = useQueryClient();
   const validation = useValidation();
-  const canSave = validation.length === 0;
+  const canSave = validation.every((i) => i.severity !== 'error');
 
   const onClick = async () => {
     const store = useEditorStore.getState();
@@ -49,6 +50,19 @@ export function SaveButton() {
     }
 
     setState({ running: true, message: null, results: [] });
+
+    // Staleness check: compare the loaded `updatedAt` against the live CMS one.
+    const liveUpdatedAt = await fetchResumeUpdatedAt(store.resumeId);
+    if (liveUpdatedAt && store.loadedUpdatedAt && liveUpdatedAt !== store.loadedUpdatedAt) {
+      setState({
+        running: false,
+        message:
+          'This resume changed on the server since you loaded it. Reload the resume and re-apply your edits.',
+        results: [],
+      });
+      return;
+    }
+
     const results = await executeSave(plan.ops);
     const failed = results.filter((r) => !r.ok);
     setState({

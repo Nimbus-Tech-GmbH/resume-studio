@@ -2,6 +2,13 @@ import type { ChangeEvent } from 'react';
 import { Input } from '../../components/ui/input.js';
 import { Textarea } from '../../components/ui/textarea.js';
 import { Label } from '../../components/ui/label.js';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '../../components/ui/select.js';
 import { cn } from '../../lib/cn.js';
 
 interface BaseProps {
@@ -55,6 +62,43 @@ export function TextAreaField({
     </div>
   );
 }
+
+interface SelectFieldProps {
+  label: string;
+  value: string | undefined;
+  options: readonly string[];
+  onChange: (next: string) => void;
+  placeholder?: string;
+}
+
+/** Dropdown bound to a CMS `select` option list. Empty value = unset. */
+export function SelectField({ label, value, options, onChange, placeholder }: SelectFieldProps) {
+  return (
+    <div className="space-y-1.5">
+      <Label>{label}</Label>
+      <Select
+        value={value ?? ''}
+        onValueChange={(v) => onChange(v === UNSET ? '' : v)}
+      >
+        <SelectTrigger className="h-9 w-full text-sm">
+          <SelectValue placeholder={placeholder ?? 'Select…'} />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value={UNSET} className="text-muted-foreground">
+            {placeholder ?? '— None —'}
+          </SelectItem>
+          {options.map((opt) => (
+            <SelectItem key={opt} value={opt}>
+              {opt}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+}
+
+const UNSET = '__unset__';
 
 interface KeywordsFieldProps {
   label: string;

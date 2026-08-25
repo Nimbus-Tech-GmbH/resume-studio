@@ -7,14 +7,14 @@ import type {
 } from '@resume-studio/transformer';
 import type { ReactNode } from 'react';
 import { useEditorStore } from '../../state/editorStore.js';
-import { TextField, KeywordsField, TextAreaField } from '../fields/Fields.js';
+import { TextField, SelectField, KeywordsField, TextAreaField } from '../fields/Fields.js';
+import { FLUENCY_LEVELS } from '@resume-studio/transformer';
 import { AddButton, RemoveButton } from '../fields/ListButtons.js';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card.js';
 
 const EMPTY: never[] = [];
 
 function List<T>({
-  section,
   items,
   empty,
   addLabel,
@@ -23,7 +23,6 @@ function List<T>({
   title,
   render,
 }: {
-  section: string;
   items: T[];
   empty: string;
   addLabel: string;
@@ -69,7 +68,6 @@ export function InterestsForm() {
     }));
   return (
     <List
-      section="interests"
       items={interests}
       empty="No interests yet."
       addLabel="+ Add interest"
@@ -107,7 +105,6 @@ export function VolunteerForm() {
     }));
   return (
     <List
-      section="volunteer"
       items={items}
       empty="No volunteer entries yet."
       addLabel="+ Add volunteer"
@@ -175,7 +172,6 @@ export function ProjectsForm() {
     }));
   return (
     <List
-      section="projects"
       items={items}
       empty="No projects yet."
       addLabel="+ Add project"
@@ -238,7 +234,6 @@ export function CertificatesForm() {
     }));
   return (
     <List
-      section="certificates"
       items={items}
       empty="No certificates yet."
       addLabel="+ Add certificate"
@@ -284,7 +279,6 @@ export function LanguagesForm() {
     }));
   return (
     <List
-      section="languages"
       items={items}
       empty="No languages yet."
       addLabel="+ Add language"
@@ -298,9 +292,10 @@ export function LanguagesForm() {
             value={item.language}
             onChange={(v) => update(idx, { ...item, language: v })}
           />
-          <TextField
+          <SelectField
             label="Fluency"
             value={item.fluency}
+            options={FLUENCY_LEVELS}
             onChange={(v) => update(idx, { ...item, fluency: v })}
           />
         </div>

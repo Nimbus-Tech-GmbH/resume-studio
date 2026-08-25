@@ -10,8 +10,8 @@ Real-time resume editor web app. Loads resume data from the Keystone CMS GraphQL
 
 - Edit any JSON Resume section: basics, work (with highlights), education, skills, interests, volunteer, projects, certificates, languages.
 - Live preview updates 300 ms after last keystroke, in a sandboxed iframe.
-- Theme switcher — 10 in-repo themes: `developer-mono`, `flat`, `modern-classic`, `writers-portfolio`, `nordic-minimal`, `graph-paper-grid`, `monochrome-noir`, `new-york-editorial`, `claude`, `brutalist`.
-- Undo / redo with `⌘Z` / `⌘⇧Z` and toolbar buttons (last 100 states).
+- Theme switcher — 9 vendored in-repo themes: `developer-mono`, `flat`, `modern-classic`, `writers-portfolio`, `nordic-minimal`, `graph-paper-grid`, `monochrome-noir`, `new-york-editorial`, `claude`.
+- Preview / print flow — opens a dedicated `/print` page with the rendered resume in a full-height iframe; use the browser's **Print → Save as PDF** to export.
 - Drag-and-drop reorder for work, education, and skills.
 - ajv-backed inline validation banner (emails, URLs, dates).
 - Explicit save → typed mutation plan → batched execute against Keystone.
@@ -20,7 +20,7 @@ Real-time resume editor web app. Loads resume data from the Keystone CMS GraphQL
 
 ```
 Browser (React 19 SPA)
-  ├─ editor state (Zustand + zundo)
+  ├─ editor state (Zustand)
   ├─ TanStack Query cache
   ├─ react-hook-form-style controlled inputs
   ├─ @dnd-kit sortable lists
@@ -81,7 +81,7 @@ pnpm codegen        # regenerate GraphQL types (needs Keystone reachable)
 
 The Keystone CMS must be running separately at `http://localhost:3000` with `http://localhost:5173` and `http://localhost:8787` in its `CORS_ORIGIN`.
 
-See [docs/LOCAL_DEV.md](./docs/LOCAL_DEV.md) for full local setup and [docs/CONTRIBUTING.md](./docs/CONTRIBUTING.md) for the contribution flow.
+See [docs/LOCAL_DEV.md](./docs/LOCAL_DEV.md) for full local setup, [docs/CONTRIBUTING.md](./docs/CONTRIBUTING.md) for the contribution flow, [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) and [docs/FUNCTIONAL_REQUIREMENTS.md](./docs/FUNCTIONAL_REQUIREMENTS.md) for design + feature specs, and [docs/KNOWN_ISSUES.md](./docs/KNOWN_ISSUES.md) for known application/schema issues.
 
 ## License
 

@@ -6,10 +6,10 @@
   "main": "./dist/server.js",
   "scripts": {
     "dev": "tsx watch --import ./src/preload.ts src/server.ts",
-    "start": "node dist/server.js",
-    "build": "tsc -p tsconfig.build.json",
+    "start": "node --import ./dist/preload.js dist/server.js",
+    "build": "tsc -p tsconfig.build.json && cp src/css-hook.mjs dist/",
     "typecheck": "tsc --noEmit",
-    "test": "echo no-tests"
+    "test": "vitest run"
   },
   "dependencies": {
     "@fastify/cors": "^10.0.1",

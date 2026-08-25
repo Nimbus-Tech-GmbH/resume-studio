@@ -35,7 +35,6 @@
     "react-dom": "^19.0.0",
     "react-hook-form": "^7.85.0",
     "tailwind-merge": "^2.5.4",
-    "zundo": "^2.2.0",
     "zustand": "^5.0.0"
   },
   "devDependencies": {

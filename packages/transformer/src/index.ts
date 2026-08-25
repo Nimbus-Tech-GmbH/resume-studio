@@ -1,4 +1,5 @@
 export * from './types.js';
+export * from './options.js';
 export * from './listCodec.js';
 export * from './dateCodec.js';
 export * from './diff.js';

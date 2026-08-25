@@ -1,5 +1,4 @@
 import { create } from 'zustand';
-import { temporal } from 'zundo';
 import type { CmsResume, JsonResume } from '@resume-studio/transformer';
 import { DEFAULT_THEME, type ThemeId } from '@resume-studio/themes';
 
@@ -52,6 +51,8 @@ interface EditorState {
   originalCmsIds: CmsIdMap;
   theme: ThemeId;
   resumeId: string | null;
+  /** CMS `updatedAt` captured at load time — used for staleness checks on save. */
+  loadedUpdatedAt: string | null;
 
   setResume: (r: JsonResume) => void;
   patchResume: (updater: (r: JsonResume) => JsonResume) => void;
@@ -102,75 +103,68 @@ function cloneIdMap(map: CmsIdMap): CmsIdMap {
   };
 }
 
-export const useEditorStore = create<EditorState>()(
-  temporal(
-    (set) => ({
-      resume: {},
-      original: {},
-      originalCms: null,
-      cmsIds: emptyIdMap(),
-      originalCmsIds: emptyIdMap(),
-      theme: DEFAULT_THEME,
-      resumeId: null,
+export const useEditorStore = create<EditorState>()((set) => ({
+  resume: {},
+  original: {},
+  originalCms: null,
+  cmsIds: emptyIdMap(),
+  originalCmsIds: emptyIdMap(),
+  theme: DEFAULT_THEME,
+  resumeId: null,
+  loadedUpdatedAt: null,
 
-      setResume: (resume) => set({ resume }),
-      patchResume: (updater) => set((prev) => ({ resume: updater(prev.resume) })),
-      setTheme: (theme) => set({ theme }),
-      loadFromCms: ({ json, cms }) => {
-        const ids = buildIdMap(cms);
-        set({
-          resume: json,
-          original: json,
-          originalCms: cms,
-          cmsIds: ids,
-          originalCmsIds: cloneIdMap(ids),
-        });
-      },
-      setResumeId: (resumeId) => set({ resumeId }),
+  setResume: (resume) => set({ resume }),
+  patchResume: (updater) => set((prev) => ({ resume: updater(prev.resume) })),
+  setTheme: (theme) => set({ theme }),
+  loadFromCms: ({ json, cms }) => {
+    const ids = buildIdMap(cms);
+    set({
+      resume: json,
+      original: json,
+      originalCms: cms,
+      cmsIds: ids,
+      originalCmsIds: cloneIdMap(ids),
+      loadedUpdatedAt: cms.updatedAt ?? null,
+    });
+  },
+  setResumeId: (resumeId) => set({ resumeId }),
 
-      addItem: (section, item) =>
-        set((prev) => {
-          const key = SECTION_TO_RESUME_KEY[section];
-          const list = ((prev.resume[key] as unknown[] | undefined) ?? []).concat([item]);
-          return {
-            resume: { ...prev.resume, [key]: list },
-            cmsIds: { ...prev.cmsIds, [section]: [...prev.cmsIds[section], null] },
-          };
-        }),
-
-      removeItem: (section, index) =>
-        set((prev) => {
-          const key = SECTION_TO_RESUME_KEY[section];
-          const list = (prev.resume[key] as unknown[] | undefined) ?? [];
-          if (index < 0 || index >= list.length) return prev;
-          const nextList = list.filter((_, i) => i !== index);
-          const nextIds = prev.cmsIds[section].filter((_, i) => i !== index);
-          return {
-            resume: { ...prev.resume, [key]: nextList },
-            cmsIds: { ...prev.cmsIds, [section]: nextIds },
-          };
-        }),
-
-      reorderItems: (section, from, to) =>
-        set((prev) => {
-          const key = SECTION_TO_RESUME_KEY[section];
-          const list = [...((prev.resume[key] as unknown[] | undefined) ?? [])];
-          if (from < 0 || from >= list.length || to < 0 || to >= list.length) return prev;
-          const [moved] = list.splice(from, 1);
-          list.splice(to, 0, moved);
-          const ids = [...prev.cmsIds[section]];
-          const [movedId = null] = ids.splice(from, 1);
-          ids.splice(to, 0, movedId);
-          return {
-            resume: { ...prev.resume, [key]: list },
-            cmsIds: { ...prev.cmsIds, [section]: ids },
-          };
-        }),
+  addItem: (section, item) =>
+    set((prev) => {
+      const key = SECTION_TO_RESUME_KEY[section];
+      const list = ((prev.resume[key] as unknown[] | undefined) ?? []).concat([item]);
+      return {
+        resume: { ...prev.resume, [key]: list },
+        cmsIds: { ...prev.cmsIds, [section]: [...prev.cmsIds[section], null] },
+      };
     }),
-    {
-      partialize: (state) =>
-        ({ resume: state.resume, cmsIds: state.cmsIds }) as Partial<EditorState>,
-      limit: 100,
-    },
-  ),
-);
+
+  removeItem: (section, index) =>
+    set((prev) => {
+      const key = SECTION_TO_RESUME_KEY[section];
+      const list = (prev.resume[key] as unknown[] | undefined) ?? [];
+      if (index < 0 || index >= list.length) return prev;
+      const nextList = list.filter((_, i) => i !== index);
+      const nextIds = prev.cmsIds[section].filter((_, i) => i !== index);
+      return {
+        resume: { ...prev.resume, [key]: nextList },
+        cmsIds: { ...prev.cmsIds, [section]: nextIds },
+      };
+    }),
+
+  reorderItems: (section, from, to) =>
+    set((prev) => {
+      const key = SECTION_TO_RESUME_KEY[section];
+      const list = [...((prev.resume[key] as unknown[] | undefined) ?? [])];
+      if (from < 0 || from >= list.length || to < 0 || to >= list.length) return prev;
+      const [moved] = list.splice(from, 1);
+      list.splice(to, 0, moved);
+      const ids = [...prev.cmsIds[section]];
+      const [movedId = null] = ids.splice(from, 1);
+      ids.splice(to, 0, movedId);
+      return {
+        resume: { ...prev.resume, [key]: list },
+        cmsIds: { ...prev.cmsIds, [section]: ids },
+      };
+    }),
+}));

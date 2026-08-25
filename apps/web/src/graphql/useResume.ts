@@ -40,3 +40,18 @@ export function useResume(id: string | null) {
     },
   });
 }
+
+/** Fetch only the live `updatedAt` for a resume — used as a save-time staleness check. */
+export async function fetchResumeUpdatedAt(id: string): Promise<string | null> {
+  const res = await gqlClient.request<{ resume: { updatedAt?: string | null } | null }>(
+    /* GraphQL */ `
+      query ResumeUpdatedAt($id: ID!) {
+        resume(where: { id: $id }) {
+          updatedAt
+        }
+      }
+    `,
+    { id },
+  );
+  return res.resume?.updatedAt ?? null;
+}

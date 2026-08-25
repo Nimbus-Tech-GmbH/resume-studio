@@ -72,7 +72,7 @@ Until then, hand-written operations in `packages/graphql-client/src/operations.t
 
 ## Troubleshooting
 
-**Preview iframe is blank / red banner.** The `elegant` theme throws on missing fields. Switch to `stackoverflow` or fill the missing section — the render service now catches theme errors and shows an inline card instead of crashing.
+**Preview iframe is blank / red banner.** Some themes throw on missing fields. Fill the missing section — the render service catches theme errors and shows an inline card instead of crashing.
 
 **"Keystone unreachable" in the header.** Check that Keystone is running and that `VITE_GRAPHQL_ENDPOINT` matches. Also confirm CORS on the Keystone side.
 

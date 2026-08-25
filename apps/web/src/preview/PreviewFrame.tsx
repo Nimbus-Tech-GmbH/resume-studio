@@ -19,8 +19,8 @@ export function PreviewFrame({ resume, theme }: PreviewFrameProps) {
 
   useEffect(() => {
     window.clearTimeout(timer.current);
-    setLoading(true);
     timer.current = window.setTimeout(() => {
+      setLoading(true);
       const controller = new AbortController();
       requestRender({ resume, theme }, controller.signal)
         .then((res: string) => {

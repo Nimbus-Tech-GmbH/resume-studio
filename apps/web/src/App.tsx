@@ -1,9 +1,7 @@
 import { DEFAULT_THEME, THEMES, type ThemeId } from '@resume-studio/themes';
 import { useEditorStore } from './state/editorStore.js';
-import { useUndoRedoShortcuts } from './state/useUndoRedoShortcuts.js';
 import { PreviewFrame } from './preview/PreviewFrame.js';
 import { EditorPane } from './editor/EditorPane.js';
-import { UndoRedoButtons } from './editor/UndoRedoButtons.js';
 import { SaveButton } from './editor/SaveButton.js';
 import { PrintButton } from './editor/PrintButton.js';
 import { ValidationBanner } from './editor/ValidationBanner.js';
@@ -14,7 +12,6 @@ import { TooltipProvider } from './components/ui/tooltip.js';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './components/ui/select.js';
 
 export function App() {
-  useUndoRedoShortcuts();
   const theme = useEditorStore((s) => s.theme);
   const setTheme = useEditorStore((s) => s.setTheme);
   const resume = useEditorStore((s) => s.resume);
@@ -33,7 +30,6 @@ export function App() {
             <ResumePicker />
           </div>
           <div className="flex items-center gap-3">
-            <UndoRedoButtons />
             <Separator orientation="vertical" className="h-8" />
             <div className="flex items-center gap-2">
               <span className="text-xs text-muted-foreground">Theme</span>
@@ -65,13 +61,9 @@ export function App() {
           </section>
         </main>
         <footer className="flex h-7 shrink-0 items-center justify-between border-t bg-card px-6 text-[10px] text-muted-foreground">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-4">
             <span>Default theme:</span>
             <Badge variant="secondary" className="text-[10px]">{DEFAULT_THEME}</Badge>
-          </div>
-          <div className="flex items-center gap-4">
-            <span>undo ⌘Z</span>
-            <span>redo ⌘⇧Z</span>
           </div>
         </footer>
       </div>

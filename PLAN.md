@@ -11,8 +11,8 @@ and persists changes on explicit **Save**.
 ## 1. Goals
 
 - Edit resume data (per language) via a web form.
-- Live preview updates as user types, with theme switcher (3 themes for MVP:
-  `stackoverflow`, `even`, `elegant`).
+- Live preview updates as user types, with theme switcher (vendored JSON Resume
+  themes — see `packages/themes/src/registry.ts` for the current list).
 - Persist changes back to Keystone GraphQL via a single **Save** action.
 - Undo/redo.
 - Local development first. Auth, deploy, and multi-tenant concerns deferred.
@@ -159,8 +159,8 @@ resume-studio/
   react-hook-form, @dnd-kit/core (reorder), ajv (JSON Resume schema validation),
   Tailwind CSS.
 - **Codegen**: graphql-codegen against Keystone SDL.
-- **Render service**: Fastify + `resumed` + `jsonresume-theme-stackoverflow`,
-  `jsonresume-theme-even`, `jsonresume-theme-elegant`. LRU cache.
+- **Render service**: Fastify + `resumed` + vendored JSON Resume themes under
+  `packages/vendor/*` (see `packages/themes/src/registry.ts`). LRU cache.
 - **Testing**: Vitest across all packages.
 - **Lint/format**: ESLint + Prettier.
 
@@ -203,8 +203,8 @@ resume-studio/
    small PR to `nt-keystone-cms` to add `order: Int`.
 3. **Save atomicity** — Keystone has no GraphQL transactions. Ordered execution
    (creates → updates → deletes) + per-op error surfacing. Accepted risk.
-4. **Elegant theme errors** — some resume shapes trigger upstream errors. Preview
-   shows error banner without crashing editor.
+4. **Theme errors** — some resume shapes trigger upstream theme errors. The render
+   service catches them and returns an inline error card so the editor keeps working.
 5. **Concurrent edits** — deferred. Store `updatedAt` client-side so adding a
    staleness check later = server compare only.
 

@@ -1,6 +1,9 @@
+import { useState } from 'react';
 import { useEditorStore } from '../../state/editorStore.js';
 import { TextField, TextAreaField } from '../fields/Fields.js';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card.js';
+import { Label } from '../../components/ui/label.js';
+import { Image as ImageIcon } from 'lucide-react';
 
 export function BasicsForm() {
   const basics = useEditorStore((s) => s.resume.basics) ?? {};
@@ -33,6 +36,14 @@ export function BasicsForm() {
             />
             <TextField label="Phone" value={basics.phone} onChange={(v) => set('phone', v)} />
             <TextField label="URL" type="url" value={basics.url} onChange={(v) => set('url', v)} />
+            <TextField
+              label="Image URL"
+              type="url"
+              value={basics.image}
+              placeholder="https://…/photo.jpg"
+              onChange={(v) => set('image', v)}
+            />
+            <ImagePreview url={basics.image} />
           </div>
           <TextAreaField
             label="Summary"
@@ -77,6 +88,36 @@ export function BasicsForm() {
           </div>
         </CardContent>
       </Card>
+    </div>
+  );
+}
+
+function ImagePreview({ url }: { url?: string }) {
+  const [failed, setFailed] = useState(false);
+  const src = url?.trim();
+  const [seenSrc, setSeenSrc] = useState(src);
+
+  // Reset the error flag whenever the URL changes (derived-state pattern).
+  if (src !== seenSrc) {
+    setSeenSrc(src);
+    setFailed(false);
+  }
+
+  return (
+    <div className="space-y-1.5">
+      <Label>Preview</Label>
+      {src && !failed ? (
+        <img
+          src={src}
+          alt="Profile preview"
+          onError={() => setFailed(true)}
+          className="h-20 w-20 rounded-md border object-cover"
+        />
+      ) : (
+        <div className="flex h-20 w-20 items-center justify-center rounded-md border border-dashed text-muted-foreground">
+          <ImageIcon className="h-5 w-5" />
+        </div>
+      )}
     </div>
   );
 }

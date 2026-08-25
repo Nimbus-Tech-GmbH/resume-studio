@@ -1,10 +1,10 @@
 import type { JsonResumeSkill } from '@resume-studio/transformer';
 import { useEditorStore } from '../../state/editorStore.js';
-import { TextField, KeywordsField } from '../fields/Fields.js';
+import { TextField, SelectField, KeywordsField } from '../fields/Fields.js';
+import { SKILL_LEVELS } from '@resume-studio/transformer';
 import { SortableList } from '../SortableList.js';
 import { AddButton, RemoveButton } from '../fields/ListButtons.js';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card.js';
-import { GripVertical } from 'lucide-react';
 
 const EMPTY: never[] = [];
 
@@ -38,10 +38,7 @@ export function SkillsForm() {
           renderItem={(item, idx, handle) => (
             <Card>
               <CardHeader className="flex flex-row items-center gap-3 space-y-0 p-4">
-                <div className="flex items-center gap-2">
-                  {handle}
-                  <GripVertical className="h-4 w-4 text-muted-foreground" />
-                </div>
+                {handle}
                 <CardTitle className="flex-1 text-xs font-medium">
                   {item.name || `Skill #${idx + 1}`}
                 </CardTitle>
@@ -54,9 +51,10 @@ export function SkillsForm() {
                     value={item.name}
                     onChange={(v) => update(idx, { ...item, name: v })}
                   />
-                  <TextField
+                  <SelectField
                     label="Level"
                     value={item.level}
+                    options={SKILL_LEVELS}
                     onChange={(v) => update(idx, { ...item, level: v })}
                   />
                 </div>

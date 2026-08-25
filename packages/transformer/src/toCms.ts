@@ -177,10 +177,13 @@ function diffBasics(input: ToCmsInput, ops: MutationOp[]): void {
 
 function flattenBasics(basics: JsonResumeBasics | undefined): Record<string, unknown> {
   if (!basics) return {};
-  const { location, profiles, image, ...rest } = basics;
+  const { location, profiles, image: _image, ...rest } = basics;
   void location;
   void profiles;
-  void image;
+  // `image` stays excluded: the CMS stores it as an Image *relation*, and the
+  // exact update-input shape ({ create: { src } } vs { connect }) is unverified
+  // until codegen runs against live Keystone. Editing the URL works for preview
+  // only; persisting it needs the real ResumeBasicInformationUpdateInput.
   return { ...rest };
 }
 

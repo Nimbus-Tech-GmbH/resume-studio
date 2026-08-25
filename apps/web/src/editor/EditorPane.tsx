@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs.js';
+import { Tabs, TabsList, TabsTrigger } from '../components/ui/tabs.js';
 import { ScrollArea } from '../components/ui/scroll-area.js';
 import { BasicsForm } from './sections/BasicsForm.js';
 import { WorkForm } from './sections/WorkForm.js';

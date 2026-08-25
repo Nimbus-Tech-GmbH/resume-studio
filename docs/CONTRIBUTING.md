@@ -37,7 +37,7 @@ Commit style: [Conventional Commits](https://www.conventionalcommits.org/). Exam
 
 1. Install the theme package under `packages/themes` and `apps/render-service`.
 2. Add it to `THEMES` in `packages/themes/src/registry.ts`.
-3. Import it inside the `themePromises` map in `apps/render-service/src/render.ts`.
+3. Add a lazy `import()` loader for it in the `loaders` map in `packages/themes/src/themes.ts`.
 4. Verify preview against a known resume — some themes are picky about optional fields.
 
 ## Milestone tracker
