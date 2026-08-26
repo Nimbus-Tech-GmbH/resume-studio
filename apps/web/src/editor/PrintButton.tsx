@@ -21,7 +21,7 @@ export function PrintButton() {
   };
 
   return (
-    <Button size="sm" variant="outline" onClick={onClick} title="Open print preview">
+    <Button variant="secondary" onClick={onClick} title="Open print preview">
       <Eye className="h-3.5 w-3.5" />
       Preview
     </Button>

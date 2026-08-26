@@ -5,6 +5,25 @@ or discovered. Cross-reference `TODO.md` for completed work.
 
 ---
 
+## Tooling / UI issues
+
+### T1. Tailwind v3 vs shadcn v4 registry mismatch
+
+- **Where:** `apps/web` — any component added/updated via the shadcn CLI
+- **What:** The shadcn registry targets Tailwind v4; this project runs v3.4.
+  Upstream components ship classes that don't compile under v3
+  (`gap-(--x)`, `rounded-4xl`, `field-sizing-content`, `data-active:`,
+  `ring-3`, `size-4!`) and oklch token values that break the
+  `hsl(var(--x))` mapping in `tailwind.config.ts`.
+- **Impact:** Silent style failures — invisible borders, transparent
+  dropdown backgrounds, unstyled selected tabs. Nothing errors at build time.
+- **Mitigation:** After every CLI add/update, rewrite v4-only classes and
+  verify against `dist/assets/*.css`. Checklist in FUNCTIONAL_REQUIREMENTS
+  FR-12 rule 6. Tokens must stay HSL triplets (rule 7).
+- **Status:** Handled case-by-case; long-term fix is a Tailwind v4 migration.
+
+---
+
 ## Application issues
 
 ### A1. Save is not atomic

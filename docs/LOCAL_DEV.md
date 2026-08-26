@@ -76,6 +76,8 @@ Until then, hand-written operations in `packages/graphql-client/src/operations.t
 
 **"Keystone unreachable" in the header.** Check that Keystone is running and that `VITE_GRAPHQL_ENDPOINT` matches. Also confirm CORS on the Keystone side.
 
-**Save button is disabled.** The validation banner lists issues (top of editor). Fix the highlighted paths, then Save re-enables.
+**Save button is disabled.** The validation banner lists issues (top of editor). Fix the highlighted errors, then Save re-enables. Amber "legacy values" warnings do not block saving.
 
-**Undo / redo do nothing after loading.** History clears on every fresh CMS load — expected.
+**Save blocked with "changed on the server".** The resume was modified elsewhere since you loaded it (staleness check). Reload the resume in the picker and re-apply your edits.
+
+**Component styles look broken (no borders, wrong colors).** Likely a Tailwind v4-only class from a shadcn update, or oklch tokens pasted into `index.css`. See CONTRIBUTING.md → UI components and FUNCTIONAL_REQUIREMENTS FR-12.

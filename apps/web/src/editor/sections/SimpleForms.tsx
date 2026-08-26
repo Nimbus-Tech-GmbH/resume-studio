@@ -8,6 +8,7 @@ import type {
 import type { ReactNode } from 'react';
 import { useEditorStore } from '../../state/editorStore.js';
 import { TextField, SelectField, KeywordsField, TextAreaField } from '../fields/Fields.js';
+import { HighlightsEditor } from '../fields/HighlightsEditor.js';
 import { FLUENCY_LEVELS } from '@resume-studio/transformer';
 import { AddButton, RemoveButton } from '../fields/ListButtons.js';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card.js';
@@ -36,14 +37,14 @@ function List<T>({
       {items.length === 0 ? (
         <Card>
           <CardContent className="py-8 text-center">
-            <p className="text-xs text-muted-foreground">{empty}</p>
+            <p className="text-sm text-muted-foreground">{empty}</p>
           </CardContent>
         </Card>
       ) : (
         items.map((item, idx) => (
           <Card key={idx}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 p-4">
-              <CardTitle className="text-xs font-medium">{title(item, idx)}</CardTitle>
+              <CardTitle className="text-sm font-medium">{title(item, idx)}</CardTitle>
               <RemoveButton onClick={() => onRemove(idx)} />
             </CardHeader>
             <CardContent className="space-y-4 p-4 pt-0">{render(item, idx)}</CardContent>
@@ -113,7 +114,7 @@ export function VolunteerForm() {
       title={(it, i) => it.organization || `Volunteer #${i + 1}`}
       render={(item, idx) => (
         <>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid min-w-0 grid-cols-2 gap-4">
             <TextField
               label="Organization"
               value={item.organization}
@@ -148,10 +149,9 @@ export function VolunteerForm() {
             value={item.summary}
             onChange={(v) => update(idx, { ...item, summary: v })}
           />
-          <KeywordsField
-            label="Highlights"
-            value={item.highlights}
-            onChange={(v) => update(idx, { ...item, highlights: v })}
+          <HighlightsEditor
+            highlights={item.highlights ?? []}
+            onChange={(next) => update(idx, { ...item, highlights: next })}
           />
         </>
       )}
@@ -180,7 +180,7 @@ export function ProjectsForm() {
       title={(it, i) => it.name || `Project #${i + 1}`}
       render={(item, idx) => (
         <>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid min-w-0 grid-cols-2 gap-4">
             <TextField
               label="Name"
               value={item.name}
@@ -210,10 +210,9 @@ export function ProjectsForm() {
             value={item.description}
             onChange={(v) => update(idx, { ...item, description: v })}
           />
-          <KeywordsField
-            label="Highlights"
-            value={item.highlights}
-            onChange={(v) => update(idx, { ...item, highlights: v })}
+          <HighlightsEditor
+            highlights={item.highlights ?? []}
+            onChange={(next) => update(idx, { ...item, highlights: next })}
           />
         </>
       )}
@@ -242,7 +241,7 @@ export function CertificatesForm() {
       title={(it, i) => it.name || `Certificate #${i + 1}`}
       render={(item, idx) => (
         <>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid min-w-0 grid-cols-2 gap-4">
             <TextField
               label="Name"
               value={item.name}
@@ -286,7 +285,7 @@ export function LanguagesForm() {
       onRemove={(i) => removeItem('languages', i)}
       title={(it, i) => it.language || `Language #${i + 1}`}
       render={(item, idx) => (
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid min-w-0 grid-cols-2 gap-4">
           <TextField
             label="Language"
             value={item.language}

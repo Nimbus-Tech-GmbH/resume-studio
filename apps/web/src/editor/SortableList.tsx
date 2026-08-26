@@ -56,7 +56,7 @@ export function SortableList<T>({
   return (
     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
       <SortableContext items={ids} strategy={verticalListSortingStrategy}>
-        <div className="flex flex-col gap-3">
+        <div className="flex min-w-0 flex-col gap-3">
           {items.map((item, idx) => (
             <SortableRow key={ids[idx]} id={ids[idx]!}>
               {(handle) => renderItem(item, idx, handle)}

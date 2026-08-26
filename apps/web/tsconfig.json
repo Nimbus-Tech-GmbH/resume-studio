@@ -5,9 +5,13 @@
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "jsx": "react-jsx",
     "moduleResolution": "Bundler",
-    "types": ["vite/client"],
+    "types": ["vite/client", "node"],
     "outDir": "dist",
-    "noEmit": true
+    "noEmit": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"]
+    }
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx"]
+  "include": ["src/**/*.ts", "src/**/*.tsx", "vite.config.ts"]
 }

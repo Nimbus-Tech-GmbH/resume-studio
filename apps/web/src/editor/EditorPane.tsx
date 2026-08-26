@@ -38,12 +38,12 @@ export function EditorPane() {
     <div className="flex h-full flex-col">
       <div className="shrink-0 border-b bg-card px-4 py-3">
         <Tabs value={active} onValueChange={setActive} className="w-full">
-          <TabsList className="h-9 w-full justify-start gap-1 bg-transparent p-0">
+          <TabsList className="h-9 bg-transparent p-0" >
             {TABS.map((tab) => (
               <TabsTrigger
                 key={tab.id}
                 value={tab.id}
-                className="h-7 rounded-md px-3 text-xs data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+                className="h-7 rounded-md text-sm"
               >
                 {tab.label}
               </TabsTrigger>
@@ -51,7 +51,7 @@ export function EditorPane() {
           </TabsList>
         </Tabs>
       </div>
-      <ScrollArea className="flex-1">
+      <ScrollArea className="min-h-0 flex-1 overflow-hidden">
         <div className="p-6">
           {TABS.map((tab) => (
             <div key={tab.id} className={active === tab.id ? 'block' : 'hidden'}>

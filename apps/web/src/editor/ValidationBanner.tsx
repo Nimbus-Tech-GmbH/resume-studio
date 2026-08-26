@@ -21,7 +21,7 @@ export function ValidationBanner() {
   );
 
   return (
-    <div className="space-y-1 border-b border-amber-200 bg-amber-50 px-6 py-2 text-xs text-amber-900">
+    <div className="space-y-1 border-b border-amber-200 bg-amber-50 px-6 py-2 text-sm text-amber-900">
       {errors.length > 0 && (
         <div className="flex items-center gap-3">
           <AlertCircle className="h-4 w-4 shrink-0 text-amber-600" />

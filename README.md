@@ -9,11 +9,14 @@ Real-time resume editor web app. Loads resume data from the Keystone CMS GraphQL
 ## Features
 
 - Edit any JSON Resume section: basics, work (with highlights), education, skills, interests, volunteer, projects, certificates, languages.
-- Live preview updates 300 ms after last keystroke, in a sandboxed iframe.
+- Live preview updates 300 ms after last keystroke, in a sandboxed iframe — with skeleton/overlay loading states so edits never flash blank.
+- Loading states throughout via shadcn `Skeleton` / `Spinner`: resume picker, preview first paint + refresh overlay, save pending, print page.
+- Schema-aligned validation: email/phone regexes and required-field rules mirror the Keystone CMS; legacy select values surface as non-blocking warnings.
+- CMS `select` fields render as dropdowns (skill level, language fluency) with options mirrored from the schema.
+- Save-time staleness check blocks writes when the resume changed on the server since load.
 - Theme switcher — 9 vendored in-repo themes: `developer-mono`, `flat`, `modern-classic`, `writers-portfolio`, `nordic-minimal`, `graph-paper-grid`, `monochrome-noir`, `new-york-editorial`, `claude`.
 - Preview / print flow — opens a dedicated `/print` page with the rendered resume in a full-height iframe; use the browser's **Print → Save as PDF** to export.
 - Drag-and-drop reorder for work, education, and skills.
-- ajv-backed inline validation banner (emails, URLs, dates).
 - Explicit save → typed mutation plan → batched execute against Keystone.
 
 ## Architecture
@@ -22,14 +25,14 @@ Real-time resume editor web app. Loads resume data from the Keystone CMS GraphQL
 Browser (React 19 SPA)
   ├─ editor state (Zustand)
   ├─ TanStack Query cache
-  ├─ react-hook-form-style controlled inputs
+  ├─ shadcn/ui primitives (radix base) + Tailwind CSS
   ├─ @dnd-kit sortable lists
   └─ iframe preview (JSON Resume themes)
         │
         │ POST /render (debounced 300ms)
         ▼
 Render Service (Fastify + resumed)
-  ├─ 3 themes preloaded
+  ├─ 9 vendored themes (lazy-loaded)
   ├─ LRU cache (SHA-1 keyed)
   └─ IP allowlist + CORS
         │
@@ -49,6 +52,9 @@ resume-studio/
 │   ├── graphql-client/  # graphql-codegen output + hand-written operations
 │   └── themes/          # pinned JSON Resume theme registry
 └── docs/
+    ├── ARCHITECTURE.md
+    ├── FUNCTIONAL_REQUIREMENTS.md
+    ├── KNOWN_ISSUES.md
     ├── CONTRIBUTING.md
     └── LOCAL_DEV.md
 ```
@@ -73,8 +79,9 @@ pnpm dev:render     # http://localhost:8787
 Other scripts:
 
 ```sh
-pnpm test           # vitest across workspace (20+ tests)
+pnpm test           # vitest across workspace (50+ tests)
 pnpm typecheck
+pnpm lint           # eslint (root flat config)
 pnpm build          # tsc + vite production build
 pnpm codegen        # regenerate GraphQL types (needs Keystone reachable)
 ```

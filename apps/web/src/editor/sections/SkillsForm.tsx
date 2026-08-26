@@ -27,7 +27,7 @@ export function SkillsForm() {
       {items.length === 0 ? (
         <Card>
           <CardContent className="py-8 text-center">
-            <p className="text-xs text-muted-foreground">No skills yet.</p>
+            <p className="text-sm text-muted-foreground">No skills yet.</p>
           </CardContent>
         </Card>
       ) : (
@@ -39,7 +39,7 @@ export function SkillsForm() {
             <Card>
               <CardHeader className="flex flex-row items-center gap-3 space-y-0 p-4">
                 {handle}
-                <CardTitle className="flex-1 text-xs font-medium">
+                <CardTitle className="flex-1 text-sm font-medium">
                   {item.name || `Skill #${idx + 1}`}
                 </CardTitle>
                 <RemoveButton onClick={() => removeItem('skills', idx)} />

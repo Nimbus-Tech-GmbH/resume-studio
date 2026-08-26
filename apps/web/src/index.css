@@ -1,60 +1,105 @@
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "@fontsource-variable/jetbrains-mono";
+@import "@fontsource-variable/merriweather";
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* Preset b4ZVZIPi9h (lyra / taupe / jetbrains-mono). Token values are HSL
+   triplets — tailwind.config.ts wraps them in hsl(var(--x)); raw oklch here
+   breaks every color (see FUNCTIONAL_REQUIREMENTS FR-12 rule 7). */
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 240 10% 3.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 240 10% 3.9%;
+    --background: 27 100% 98%;
+    --foreground: 24 10% 12%;
+    --card: 27 100% 98%;
+    --card-foreground: 24 10% 12%;
     --popover: 0 0% 100%;
-    --popover-foreground: 240 10% 3.9%;
-    --primary: 240 5.9% 10%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 240 4.8% 95.9%;
-    --secondary-foreground: 240 5.9% 10%;
-    --muted: 240 4.8% 95.9%;
-    --muted-foreground: 240 3.8% 46.1%;
-    --accent: 240 4.8% 95.9%;
-    --accent-foreground: 240 5.9% 10%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 240 5.9% 90%;
-    --input: 240 5.9% 90%;
-    --ring: 240 5.9% 10%;
-    --radius: 0.5rem;
+    --popover-foreground: 24 10% 12%;
+    --primary: 207 100% 50%;
+    --primary-foreground: 20 100% 98%;
+    --secondary: 20 100% 97%;
+    --secondary-foreground: 24 10% 12%;
+    --muted: 20 100% 97%;
+    --muted-foreground: 25 5% 35%;
+    --accent: 20 100% 97%;
+    --accent-foreground: 207 100% 50%;
+    --destructive: 2 100% 45%;
+    --destructive-foreground: 20 100% 98%;
+    --border: 15 40% 88%;
+    --input: 15 40% 84%;
+    --ring: 207 100% 50%;
+    --chart-1: 19 100% 44%;
+    --chart-2: 13 100% 56%;
+    --chart-3: 9 100% 60%;
+    --chart-4: 7 100% 66%;
+    --chart-5: 6 79% 72%;
+    --radius: 0rem;
   }
 
   .dark {
-    --background: 240 10% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 240 10% 3.9%;
-    --card-foreground: 0 0% 98%;
-    --popover: 240 10% 3.9%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 240 5.9% 10%;
-    --secondary: 240 3.7% 15.9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 240 3.7% 15.9%;
-    --muted-foreground: 240 5% 64.9%;
-    --accent: 240 3.7% 15.9%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 240 3.7% 15.9%;
-    --input: 240 3.7% 15.9%;
-    --ring: 240 4.9% 83.9%;
+    --background: 24 10% 8%;
+    --foreground: 20 100% 98%;
+    --card: 24 10% 11%;
+    --card-foreground: 20 100% 98%;
+    --popover: 24 10% 11%;
+    --popover-foreground: 20 100% 98%;
+    --primary: 15 100% 62%;
+    --primary-foreground: 24 10% 8%;
+    --secondary: 7 12% 18%;
+    --secondary-foreground: 20 100% 98%;
+    --muted: 7 12% 18%;
+    --muted-foreground: 7 31% 70%;
+    --accent: 7 12% 22%;
+    --accent-foreground: 20 100% 98%;
+    --destructive: 0 100% 55%;
+    --destructive-foreground: 20 100% 98%;
+    --border: 20 30% 20%;
+    --input: 20 30% 26%;
+    --ring: 15 100% 62%;
+    --chart-1: 19 100% 44%;
+    --chart-2: 13 100% 56%;
+    --chart-3: 9 100% 60%;
+    --chart-4: 7 100% 66%;
+    --chart-5: 6 79% 72%;
   }
 
   * {
-    @apply border-border;
+    @apply border-border outline-ring/50;
   }
 
   body {
     @apply bg-background text-foreground;
     font-feature-settings: 'rlig' 1, 'calt' 1;
+  }
+
+  html {
+    @apply font-mono;
+  }
+
+  /* Thin square scrollbars on all scrollable containers. */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--muted-foreground) transparent;
+  }
+
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--muted-foreground) / 0.4);
+    border-radius: 0;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground) / 0.6);
   }
 }
 

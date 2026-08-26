@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { graphql, list, ListConfig } from "@keystone-6/core";
 import { allowAll } from "@keystone-6/core/access";
 import { ListType } from "@keystone-6/core/dist/declarations/src/types/schema/graphql-ts-schema";

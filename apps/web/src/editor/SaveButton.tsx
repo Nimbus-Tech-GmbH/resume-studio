@@ -6,7 +6,8 @@ import { executeSave, type OpResult } from '../graphql/executeSave.js';
 import { fetchResumeUpdatedAt } from '../graphql/useResume.js';
 import { useValidation } from '../validation/useValidation.js';
 import { Button } from '../components/ui/button.js';
-import { Loader2, Save } from 'lucide-react';
+import { Spinner } from '../components/ui/spinner.js';
+import { Save } from 'lucide-react';
 
 interface SaveState {
   running: boolean;
@@ -81,15 +82,15 @@ export function SaveButton() {
   return (
     <div className="flex flex-col items-end gap-1">
       <Button
-        size="sm"
         onClick={onClick}
+        variant="outline"
         disabled={state.running || !canSave}
         title={canSave ? 'Save changes' : 'Fix validation errors first'}
       >
         {state.running ? (
-          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          <Spinner data-icon="inline-start" />
         ) : (
-          <Save className="h-3.5 w-3.5" />
+          <Save data-icon="inline-start" />
         )}
         {state.running ? 'Saving…' : 'Save'}
       </Button>

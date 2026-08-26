@@ -32,9 +32,9 @@ export function App() {
           <div className="flex items-center gap-3">
             <Separator orientation="vertical" className="h-8" />
             <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground">Theme</span>
+              <span className="text-sm text-muted-foreground">Theme</span>
               <Select value={theme} onValueChange={(v) => setTheme(v as ThemeId)}>
-                <SelectTrigger className="w-40 h-8 text-xs">
+                <SelectTrigger className="min-w-40 h-8 text-sm">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>

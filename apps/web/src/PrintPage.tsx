@@ -3,7 +3,9 @@ import type { JsonResume } from '@resume-studio/transformer';
 import type { ThemeId } from '@resume-studio/themes';
 import { requestRender } from './preview/renderClient.js';
 import { Button } from './components/ui/button.js';
-import { Loader2, Printer, ArrowLeft } from 'lucide-react';
+import { Skeleton } from './components/ui/skeleton.js';
+import { Spinner } from './components/ui/spinner.js';
+import { Printer, ArrowLeft } from 'lucide-react';
 
 export function PrintPage() {
   const [html, setHtml] = useState<string | null>(null);
@@ -82,11 +84,18 @@ export function PrintPage() {
 
   if (!html) {
     return (
-      <div className="flex h-screen items-center justify-center bg-background">
+      <div
+        className="flex h-screen flex-col gap-4 bg-background p-8"
+        role="status"
+        aria-label="Rendering resume"
+      >
         <div className="flex items-center gap-2 text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" />
+          <Spinner className="size-4" />
           <span className="text-sm">Rendering resume…</span>
         </div>
+        <Skeleton className="h-8 w-1/3" />
+        <Skeleton className="h-4 w-2/3" />
+        <Skeleton className="h-64 w-full" />
       </div>
     );
   }

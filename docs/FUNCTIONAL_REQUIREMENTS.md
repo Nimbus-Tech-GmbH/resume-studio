@@ -24,10 +24,17 @@ list is selected automatically.
 **Files**
 | File | Change |
 |---|---|
-| `apps/web/src/editor/ResumePicker.tsx` | Dropdown UI; auto-select first |
+| `apps/web/src/editor/ResumePicker.tsx` | Dropdown UI; auto-select first; loading states |
 | `apps/web/src/graphql/useResume.ts` | `useResumeList`, `useResume`, `fetchResumeUpdatedAt` hooks |
 | `packages/graphql-client/src/operations.ts` | `LIST_RESUMES`, `GET_RESUME` documents |
 | `apps/web/src/state/editorStore.ts` | `loadFromCms` seeds all slices |
+
+**Loading states**
+- List query loading → `Skeleton className="h-8 w-56"` in place of the select.
+- Selected resume fetching (`isFetching`) → small `Spinner` inside the picker;
+  select disabled while the resume itself is loading (`isLoading`).
+- Use TanStack Query flags (`isLoading`, `isFetching`, `error`) — never
+  hand-rolled boolean state for fetch lifecycle.
 
 **Rules**
 1. Loading a resume replaces ALL editor state (`loadFromCms`) — unsaved edits
@@ -72,14 +79,18 @@ store immediately (no save button per field); persistence is FR-5 only.
 - **Basics**: name, label, email, phone, url, image URL (+ thumbnail preview),
   summary; location sub-card (city, region, countryCode, postalCode, address).
 - **Work** (sortable): company, position, url, start, end, summary,
-  highlights (string list with add/remove rows).
+  highlights — rendered as numbered badges; clicking a badge opens
+  a dialog with a textarea plus Delete / Cancel / Update buttons (clearing
+  the text and updating deletes the row). "Add highlight" appends an empty
+  row and opens the dialog.
 - **Education** (sortable): institution, area, studyType, url, start, end,
   score, courses (tags).
 - **Skills** (sortable): name, level (`SKILL_LEVELS` select), keywords (tags).
 - **Interests**: name, keywords (tags).
 - **Volunteer**: organization, position, url, start, end, summary,
-  highlights (tags).
-- **Projects**: name, url, start, end, description, highlights (tags).
+  highlights (numbered badges with edit dialog).
+- **Projects**: name, url, start, end, description, highlights (numbered
+  badges with edit dialog).
 - **Certificates**: name, url, summary.
 - **Languages**: language, fluency (`FLUENCY_LEVELS` select).
 
@@ -113,6 +124,15 @@ HTML inside a sandboxed iframe, refreshed 300ms after the last keystroke.
    `allow-modals`). Never load theme JS outside the iframe.
 4. Empty/initial state renders whatever the theme does with `{}` — no special
    casing in the client.
+5. **Loading states:**
+   - First render (no HTML yet): skeleton placeholder (`Skeleton` component,
+     `components/ui/skeleton.tsx`) mimicking a resume layout — heading line,
+     text lines, content block. Wrapped in `role="status"` + aria-label.
+   - Re-renders after first paint: keep previous HTML visible, overlay a
+     translucent `bg-background/50` layer. Never unmount the iframe between
+     edits — prevents white flash and scroll-position loss.
+   - Never use raw `animate-pulse` divs or ad-hoc spinners; use the shadcn
+     `Skeleton` / `Spinner` components.
 
 **AC**
 - [ ] Typing pauses 300ms → exactly one render request.
@@ -189,6 +209,11 @@ produces a typed mutation plan, executes sequentially against the CMS.
 6. All ok → invalidate `['resume', id]` (refetch re-seeds store).
    Failures → summary message; local state untouched (no rollback — A1).
 
+**Pending state**
+- While saving: `Spinner` (shadcn) with `data-icon="inline-start"`, label
+  "Saving…", button disabled. Button has no `isPending` prop by design —
+  compose Spinner + disabled (shadcn convention).
+
 **Planner rules (`toCms`)**
 - Row with `cmsIds[i] === null` → create op (with `resume: {connect:{id}}`).
 - Id in `originalCmsIds` missing from live ids → delete op.
@@ -257,6 +282,8 @@ path (A4).
    Zustand). Key is single-use: removed after read.
 2. Iframe sandbox includes `allow-modals` so `window.print()` works.
 3. `@media print` CSS in `index.css` hides chrome; keep it print-safe.
+4. Loading state: skeleton block + `Spinner` + "Rendering resume…" text,
+   wrapped in `role="status"`. Same components as FR-3.
 
 **AC**
 - [ ] Missing/expired/corrupt key → friendly error + Back button, no crash.
@@ -378,6 +405,41 @@ pnpm build       # web: tsc -b && vite build; render: tsc + copy css-hook
 2. No `any`, no non-underscore-prefixed unused vars, no console in library code.
 3. `schema.ts` / `schema.graphql` are external-repo mirrors: never lint or
    typecheck them here; never import from app code.
+4. **shadcn/ui components:** managed via CLI (`pnpm dlx shadcn@latest add …`)
+   from `apps/web/`. `components.json` at `apps/web/components.json`
+   (radix base, nova preset). Import alias `@/*` → `apps/web/src/*`
+   (tsconfig paths + vite alias). Never hand-edit primitives except to apply
+   a deliberate local change; when updating upstream use
+   `--dry-run` + `--diff` and merge, don't blind-overwrite.
+5. **Loading states:** use shadcn `Skeleton` (placeholder shapes) and
+   `Spinner` (inline pending indicators). No raw `animate-pulse` divs, no
+   ad-hoc `Loader2 animate-spin` markup. Buttons: compose Spinner +
+   `disabled`, no `isPending` prop.
+6. **Tailwind v3 constraint (important).** This project runs Tailwind v3.4,
+   but current shadcn registry targets v4. After adding/updating a component,
+   audit its classes and rewrite v4-only syntax:
+   - Arbitrary CSS vars: `gap-(--x)` → `gap-[var(--x)]` or plain `gap-4`
+   - `rounded-4xl` → `rounded-full`
+   - `field-sizing-content` → not supported; set explicit min-h/rows
+   - Important suffix `size-4!` → `size-4 !size-4` (or restructure)
+   - Custom variants (`data-active:`, `data-horizontal:`) → explicit
+     `data-[state=active]:`, `data-[orientation=horizontal]:`
+   - `ring-3` → `ring-[3px]`
+   Verify with `pnpm build`, then grep `dist/assets/*.css` for the class —
+   if absent, it silently didn't compile.
+7. **Design tokens must be HSL triplets.** `index.css` variables are wrapped
+   by `tailwind.config.ts` as `hsl(var(--x))`. Never paste raw oklch values
+   into the token blocks — `hsl(oklch(...))` is invalid and colors/borders
+   silently disappear (this caused invisible card/dropdown borders once).
+8. **Consistency rules:** inputs, selects, buttons share `rounded-lg`; form
+   labels are `text-xs` AND control text (inputs, selects, dropdown lists) are `text-sm` —
+   pass `className="text-sm"` on `SelectContent` so trigger and list match;
+   keyword tags use `Badge` variant `secondary` inside a bordered container;
+   dropdowns use default popper positioning (auto-flip) with solid
+   `bg-popover` + border.
+9. **Scrollbars:** thin (6px webkit / `scrollbar-width: thin`) and square
+   (`border-radius: 0`), styled globally in `index.css`. Do not add per-
+   component scrollbar styles.
 
 ---
 

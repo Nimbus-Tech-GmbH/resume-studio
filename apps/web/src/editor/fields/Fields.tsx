@@ -2,6 +2,7 @@ import type { ChangeEvent } from 'react';
 import { Input } from '../../components/ui/input.js';
 import { Textarea } from '../../components/ui/textarea.js';
 import { Label } from '../../components/ui/label.js';
+import { Badge } from '../../components/ui/badge.js';
 import {
   Select,
   SelectContent,
@@ -29,14 +30,14 @@ export function TextField({
   type = 'text',
 }: BaseProps) {
   return (
-    <div className="space-y-1.5">
-      <Label>{label}</Label>
+    <div className="flex min-w-0 flex-col gap-1.5">
+      <Label className="text-xs">{label}</Label>
       <Input
         type={type}
         value={value ?? ''}
         placeholder={placeholder}
         onChange={(e: ChangeEvent<HTMLInputElement>) => onChange(e.target.value)}
-        className={cn(error && 'border-destructive')}
+        className={cn('h-8 text-sm', error && 'border-destructive')}
       />
       {error && <p className="text-[10px] text-destructive">{error}</p>}
     </div>
@@ -51,12 +52,13 @@ export function TextAreaField({
   rows = 3,
 }: BaseProps & { rows?: number }) {
   return (
-    <div className="space-y-1.5">
-      <Label>{label}</Label>
+    <div className="flex min-w-0 flex-col gap-1.5">
+      <Label className="text-xs">{label}</Label>
       <Textarea
         value={value ?? ''}
         placeholder={placeholder}
         rows={rows}
+        className="text-sm"
         onChange={(e: ChangeEvent<HTMLTextAreaElement>) => onChange(e.target.value)}
       />
     </div>
@@ -74,16 +76,16 @@ interface SelectFieldProps {
 /** Dropdown bound to a CMS `select` option list. Empty value = unset. */
 export function SelectField({ label, value, options, onChange, placeholder }: SelectFieldProps) {
   return (
-    <div className="space-y-1.5">
-      <Label>{label}</Label>
+    <div className="flex min-w-0 flex-col gap-1.5">
+      <Label className="text-xs">{label}</Label>
       <Select
         value={value ?? ''}
         onValueChange={(v) => onChange(v === UNSET ? '' : v)}
       >
-        <SelectTrigger className="h-9 w-full text-sm">
+        <SelectTrigger className="h-8 w-full min-w-0 text-sm">
           <SelectValue placeholder={placeholder ?? 'Select…'} />
         </SelectTrigger>
-        <SelectContent>
+        <SelectContent className="text-sm">
           <SelectItem value={UNSET} className="text-muted-foreground">
             {placeholder ?? '— None —'}
           </SelectItem>
@@ -120,29 +122,30 @@ export function KeywordsField({ label, value, onChange, placeholder }: KeywordsF
   };
 
   return (
-    <div className="space-y-1.5">
-      <Label>{label}</Label>
-      <div className="flex min-h-[2.25rem] flex-wrap items-center gap-1.5 rounded-md border border-input bg-background px-2 py-1.5">
+    <div className="flex min-w-0 flex-col gap-1.5">
+      <Label className="text-xs">{label}</Label>
+      <div className="flex min-h-[2rem] min-w-0 flex-wrap items-center gap-1.5 rounded-lg border border-input bg-transparent px-2 py-1 dark:bg-input/30">
         {items.map((item, idx) => (
-          <span
+          <Badge
             key={`${item}-${idx}`}
-            className="inline-flex items-center gap-1 rounded bg-muted px-2 py-0.5 text-[10px]"
+            variant="secondary"
+            className="max-w-full shrink gap-0.5 pr-0.5 text-[10px]"
           >
-            {item}
+            <span className="truncate">{item}</span>
             <button
               type="button"
               onClick={() => remove(idx)}
-              className="text-muted-foreground hover:text-destructive"
+              className="shrink-0 rounded-full text-muted-foreground hover:text-destructive"
               aria-label={`Remove ${item}`}
             >
               ×
             </button>
-          </span>
+          </Badge>
         ))}
         <input
           type="text"
           placeholder={placeholder ?? 'Add…'}
-          className="flex-1 min-w-[8ch] bg-transparent text-xs outline-none placeholder:text-muted-foreground"
+          className="min-w-[8ch] flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
           onKeyDown={(e) => {
             if (e.key === 'Enter' || e.key === ',') {
               e.preventDefault();

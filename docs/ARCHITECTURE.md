@@ -76,6 +76,9 @@ runs identically in browser and Node tests.
 
 | Path | Role |
 |---|---|
+| `apps/web/components.json` | shadcn config (radix base, nova preset) — CLI managed |
+| `apps/web/tailwind.config.ts` | Tailwind v3 theme; maps CSS vars via `hsl(var(--x))` |
+| `apps/web/src/index.css` | Design tokens — **HSL triplets only** (see FR-12 rule 7) |
 | `packages/transformer/src/types.ts` | `JsonResume*` (editor shape) + `Cms*` (CMS shape) interfaces |
 | `packages/transformer/src/fromCms.ts` | CMS → JSON Resume (load path) |
 | `packages/transformer/src/toCms.ts` | JSON Resume diff → mutation plan (save path) |
@@ -159,12 +162,34 @@ ResumePicker → useResume(id) [TanStack Query]
 ```
 
 **Edit → preview**
+### Edit → preview
 
 ```
 form onChange → patchResume → store.resume updates
   → PreviewFrame effect (300ms debounce) → requestRender({resume, theme})
   → POST /render → HTML string → <iframe srcDoc>
 ```
+
+**Preview loading states** (see FUNCTIONAL_REQUIREMENTS FR-3):
+
+- First render (no HTML yet): skeleton placeholder block inside the preview
+  pane (`Skeleton` from `components/ui/skeleton.tsx`), announced via
+  `role="status"`.
+- Subsequent renders: previous render stays visible; a translucent
+  `bg-background/50` overlay signals the refresh. No flash of empty content.
+
+### Resume picker loading states (FR-1)
+
+- List loading: `Skeleton` shaped like the select trigger (`h-8 w-56`).
+- Resume fetch in flight: small `Spinner` overlay inside the picker
+  (`isFetching` from TanStack Query — refetches included).
+- Select disabled while the selected resume is loading.
+
+### Save button pending state (FR-5)
+
+- While saving: `Spinner` (shadcn) with `data-icon="inline-start"`, label
+  "Saving…", button disabled. Per shadcn convention Button has no `isPending`
+  prop — compose Spinner + disabled instead.
 
 **Edit → validation**
 
@@ -260,6 +285,10 @@ deletes, so new-row references are safe.
   warnings, not errors.
 - **Themes are vendored**, not npm-installed, so preview output is pinned.
   Registry pattern keeps imports lazy (fast boot, pay-per-use).
+- **Tailwind v3 + shadcn v4 registry mismatch** is handled by rewriting
+  v4-only classes after every component add/update (checklist in
+  FUNCTIONAL_REQUIREMENTS FR-12 rule 6). Token values stay HSL triplets so
+  `hsl(var(--x))` mappings in `tailwind.config.ts` remain valid.
 - **Testing**: Vitest everywhere. Transformer has unit + property tests;
   web tests pure logic only (validation); render-service tests postProcess.
   No component/E2E tests yet.

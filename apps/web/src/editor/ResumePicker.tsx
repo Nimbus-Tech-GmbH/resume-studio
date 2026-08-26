@@ -4,13 +4,19 @@ import { fromCms } from '@resume-studio/transformer';
 import { useResume, useResumeList } from '../graphql/useResume.js';
 import { useEditorStore } from '../state/editorStore.js';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select.js';
+import { Skeleton } from '../components/ui/skeleton.js';
+import { Spinner } from '../components/ui/spinner.js';
 
 export function ResumePicker() {
   const { data: list, isLoading, error } = useResumeList();
   const resumeId = useEditorStore((s) => s.resumeId);
   const setResumeId = useEditorStore((s) => s.setResumeId);
   const loadFromCms = useEditorStore((s) => s.loadFromCms);
-  const { data: resume } = useResume(resumeId);
+  const {
+    data: resume,
+    isLoading: resumeLoading,
+    isFetching: resumeFetching,
+  } = useResume(resumeId);
 
   useEffect(() => {
     if (resume) {
@@ -24,32 +30,45 @@ export function ResumePicker() {
     }
   }, [list, resumeId, setResumeId]);
 
-  if (isLoading) return <span className="text-xs text-muted-foreground">Loading…</span>;
+  if (isLoading) {
+    return <Skeleton className="h-8 w-56" aria-label="Loading resumes" />;
+  }
   if (error) {
     const msg = extractGqlError(error);
     return (
-      <span className="text-xs text-destructive" title={msg}>
+      <span className="text-sm text-destructive" title={msg}>
         Keystone error: {msg.slice(0, 80)}
       </span>
     );
   }
   if (!list || list.length === 0) {
-    return <span className="text-xs text-muted-foreground">No resumes</span>;
+    return <span className="text-sm text-muted-foreground">No resumes</span>;
   }
 
   return (
-    <Select value={resumeId ?? ''} onValueChange={(v) => setResumeId(v || null)}>
-      <SelectTrigger className="h-8 w-56 text-xs">
-        <SelectValue placeholder="Select resume" />
-      </SelectTrigger>
-      <SelectContent>
-        {list.map((r) => (
-          <SelectItem key={r.id} value={r.id}>
-            {r.title ?? r.basicInformation?.name ?? r.id} ({r.language?.value ?? r.language?.label ?? '—'})
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
+    <div className="relative">
+      <Select value={resumeId ?? ''} onValueChange={(v) => setResumeId(v || null)} disabled={resumeLoading}>
+        <SelectTrigger className="h-8 min-w-56 text-sm" data-loading={resumeFetching || undefined}>
+          <SelectValue placeholder="Select resume" />
+        </SelectTrigger>
+        <SelectContent>
+          {list.map((r) => (
+            <SelectItem key={r.id} value={r.id}>
+              {r.title ?? r.basicInformation?.name ?? r.id} ({r.language?.value ?? r.language?.label ?? '—'})
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      {resumeFetching && (
+        <span
+          className="pointer-events-none absolute right-8 top-1/2 -translate-y-1/2"
+          role="status"
+          aria-label="Loading resume"
+        >
+          <Spinner className="size-3.5 text-muted-foreground" />
+        </span>
+      )}
+    </div>
   );
 }
 

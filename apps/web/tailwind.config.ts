@@ -46,6 +46,10 @@ export default {
           foreground: 'hsl(var(--card-foreground))',
         },
       },
+      fontFamily: {
+        sans: ['JetBrains Mono Variable', 'ui-monospace', 'monospace'],
+        heading: ['Merriweather Variable', 'serif'],
+      },
       borderRadius: {
         lg: 'var(--radius)',
         md: 'calc(var(--radius) - 2px)',
