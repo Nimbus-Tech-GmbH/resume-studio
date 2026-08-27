@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { GET_RESUME, LIST_RESUMES } from '@resume-studio/graphql-client';
 import type { CmsResume } from '@resume-studio/transformer';
-import { gqlClient } from './client.js';
+import { gqlClient } from './client';
 
 interface ListResumesResponse {
   resumes: Array<{

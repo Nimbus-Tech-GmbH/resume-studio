@@ -1,54 +1,97 @@
-import { useState } from 'react';
-import { useEditorStore } from '../../state/editorStore.js';
-import { TextField, TextAreaField } from '../fields/Fields.js';
-import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card.js';
-import { Label } from '../../components/ui/label.js';
-import { Image as ImageIcon } from 'lucide-react';
+import { useState } from "react"
+import { Image as ImageIcon } from "lucide-react"
+
+import { useEditorStore } from "@/state/editorStore"
+import { TextAreaField, TextField } from "@/editor/fields/Fields"
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
+import { Label } from "@/components/ui/label"
 
 export function BasicsForm() {
-  const basics = useEditorStore((s) => s.resume.basics) ?? {};
-  const patch = useEditorStore((s) => s.patchResume);
+  const basics = useEditorStore((state) => state.resume.basics) ?? {}
+  const patchResume = useEditorStore((state) => state.patchResume)
 
-  const set = <K extends keyof typeof basics>(key: K, val: string) =>
-    patch((r) => ({ ...r, basics: { ...r.basics, [key]: val } }));
+  const set = <K extends keyof typeof basics>(key: K, value: string) =>
+    patchResume((resume) => ({
+      ...resume,
+      basics: {
+        ...resume.basics,
+        [key]: value,
+      },
+    }))
 
-  const setLocation = (key: string, val: string) =>
-    patch((r) => ({
-      ...r,
-      basics: { ...r.basics, location: { ...r.basics?.location, [key]: val } },
-    }));
+  const setLocation = (key: string, value: string) =>
+    patchResume((resume) => ({
+      ...resume,
+      basics: {
+        ...resume.basics,
+        location: {
+          ...resume.basics?.location,
+          [key]: value,
+        },
+      },
+    }))
 
   return (
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Personal Information</CardTitle>
+          <CardTitle>Personal information</CardTitle>
         </CardHeader>
+
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <TextField label="Name" value={basics.name} onChange={(v) => set('name', v)} />
-            <TextField label="Label" value={basics.label} onChange={(v) => set('label', v)} />
+          <div className="grid gap-4 sm:grid-cols-2">
+            <TextField
+              label="Name"
+              value={basics.name}
+              onChange={(value) => set("name", value)}
+            />
+
+            <TextField
+              label="Label"
+              value={basics.label}
+              onChange={(value) => set("label", value)}
+            />
+
             <TextField
               label="Email"
               type="email"
               value={basics.email}
-              onChange={(v) => set('email', v)}
+              onChange={(value) => set("email", value)}
             />
-            <TextField label="Phone" value={basics.phone} onChange={(v) => set('phone', v)} />
-            <TextField label="URL" type="url" value={basics.url} onChange={(v) => set('url', v)} />
+
+            <TextField
+              label="Phone"
+              value={basics.phone}
+              onChange={(value) => set("phone", value)}
+            />
+
+            <TextField
+              label="URL"
+              type="url"
+              value={basics.url}
+              onChange={(value) => set("url", value)}
+            />
+
             <TextField
               label="Image URL"
               type="url"
               value={basics.image}
               placeholder="https://…/photo.jpg"
-              onChange={(v) => set('image', v)}
+              onChange={(value) => set("image", value)}
             />
+
             <ImagePreview url={basics.image} />
           </div>
+
           <TextAreaField
             label="Summary"
             value={basics.summary}
-            onChange={(v) => set('summary', v)}
+            onChange={(value) => set("summary", value)}
             rows={4}
           />
         </CardContent>
@@ -56,68 +99,73 @@ export function BasicsForm() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-sm">Location</CardTitle>
+          <CardTitle>Location</CardTitle>
         </CardHeader>
+
         <CardContent>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid gap-4 sm:grid-cols-2">
             <TextField
               label="City"
               value={basics.location?.city}
-              onChange={(v) => setLocation('city', v)}
+              onChange={(value) => setLocation("city", value)}
             />
+
             <TextField
               label="Region"
               value={basics.location?.region}
-              onChange={(v) => setLocation('region', v)}
+              onChange={(value) => setLocation("region", value)}
             />
+
             <TextField
               label="Country code"
               value={basics.location?.countryCode}
-              onChange={(v) => setLocation('countryCode', v)}
+              onChange={(value) => setLocation("countryCode", value)}
             />
+
             <TextField
               label="Postal code"
               value={basics.location?.postalCode}
-              onChange={(v) => setLocation('postalCode', v)}
+              onChange={(value) => setLocation("postalCode", value)}
             />
+
             <TextField
               label="Address"
               value={basics.location?.address}
-              onChange={(v) => setLocation('address', v)}
+              onChange={(value) => setLocation("address", value)}
             />
           </div>
         </CardContent>
       </Card>
     </div>
-  );
+  )
 }
 
 function ImagePreview({ url }: { url?: string }) {
-  const [failed, setFailed] = useState(false);
-  const src = url?.trim();
-  const [seenSrc, setSeenSrc] = useState(src);
+  const [failed, setFailed] = useState(false)
+  const src = url?.trim()
+  const [seenSrc, setSeenSrc] = useState(src)
 
-  // Reset the error flag whenever the URL changes (derived-state pattern).
   if (src !== seenSrc) {
-    setSeenSrc(src);
-    setFailed(false);
+    setSeenSrc(src)
+    setFailed(false)
   }
 
   return (
-    <div className="space-y-1.5">
+    <div className="space-y-2">
       <Label>Preview</Label>
+
       {src && !failed ? (
         <img
           src={src}
           alt="Profile preview"
           onError={() => setFailed(true)}
-          className="h-20 w-20 rounded-md border object-cover"
+          className="size-20 border object-cover"
         />
       ) : (
-        <div className="flex h-20 w-20 items-center justify-center rounded-md border border-dashed text-muted-foreground">
-          <ImageIcon className="h-5 w-5" />
+        <div className="flex size-20 items-center justify-center border border-dashed">
+          <ImageIcon />
         </div>
       )}
     </div>
-  );
+  )
 }

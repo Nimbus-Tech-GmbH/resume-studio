@@ -4,16 +4,27 @@ import type {
   JsonResumeLanguage,
   JsonResumeProject,
   JsonResumeVolunteer,
-} from '@resume-studio/transformer';
-import type { ReactNode } from 'react';
-import { useEditorStore } from '../../state/editorStore.js';
-import { TextField, SelectField, KeywordsField, TextAreaField } from '../fields/Fields.js';
-import { HighlightsEditor } from '../fields/HighlightsEditor.js';
-import { FLUENCY_LEVELS } from '@resume-studio/transformer';
-import { AddButton, RemoveButton } from '../fields/ListButtons.js';
-import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card.js';
+} from "@resume-studio/transformer"
+import { FLUENCY_LEVELS } from "@resume-studio/transformer"
+import type { ReactNode } from "react"
 
-const EMPTY: never[] = [];
+import { useEditorStore } from "@/state/editorStore"
+import {
+  KeywordsField,
+  SelectField,
+  TextAreaField,
+  TextField,
+} from "@/editor/fields/Fields"
+import { HighlightsEditor } from "@/editor/fields/HighlightsEditor"
+import { AddButton, RemoveButton } from "@/editor/fields/ListButtons"
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
+
+const EMPTY: never[] = []
 
 function List<T>({
   items,
@@ -24,281 +35,342 @@ function List<T>({
   title,
   render,
 }: {
-  items: T[];
-  empty: string;
-  addLabel: string;
-  onAdd: () => void;
-  onRemove: (i: number) => void;
-  title: (it: T, i: number) => string;
-  render: (item: T, idx: number) => ReactNode;
+  items: T[]
+  empty: string
+  addLabel: string
+  onAdd: () => void
+  onRemove: (index: number) => void
+  title: (item: T, index: number) => string
+  render: (item: T, index: number) => ReactNode
 }) {
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {items.length === 0 ? (
         <Card>
-          <CardContent className="py-8 text-center">
-            <p className="text-sm text-muted-foreground">{empty}</p>
+          <CardContent>
+            <p className="text-muted-foreground">{empty}</p>
           </CardContent>
         </Card>
       ) : (
-        items.map((item, idx) => (
-          <Card key={idx}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 p-4">
-              <CardTitle className="text-sm font-medium">{title(item, idx)}</CardTitle>
-              <RemoveButton onClick={() => onRemove(idx)} />
+        items.map((item, index) => (
+          <Card key={index}>
+            <CardHeader className="flex items-center justify-between">
+              <CardTitle>{title(item, index)}</CardTitle>
+              <RemoveButton onClick={() => onRemove(index)} />
             </CardHeader>
-            <CardContent className="space-y-4 p-4 pt-0">{render(item, idx)}</CardContent>
+
+            <CardContent className="space-y-4">
+              {render(item, index)}
+            </CardContent>
           </Card>
         ))
       )}
-      <AddButton label={addLabel} onClick={onAdd} />
+      <div className="flex justify-end p-6">
+        <AddButton label={addLabel} onClick={onAdd} />
+      </div>
     </div>
-  );
+  )
 }
 
 export function InterestsForm() {
-  const raw = useEditorStore((s) => s.resume.interests);
-  const interests = raw ?? EMPTY;
-  const patch = useEditorStore((s) => s.patchResume);
-  const addItem = useEditorStore((s) => s.addItem);
-  const removeItem = useEditorStore((s) => s.removeItem);
-  const update = (idx: number, next: JsonResumeInterest) =>
-    patch((r) => ({
-      ...r,
-      interests: (r.interests ?? []).map((it, i) => (i === idx ? next : it)),
-    }));
+  const interests = useEditorStore((state) => state.resume.interests) ?? EMPTY
+  const patchResume = useEditorStore((state) => state.patchResume)
+  const addItem = useEditorStore((state) => state.addItem)
+  const removeItem = useEditorStore((state) => state.removeItem)
+
+  const update = (index: number, next: JsonResumeInterest) =>
+    patchResume((resume) => ({
+      ...resume,
+      interests: (resume.interests ?? []).map((item, itemIndex) =>
+        itemIndex === index ? next : item
+      ),
+    }))
+
   return (
     <List
       items={interests}
       empty="No interests yet."
-      addLabel="+ Add interest"
-      onAdd={() => addItem('interests', {} as JsonResumeInterest)}
-      onRemove={(i) => removeItem('interests', i)}
-      title={(it, i) => it.name || `Interest #${i + 1}`}
-      render={(item, idx) => (
+      addLabel="Add interest"
+      onAdd={() => addItem("interests", {} as JsonResumeInterest)}
+      onRemove={(index) => removeItem("interests", index)}
+      title={(item, index) => item.name || `Interest #${index + 1}`}
+      render={(item, index) => (
         <>
           <TextField
             label="Name"
             value={item.name}
-            onChange={(v) => update(idx, { ...item, name: v })}
+            onChange={(value) => update(index, { ...item, name: value })}
           />
+
           <KeywordsField
             label="Keywords"
             value={item.keywords}
-            onChange={(v) => update(idx, { ...item, keywords: v })}
+            onChange={(value) =>
+              update(index, { ...item, keywords: value })
+            }
           />
         </>
       )}
     />
-  );
+  )
 }
 
 export function VolunteerForm() {
-  const raw = useEditorStore((s) => s.resume.volunteer);
-  const items = raw ?? EMPTY;
-  const patch = useEditorStore((s) => s.patchResume);
-  const addItem = useEditorStore((s) => s.addItem);
-  const removeItem = useEditorStore((s) => s.removeItem);
-  const update = (idx: number, next: JsonResumeVolunteer) =>
-    patch((r) => ({
-      ...r,
-      volunteer: (r.volunteer ?? []).map((it, i) => (i === idx ? next : it)),
-    }));
+  const items = useEditorStore((state) => state.resume.volunteer) ?? EMPTY
+  const patchResume = useEditorStore((state) => state.patchResume)
+  const addItem = useEditorStore((state) => state.addItem)
+  const removeItem = useEditorStore((state) => state.removeItem)
+
+  const update = (index: number, next: JsonResumeVolunteer) =>
+    patchResume((resume) => ({
+      ...resume,
+      volunteer: (resume.volunteer ?? []).map((item, itemIndex) =>
+        itemIndex === index ? next : item
+      ),
+    }))
+
   return (
     <List
       items={items}
       empty="No volunteer entries yet."
-      addLabel="+ Add volunteer"
-      onAdd={() => addItem('volunteer', {} as JsonResumeVolunteer)}
-      onRemove={(i) => removeItem('volunteer', i)}
-      title={(it, i) => it.organization || `Volunteer #${i + 1}`}
-      render={(item, idx) => (
+      addLabel="Add volunteer"
+      onAdd={() => addItem("volunteer", {} as JsonResumeVolunteer)}
+      onRemove={(index) => removeItem("volunteer", index)}
+      title={(item, index) =>
+        item.organization || `Volunteer #${index + 1}`
+      }
+      render={(item, index) => (
         <>
-          <div className="grid min-w-0 grid-cols-2 gap-4">
+          <div className="grid gap-4 sm:grid-cols-2">
             <TextField
               label="Organization"
               value={item.organization}
-              onChange={(v) => update(idx, { ...item, organization: v })}
+              onChange={(value) =>
+                update(index, { ...item, organization: value })
+              }
             />
+
             <TextField
               label="Position"
               value={item.position}
-              onChange={(v) => update(idx, { ...item, position: v })}
+              onChange={(value) =>
+                update(index, { ...item, position: value })
+              }
             />
+
             <TextField
               label="URL"
               type="url"
               value={item.url}
-              onChange={(v) => update(idx, { ...item, url: v })}
+              onChange={(value) => update(index, { ...item, url: value })}
             />
+
             <TextField
               label="Start"
               value={item.startDate}
               placeholder="YYYY-MM-DD"
-              onChange={(v) => update(idx, { ...item, startDate: v })}
+              onChange={(value) =>
+                update(index, { ...item, startDate: value })
+              }
             />
+
             <TextField
               label="End"
               value={item.endDate}
               placeholder="YYYY-MM-DD"
-              onChange={(v) => update(idx, { ...item, endDate: v })}
+              onChange={(value) =>
+                update(index, { ...item, endDate: value })
+              }
             />
           </div>
+
           <TextAreaField
             label="Summary"
             value={item.summary}
-            onChange={(v) => update(idx, { ...item, summary: v })}
+            onChange={(value) => update(index, { ...item, summary: value })}
           />
+
           <HighlightsEditor
             highlights={item.highlights ?? []}
-            onChange={(next) => update(idx, { ...item, highlights: next })}
+            onChange={(highlights) =>
+              update(index, { ...item, highlights })
+            }
           />
         </>
       )}
     />
-  );
+  )
 }
 
 export function ProjectsForm() {
-  const raw = useEditorStore((s) => s.resume.projects);
-  const items = raw ?? EMPTY;
-  const patch = useEditorStore((s) => s.patchResume);
-  const addItem = useEditorStore((s) => s.addItem);
-  const removeItem = useEditorStore((s) => s.removeItem);
-  const update = (idx: number, next: JsonResumeProject) =>
-    patch((r) => ({
-      ...r,
-      projects: (r.projects ?? []).map((it, i) => (i === idx ? next : it)),
-    }));
+  const items = useEditorStore((state) => state.resume.projects) ?? EMPTY
+  const patchResume = useEditorStore((state) => state.patchResume)
+  const addItem = useEditorStore((state) => state.addItem)
+  const removeItem = useEditorStore((state) => state.removeItem)
+
+  const update = (index: number, next: JsonResumeProject) =>
+    patchResume((resume) => ({
+      ...resume,
+      projects: (resume.projects ?? []).map((item, itemIndex) =>
+        itemIndex === index ? next : item
+      ),
+    }))
+
   return (
     <List
       items={items}
       empty="No projects yet."
-      addLabel="+ Add project"
-      onAdd={() => addItem('projects', {} as JsonResumeProject)}
-      onRemove={(i) => removeItem('projects', i)}
-      title={(it, i) => it.name || `Project #${i + 1}`}
-      render={(item, idx) => (
+      addLabel="Add project"
+      onAdd={() => addItem("projects", {} as JsonResumeProject)}
+      onRemove={(index) => removeItem("projects", index)}
+      title={(item, index) => item.name || `Project #${index + 1}`}
+      render={(item, index) => (
         <>
-          <div className="grid min-w-0 grid-cols-2 gap-4">
+          <div className="grid gap-4 sm:grid-cols-2">
             <TextField
               label="Name"
               value={item.name}
-              onChange={(v) => update(idx, { ...item, name: v })}
+              onChange={(value) => update(index, { ...item, name: value })}
             />
+
             <TextField
               label="URL"
               type="url"
               value={item.url}
-              onChange={(v) => update(idx, { ...item, url: v })}
+              onChange={(value) => update(index, { ...item, url: value })}
             />
+
             <TextField
               label="Start"
               value={item.startDate}
               placeholder="YYYY-MM-DD"
-              onChange={(v) => update(idx, { ...item, startDate: v })}
+              onChange={(value) =>
+                update(index, { ...item, startDate: value })
+              }
             />
+
             <TextField
               label="End"
               value={item.endDate}
               placeholder="YYYY-MM-DD"
-              onChange={(v) => update(idx, { ...item, endDate: v })}
+              onChange={(value) =>
+                update(index, { ...item, endDate: value })
+              }
             />
           </div>
+
           <TextAreaField
             label="Description"
             value={item.description}
-            onChange={(v) => update(idx, { ...item, description: v })}
+            onChange={(value) =>
+              update(index, { ...item, description: value })
+            }
           />
+
           <HighlightsEditor
             highlights={item.highlights ?? []}
-            onChange={(next) => update(idx, { ...item, highlights: next })}
+            onChange={(highlights) =>
+              update(index, { ...item, highlights })
+            }
           />
         </>
       )}
     />
-  );
+  )
 }
 
 export function CertificatesForm() {
-  const raw = useEditorStore((s) => s.resume.certificates);
-  const items = raw ?? EMPTY;
-  const patch = useEditorStore((s) => s.patchResume);
-  const addItem = useEditorStore((s) => s.addItem);
-  const removeItem = useEditorStore((s) => s.removeItem);
-  const update = (idx: number, next: JsonResumeCertificate) =>
-    patch((r) => ({
-      ...r,
-      certificates: (r.certificates ?? []).map((it, i) => (i === idx ? next : it)),
-    }));
+  const items = useEditorStore((state) => state.resume.certificates) ?? EMPTY
+  const patchResume = useEditorStore((state) => state.patchResume)
+  const addItem = useEditorStore((state) => state.addItem)
+  const removeItem = useEditorStore((state) => state.removeItem)
+
+  const update = (index: number, next: JsonResumeCertificate) =>
+    patchResume((resume) => ({
+      ...resume,
+      certificates: (resume.certificates ?? []).map((item, itemIndex) =>
+        itemIndex === index ? next : item
+      ),
+    }))
+
   return (
     <List
       items={items}
       empty="No certificates yet."
-      addLabel="+ Add certificate"
-      onAdd={() => addItem('certificates', {} as JsonResumeCertificate)}
-      onRemove={(i) => removeItem('certificates', i)}
-      title={(it, i) => it.name || `Certificate #${i + 1}`}
-      render={(item, idx) => (
+      addLabel="Add certificate"
+      onAdd={() => addItem("certificates", {} as JsonResumeCertificate)}
+      onRemove={(index) => removeItem("certificates", index)}
+      title={(item, index) => item.name || `Certificate #${index + 1}`}
+      render={(item, index) => (
         <>
-          <div className="grid min-w-0 grid-cols-2 gap-4">
+          <div className="grid gap-4 sm:grid-cols-2">
             <TextField
               label="Name"
               value={item.name}
-              onChange={(v) => update(idx, { ...item, name: v })}
+              onChange={(value) => update(index, { ...item, name: value })}
             />
+
             <TextField
               label="URL"
               type="url"
               value={item.url}
-              onChange={(v) => update(idx, { ...item, url: v })}
+              onChange={(value) => update(index, { ...item, url: value })}
             />
           </div>
+
           <TextAreaField
             label="Summary"
             value={item.summary}
-            onChange={(v) => update(idx, { ...item, summary: v })}
+            onChange={(value) => update(index, { ...item, summary: value })}
           />
         </>
       )}
     />
-  );
+  )
 }
 
 export function LanguagesForm() {
-  const raw = useEditorStore((s) => s.resume.languages);
-  const items = raw ?? EMPTY;
-  const patch = useEditorStore((s) => s.patchResume);
-  const addItem = useEditorStore((s) => s.addItem);
-  const removeItem = useEditorStore((s) => s.removeItem);
-  const update = (idx: number, next: JsonResumeLanguage) =>
-    patch((r) => ({
-      ...r,
-      languages: (r.languages ?? []).map((it, i) => (i === idx ? next : it)),
-    }));
+  const items = useEditorStore((state) => state.resume.languages) ?? EMPTY
+  const patchResume = useEditorStore((state) => state.patchResume)
+  const addItem = useEditorStore((state) => state.addItem)
+  const removeItem = useEditorStore((state) => state.removeItem)
+
+  const update = (index: number, next: JsonResumeLanguage) =>
+    patchResume((resume) => ({
+      ...resume,
+      languages: (resume.languages ?? []).map((item, itemIndex) =>
+        itemIndex === index ? next : item
+      ),
+    }))
+
   return (
     <List
       items={items}
       empty="No languages yet."
-      addLabel="+ Add language"
-      onAdd={() => addItem('languages', {} as JsonResumeLanguage)}
-      onRemove={(i) => removeItem('languages', i)}
-      title={(it, i) => it.language || `Language #${i + 1}`}
-      render={(item, idx) => (
-        <div className="grid min-w-0 grid-cols-2 gap-4">
+      addLabel="Add language"
+      onAdd={() => addItem("languages", {} as JsonResumeLanguage)}
+      onRemove={(index) => removeItem("languages", index)}
+      title={(item, index) => item.language || `Language #${index + 1}`}
+      render={(item, index) => (
+        <div className="grid gap-4 sm:grid-cols-2">
           <TextField
             label="Language"
             value={item.language}
-            onChange={(v) => update(idx, { ...item, language: v })}
+            onChange={(value) =>
+              update(index, { ...item, language: value })
+            }
           />
+
           <SelectField
             label="Fluency"
             value={item.fluency}
             options={FLUENCY_LEVELS}
-            onChange={(v) => update(idx, { ...item, fluency: v })}
+            onChange={(value) =>
+              update(index, { ...item, fluency: value })
+            }
           />
         </div>
       )}
     />
-  );
+  )
 }

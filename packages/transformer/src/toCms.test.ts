@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { toCms, type CmsIdMap, type ToCmsInput } from './toCms.js';
-import type { CmsResume, JsonResume } from './types.js';
+import { toCms, type CmsIdMap, type ToCmsInput } from './toCms';
+import type { CmsResume, JsonResume } from './types';
 
 function baseCms(): CmsResume {
   return {

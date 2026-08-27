@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { decodeDate, encodeDate, isValidDateInput } from './dateCodec.js';
+import { decodeDate, encodeDate, isValidDateInput } from './dateCodec';
 
 describe('dateCodec', () => {
   it('encodes YYYY-MM-DD', () => {

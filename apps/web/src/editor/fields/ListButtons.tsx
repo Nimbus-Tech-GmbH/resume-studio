@@ -1,4 +1,4 @@
-import { Button } from '../../components/ui/button.js';
+import { Button } from '@/components/ui/button';
 import { Plus, X } from 'lucide-react';
 
 export function AddButton({ label, onClick }: { label: string; onClick: () => void }) {

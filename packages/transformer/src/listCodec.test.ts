@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { decodeList, encodeList, LIST_DELIMITER } from './listCodec.js';
+import { decodeList, encodeList, LIST_DELIMITER } from './listCodec';
 
 describe('listCodec', () => {
   it('round-trips through the ✌🏻 delimiter', () => {

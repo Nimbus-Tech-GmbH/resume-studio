@@ -1,72 +1,94 @@
-import { DEFAULT_THEME, THEMES, type ThemeId } from '@resume-studio/themes';
-import { useEditorStore } from './state/editorStore.js';
-import { PreviewFrame } from './preview/PreviewFrame.js';
-import { EditorPane } from './editor/EditorPane.js';
-import { SaveButton } from './editor/SaveButton.js';
-import { PrintButton } from './editor/PrintButton.js';
-import { ValidationBanner } from './editor/ValidationBanner.js';
-import { ResumePicker } from './editor/ResumePicker.js';
-import { Separator } from './components/ui/separator.js';
-import { Badge } from './components/ui/badge.js';
-import { TooltipProvider } from './components/ui/tooltip.js';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './components/ui/select.js';
+import { DEFAULT_THEME, THEMES, type ThemeId } from "@resume-studio/themes"
+import { Palette } from "lucide-react"
+
+import { useEditorStore } from "@/state/editorStore"
+import { PreviewFrame } from "@/preview/PreviewFrame"
+import { EditorPane } from "@/editor/EditorPane"
+import { SaveButton } from "@/editor/SaveButton"
+import { PrintButton } from "@/editor/PrintButton"
+import { ValidationBanner } from "@/editor/ValidationBanner"
+import { ResumePicker } from "@/editor/ResumePicker"
+import { Button } from "@/components/ui/button"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { Separator } from "@/components/ui/separator"
+import { TooltipProvider } from "@/components/ui/tooltip"
 
 export function App() {
-  const theme = useEditorStore((s) => s.theme);
-  const setTheme = useEditorStore((s) => s.setTheme);
-  const resume = useEditorStore((s) => s.resume);
+  const theme = useEditorStore((state) => state.theme)
+  const setTheme = useEditorStore((state) => state.setTheme)
+  const resume = useEditorStore((state) => state.resume)
+
+  const activeTheme =
+    THEMES.find((candidate) => candidate.id === theme)?.label ?? DEFAULT_THEME
 
   return (
     <TooltipProvider>
-      <div className="flex h-screen w-screen flex-col overflow-hidden bg-background">
-        <header className="flex h-14 shrink-0 items-center justify-between border-b bg-card px-6">
-          <div className="flex items-center gap-4">
-            <img src="/logo.png" alt="resume-studio" className="h-8 w-8 rounded-md" />
-            <div className="flex flex-col">
-              <span className="text-sm font-semibold tracking-tight">resume-studio</span>
-              <span className="text-[10px] text-muted-foreground">Real-time resume editor</span>
-            </div>
-            <Separator orientation="vertical" className="mx-2 h-8" />
+      <div className="flex h-screen flex-col overflow-hidden">
+        <header className="flex shrink-0 items-center justify-between gap-3 border-b px-3 py-2">
+          <div className="flex min-w-0 items-center gap-2">
+            <Button variant="ghost">resume-studio</Button>
+
+            <Separator orientation="vertical" />
+
             <ResumePicker />
           </div>
-          <div className="flex items-center gap-3">
-            <Separator orientation="vertical" className="h-8" />
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">Theme</span>
-              <Select value={theme} onValueChange={(v) => setTheme(v as ThemeId)}>
-                <SelectTrigger className="min-w-40 h-8 text-sm">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {THEMES.map((t) => (
-                    <SelectItem key={t.id} value={t.id}>
-                      {t.label}
-                    </SelectItem>
+
+          <div className="flex shrink-0 items-center gap-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost">
+                  <Palette />
+                  {activeTheme}
+                </Button>
+              </DropdownMenuTrigger>
+
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>Resume theme</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+
+                <DropdownMenuRadioGroup
+                  value={theme}
+                  onValueChange={(value) => setTheme(value as ThemeId)}
+                >
+                  {THEMES.map((candidate) => (
+                    <DropdownMenuRadioItem
+                      key={candidate.id}
+                      value={candidate.id}
+                    >
+                      {candidate.label}
+                    </DropdownMenuRadioItem>
                   ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <Separator orientation="vertical" className="h-8" />
+                </DropdownMenuRadioGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <Separator orientation="vertical" />
+
             <PrintButton />
             <SaveButton />
           </div>
         </header>
+
         <ValidationBanner />
-        <main className="grid flex-1 grid-cols-2 overflow-hidden">
-          <section className="overflow-hidden border-r bg-muted/30">
+
+        <main className="grid min-h-0 flex-1 grid-cols-2 overflow-hidden">
+          <section className="min-w-0 overflow-hidden border-r">
             <EditorPane />
           </section>
-          <section className="overflow-hidden bg-muted/50">
+
+          <section className="min-w-0 overflow-hidden p-6">
             <PreviewFrame resume={resume} theme={theme} />
           </section>
         </main>
-        <footer className="flex h-7 shrink-0 items-center justify-between border-t bg-card px-6 text-[10px] text-muted-foreground">
-          <div className="flex items-center gap-4">
-            <span>Default theme:</span>
-            <Badge variant="secondary" className="text-[10px]">{DEFAULT_THEME}</Badge>
-          </div>
-        </footer>
       </div>
     </TooltipProvider>
-  );
+  )
 }

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import * as fc from 'fast-check';
-import { fromCms } from './fromCms.js';
-import type { CmsResume } from './types.js';
+import { fromCms } from './fromCms';
+import type { CmsResume } from './types';
 
 const nonEmptyString = fc
   .string({ minLength: 1, maxLength: 20 })

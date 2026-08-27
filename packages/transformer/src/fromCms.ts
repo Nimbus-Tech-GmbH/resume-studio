@@ -7,8 +7,8 @@
  * and re-introduce a sort here.
  */
 
-import { decodeDate } from './dateCodec.js';
-import { decodeList } from './listCodec.js';
+import { decodeDate } from './dateCodec';
+import { decodeList } from './listCodec';
 import type {
   CmsResume,
   JsonResume,
@@ -18,7 +18,7 @@ import type {
   JsonResumeSkill,
   JsonResumeVolunteer,
   JsonResumeWork,
-} from './types.js';
+} from './types';
 
 export function fromCms(cms: CmsResume): JsonResume {
   const bi = cms.basicInformation;

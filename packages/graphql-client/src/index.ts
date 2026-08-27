@@ -1,2 +1,2 @@
-export * from './generated.js';
-export * from './operations.js';
+export * from './generated';
+export * from './operations';
