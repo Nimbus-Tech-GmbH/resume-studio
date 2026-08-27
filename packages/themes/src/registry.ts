@@ -37,5 +37,5 @@ export function isThemeId(x: unknown): x is ThemeId {
   return typeof x === 'string' && THEMES.some((t) => t.id === x);
 }
 
-export { renderTheme } from './themes.js';
-export type { ThemeRenderFn } from './themes.js';
+export { renderTheme } from './themes';
+export type { ThemeRenderFn } from './themes';

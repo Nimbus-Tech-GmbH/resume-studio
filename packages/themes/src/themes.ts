@@ -1,5 +1,5 @@
 /// <reference path="./shims.d.ts" />
-import type { ThemeId } from './registry.js';
+import type { ThemeId } from './registry';
 
 export type ThemeRenderFn = (resume: unknown) => string | Promise<string>;
 

@@ -2,8 +2,8 @@ import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import { isThemeId } from '@resume-studio/themes';
 import type { JsonResume } from '@resume-studio/transformer';
-import { renderResume } from './render.js';
-import { ipAllowlist } from './auth.js';
+import { renderResume } from './render';
+import { ipAllowlist } from './auth';
 
 const PORT = Number(process.env.RENDER_PORT ?? 8787);
 const HOST = process.env.RENDER_HOST ?? '127.0.0.1';

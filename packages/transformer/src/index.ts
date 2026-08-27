@@ -1,14 +1,14 @@
-export * from './types.js';
-export * from './options.js';
-export * from './listCodec.js';
-export * from './dateCodec.js';
-export * from './diff.js';
-export { fromCms } from './fromCms.js';
-export { toCms } from './toCms.js';
+export * from './types';
+export * from './options';
+export * from './listCodec';
+export * from './dateCodec';
+export * from './diff';
+export { fromCms } from './fromCms';
+export { toCms } from './toCms';
 export type {
   CmsIdMap,
   MutationOp,
   MutationPlan,
   ToCmsInput,
   ValidationError,
-} from './toCms.js';
+} from './toCms';

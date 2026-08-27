@@ -39,7 +39,7 @@ export function PreviewFrame({ resume, theme }: PreviewFrameProps) {
 
   if (error) {
     return (
-      <div className="flex h-full items-center justify-center p-6">
+      <div className="flex h-full items-center justify-center">
         <div className="max-w-md space-y-2 text-center">
           <p className="text-sm font-medium text-destructive">Preview error</p>
           <pre className="whitespace-pre-wrap text-sm text-muted-foreground">{error}</pre>

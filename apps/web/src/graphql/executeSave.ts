@@ -29,7 +29,7 @@ import {
   UPDATE_RESUME_WORK,
 } from '@resume-studio/graphql-client';
 import type { MutationOp } from '@resume-studio/transformer';
-import { gqlClient } from './client.js';
+import { gqlClient } from './client';
 
 /**
  * Execute a plan of mutation ops.

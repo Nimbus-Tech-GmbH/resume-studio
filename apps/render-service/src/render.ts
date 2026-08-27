@@ -1,8 +1,8 @@
 import { createHash } from 'node:crypto';
 import type { JsonResume } from '@resume-studio/transformer';
 import { renderTheme, type ThemeId } from '@resume-studio/themes';
-import { htmlCache } from './cache.js';
-import { postProcess } from './postProcess.js';
+import { htmlCache } from './cache';
+import { postProcess } from './postProcess';
 
 function hashKey(resume: JsonResume, theme: ThemeId): string {
   return createHash('sha1')

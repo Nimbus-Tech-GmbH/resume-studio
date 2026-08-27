@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { validateResume } from './schema.js';
+import { validateResume } from './schema';
 import type { JsonResume } from '@resume-studio/transformer';
 
 describe('validateResume', () => {

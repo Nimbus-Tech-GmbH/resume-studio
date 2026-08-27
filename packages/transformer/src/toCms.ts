@@ -20,9 +20,9 @@
  *   - `Certification` has no `date` / `issuer`, so those are dropped.
  */
 
-import { encodeDate, isValidDateInput } from './dateCodec.js';
-import { encodeList } from './listCodec.js';
-import { diffScalars } from './diff.js';
+import { encodeDate, isValidDateInput } from './dateCodec';
+import { encodeList } from './listCodec';
+import { diffScalars } from './diff';
 import type {
   CmsHighlight,
   CmsResume,
@@ -36,7 +36,7 @@ import type {
   JsonResumeSkill,
   JsonResumeVolunteer,
   JsonResumeWork,
-} from './types.js';
+} from './types';
 
 // ─── op union ────────────────────────────────────────────────────────────
 

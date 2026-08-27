@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { postProcess } from './postProcess.js';
+import { postProcess } from './postProcess';
 
 describe('postProcess', () => {
   it('injects head content before </head> in a full document', () => {
