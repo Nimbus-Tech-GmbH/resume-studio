@@ -1,24 +1,26 @@
-import type { ChangeEvent } from 'react';
-import { Input } from '../../components/ui/input.js';
-import { Textarea } from '../../components/ui/textarea.js';
-import { Label } from '../../components/ui/label.js';
-import { Badge } from '../../components/ui/badge.js';
+import type { ChangeEvent } from "react"
+
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
+import { Label } from "@/components/ui/label"
+import { Badge } from "@/components/ui/badge"
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '../../components/ui/select.js';
-import { cn } from '../../lib/cn.js';
+} from "@/components/ui/select"
+
+const UNSET = "__unset__"
 
 interface BaseProps {
-  label: string;
-  value: string | undefined;
-  onChange: (next: string) => void;
-  placeholder?: string;
-  error?: string | null;
-  type?: 'text' | 'email' | 'url' | 'tel' | 'date';
+  label: string
+  value: string | undefined
+  onChange: (next: string) => void
+  placeholder?: string
+  error?: string | null
+  type?: "text" | "email" | "url" | "tel" | "date"
 }
 
 export function TextField({
@@ -27,21 +29,24 @@ export function TextField({
   onChange,
   placeholder,
   error,
-  type = 'text',
+  type = "text",
 }: BaseProps) {
   return (
-    <div className="flex min-w-0 flex-col gap-1.5">
-      <Label className="text-xs">{label}</Label>
+    <div className="flex min-w-0 flex-col gap-2">
+      <Label>{label}</Label>
+
       <Input
         type={type}
-        value={value ?? ''}
+        value={value ?? ""}
         placeholder={placeholder}
-        onChange={(e: ChangeEvent<HTMLInputElement>) => onChange(e.target.value)}
-        className={cn('h-8 text-sm', error && 'border-destructive')}
+        onChange={(event: ChangeEvent<HTMLInputElement>) =>
+          onChange(event.target.value)
+        }
       />
-      {error && <p className="text-[10px] text-destructive">{error}</p>}
+
+      {error && <p className="text-destructive">{error}</p>}
     </div>
-  );
+  )
 }
 
 export function TextAreaField({
@@ -52,89 +57,113 @@ export function TextAreaField({
   rows = 3,
 }: BaseProps & { rows?: number }) {
   return (
-    <div className="flex min-w-0 flex-col gap-1.5">
-      <Label className="text-xs">{label}</Label>
+    <div className="flex min-w-0 flex-col gap-2">
+      <Label>{label}</Label>
+
       <Textarea
-        value={value ?? ''}
+        value={value ?? ""}
         placeholder={placeholder}
         rows={rows}
-        className="text-sm"
-        onChange={(e: ChangeEvent<HTMLTextAreaElement>) => onChange(e.target.value)}
+        onChange={(event: ChangeEvent<HTMLTextAreaElement>) =>
+          onChange(event.target.value)
+        }
       />
     </div>
-  );
+  )
 }
 
 interface SelectFieldProps {
-  label: string;
-  value: string | undefined;
-  options: readonly string[];
-  onChange: (next: string) => void;
-  placeholder?: string;
+  label: string
+  value: string | undefined
+  options: readonly string[]
+  onChange: (next: string) => void
+  placeholder?: string
 }
 
-/** Dropdown bound to a CMS `select` option list. Empty value = unset. */
-export function SelectField({ label, value, options, onChange, placeholder }: SelectFieldProps) {
+export function SelectField({
+  label,
+  value,
+  options,
+  onChange,
+  placeholder,
+}: SelectFieldProps) {
   return (
-    <div className="flex min-w-0 flex-col gap-1.5">
-      <Label className="text-xs">{label}</Label>
+    <div className="flex min-w-0 flex-col gap-2">
+      <Label>{label}</Label>
+
       <Select
-        value={value ?? ''}
-        onValueChange={(v) => onChange(v === UNSET ? '' : v)}
+        value={value ?? ""}
+        onValueChange={(newValue) =>
+          onChange(newValue === UNSET ? "" : newValue)
+        }
       >
-        <SelectTrigger className="h-8 w-full min-w-0 text-sm">
-          <SelectValue placeholder={placeholder ?? 'Select…'} />
+        <SelectTrigger>
+          <SelectValue placeholder={placeholder ?? "Select…"} />
         </SelectTrigger>
-        <SelectContent className="text-sm">
-          <SelectItem value={UNSET} className="text-muted-foreground">
-            {placeholder ?? '— None —'}
+
+        <SelectContent>
+          <SelectItem value={UNSET}>
+            {placeholder ?? "— None —"}
           </SelectItem>
-          {options.map((opt) => (
-            <SelectItem key={opt} value={opt}>
-              {opt}
+
+          {options.map((option) => (
+            <SelectItem key={option} value={option}>
+              {option}
             </SelectItem>
           ))}
         </SelectContent>
       </Select>
     </div>
-  );
+  )
 }
-
-const UNSET = '__unset__';
 
 interface KeywordsFieldProps {
-  label: string;
-  value: string[] | undefined;
-  onChange: (next: string[]) => void;
-  placeholder?: string;
+  label: string
+  value: string[] | undefined
+  onChange: (next: string[]) => void
+  placeholder?: string
 }
 
-export function KeywordsField({ label, value, onChange, placeholder }: KeywordsFieldProps) {
-  const items = value ?? [];
-  const remove = (idx: number) => onChange(items.filter((_, i) => i !== idx));
+export function KeywordsField({
+  label,
+  value,
+  onChange,
+  placeholder,
+}: KeywordsFieldProps) {
+  const items = value ?? []
+
+  const remove = (index: number) =>
+    onChange(items.filter((_, itemIndex) => itemIndex !== index))
+
   const add = (raw: string) => {
     const parts = raw
       .split(/[,;\n]/)
       .map((s) => s.trim())
-      .filter(Boolean);
-    if (parts.length === 0) return;
-    onChange([...items, ...parts]);
-  };
+      .filter(Boolean)
+
+    if (parts.length === 0) {
+      return
+    }
+
+    onChange([...items, ...parts])
+  }
 
   return (
-    <div className="flex min-w-0 flex-col gap-1.5">
-      <Label className="text-xs">{label}</Label>
-      <div className="flex min-h-[2rem] min-w-0 flex-wrap items-center gap-1.5 rounded-lg border border-input bg-transparent px-2 py-1 dark:bg-input/30">
-        {items.map((item, idx) => (
+    <div className="flex min-w-0 flex-col gap-2">
+      <Label>{label}</Label>
+
+      <div className="flex min-h-9 min-w-0 flex-wrap items-center gap-2 rounded-lg border border-input bg-transparent px-3 py-2">
+        {items.map((item, index) => (
           <Badge
-            key={`${item}-${idx}`}
+            key={`${item}-${index}`}
             variant="secondary"
-            className="max-w-full shrink gap-0.5 pr-0.5 text-[10px]"
+            className="shrink gap-1"
           >
             <span className="truncate">{item}</span>
+
             <button
               type="button"
-              onClick={() => remove(idx)}
+              onClick={() => remove(index)}
               className="shrink-0 rounded-full text-muted-foreground hover:text-destructive"
               aria-label={`Remove ${item}`}
             >
@@ -142,28 +171,35 @@ export function KeywordsField({ label, value, onChange, placeholder }: KeywordsF
             </button>
           </Badge>
         ))}
+
         <input
           type="text"
-          placeholder={placeholder ?? 'Add…'}
+          placeholder={placeholder ?? "Add…"}
           className="min-w-[8ch] flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ',') {
-              e.preventDefault();
-              const target = e.currentTarget;
-              add(target.value);
-              target.value = '';
-            } else if (e.key === 'Backspace' && !e.currentTarget.value && items.length) {
-              remove(items.length - 1);
+          onKeyDown={(event) => {
+            if (event.key === "Enter" || event.key === ",") {
+              event.preventDefault()
+
+              const target = event.currentTarget
+
+              add(target.value)
+              target.value = ""
+            } else if (
+              event.key === "Backspace" &&
+              !event.currentTarget.value &&
+              items.length
+            ) {
+              remove(items.length - 1)
             }
           }}
-          onBlur={(e) => {
-            if (e.currentTarget.value) {
-              add(e.currentTarget.value);
-              e.currentTarget.value = '';
+          onBlur={(event) => {
+            if (event.currentTarget.value) {
+              add(event.currentTarget.value)
+              event.currentTarget.value = ""
             }
           }}
         />
       </div>
     </div>
-  );
+  )
 }

@@ -1,10 +1,10 @@
 import type { JsonResumeSkill } from '@resume-studio/transformer';
-import { useEditorStore } from '../../state/editorStore.js';
-import { TextField, SelectField, KeywordsField } from '../fields/Fields.js';
+import { useEditorStore } from '@/state/editorStore';
+import { TextField, SelectField, KeywordsField } from '@/editor/fields/Fields';
 import { SKILL_LEVELS } from '@resume-studio/transformer';
-import { SortableList } from '../SortableList.js';
-import { AddButton, RemoveButton } from '../fields/ListButtons.js';
-import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card.js';
+import { SortableList } from '@/editor/SortableList';
+import { AddButton, RemoveButton } from '@/editor/fields/ListButtons';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 const EMPTY: never[] = [];
 
@@ -26,7 +26,7 @@ export function SkillsForm() {
     <div className="space-y-4">
       {items.length === 0 ? (
         <Card>
-          <CardContent className="py-8 text-center">
+          <CardContent>
             <p className="text-sm text-muted-foreground">No skills yet.</p>
           </CardContent>
         </Card>
@@ -37,7 +37,7 @@ export function SkillsForm() {
           onReorder={(_next, from, to) => reorderItems('skills', from, to)}
           renderItem={(item, idx, handle) => (
             <Card>
-              <CardHeader className="flex flex-row items-center gap-3 space-y-0 p-4">
+              <CardHeader className="flex flex-row items-center gap-3 space-y-0">
                 {handle}
                 <CardTitle className="flex-1 text-sm font-medium">
                   {item.name || `Skill #${idx + 1}`}

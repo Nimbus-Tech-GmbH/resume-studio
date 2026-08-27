@@ -1,9 +1,9 @@
 import type { JsonResumeEducation } from '@resume-studio/transformer';
-import { useEditorStore } from '../../state/editorStore.js';
-import { TextField, KeywordsField } from '../fields/Fields.js';
-import { SortableList } from '../SortableList.js';
-import { AddButton, RemoveButton } from '../fields/ListButtons.js';
-import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card.js';
+import { useEditorStore } from '@/state/editorStore';
+import { TextField, KeywordsField } from '@/editor/fields/Fields';
+import { SortableList } from '@/editor/SortableList';
+import { AddButton, RemoveButton } from '@/editor/fields/ListButtons';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 const EMPTY: never[] = [];
 
@@ -22,10 +22,10 @@ export function EducationForm() {
     }));
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {items.length === 0 ? (
         <Card>
-          <CardContent className="py-8 text-center">
+          <CardContent>
             <p className="text-sm text-muted-foreground">No education entries yet.</p>
           </CardContent>
         </Card>
@@ -36,7 +36,7 @@ export function EducationForm() {
           onReorder={(_next, from, to) => reorderItems('education', from, to)}
           renderItem={(item, idx, handle) => (
             <Card>
-              <CardHeader className="flex flex-row items-center gap-3 space-y-0 p-4">
+              <CardHeader className="flex flex-row items-center gap-3 space-y-0">
                 {handle}
                 <CardTitle className="flex-1 text-sm font-medium">
                   {item.institution || item.area || `Education #${idx + 1}`}

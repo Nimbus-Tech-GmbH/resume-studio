@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import type { JsonResume } from '@resume-studio/transformer';
 import type { ThemeId } from '@resume-studio/themes';
-import { requestRender } from './preview/renderClient.js';
-import { Button } from './components/ui/button.js';
-import { Skeleton } from './components/ui/skeleton.js';
-import { Spinner } from './components/ui/spinner.js';
+import { requestRender } from '@/preview/renderClient';
+import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Spinner } from '@/components/ui/spinner';
 import { Printer, ArrowLeft } from 'lucide-react';
 
 export function PrintPage() {

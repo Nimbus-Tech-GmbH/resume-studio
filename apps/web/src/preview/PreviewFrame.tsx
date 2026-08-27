@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import type { JsonResume } from '@resume-studio/transformer';
 import type { ThemeId } from '@resume-studio/themes';
-import { requestRender } from './renderClient.js';
-import { Skeleton } from '../components/ui/skeleton.js';
+import { requestRender } from './renderClient';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface PreviewFrameProps {
   resume: JsonResume;

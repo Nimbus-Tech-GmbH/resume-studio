@@ -1,5 +1,5 @@
-import { useEditorStore } from '../state/editorStore.js';
-import { Button } from '../components/ui/button.js';
+import { useEditorStore } from '@/state/editorStore';
+import { Button } from '@/components/ui/button';
 import { Eye } from 'lucide-react';
 
 export function PrintButton() {

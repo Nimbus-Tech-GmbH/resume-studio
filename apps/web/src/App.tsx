@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Separator } from "@/components/ui/separator"
 import { TooltipProvider } from "@/components/ui/tooltip"
+import { Toaster } from "@/components/ui/sonner"
 
 export function App() {
   const theme = useEditorStore((state) => state.theme)
@@ -88,7 +89,8 @@ export function App() {
             <PreviewFrame resume={resume} theme={theme} />
           </section>
         </main>
-      </div>
+        </div>
+      <Toaster/>
     </TooltipProvider>
   )
 }

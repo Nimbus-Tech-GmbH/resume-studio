@@ -1,11 +1,11 @@
 import { useEffect } from 'react';
 import { ClientError } from 'graphql-request';
 import { fromCms } from '@resume-studio/transformer';
-import { useResume, useResumeList } from '../graphql/useResume.js';
-import { useEditorStore } from '../state/editorStore.js';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select.js';
-import { Skeleton } from '../components/ui/skeleton.js';
-import { Spinner } from '../components/ui/spinner.js';
+import { useResume, useResumeList } from '@/graphql/useResume';
+import { useEditorStore } from '@/state/editorStore';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Spinner } from '@/components/ui/spinner';
 
 export function ResumePicker() {
   const { data: list, isLoading, error } = useResumeList();

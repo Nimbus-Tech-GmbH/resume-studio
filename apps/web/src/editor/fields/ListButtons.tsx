@@ -1,26 +1,32 @@
-import { Button } from '@/components/ui/button';
-import { Plus, X } from 'lucide-react';
+import { Button } from "@/components/ui/button"
+import { Plus, X } from "lucide-react"
 
-export function AddButton({ label, onClick }: { label: string; onClick: () => void }) {
+export function AddButton({
+  label,
+  onClick,
+}: {
+  label: string
+  onClick: () => void
+}) {
   return (
-    <Button size="sm" variant="outline" onClick={onClick} className="gap-1.5">
-      <Plus className="h-3.5 w-3.5" />
+    <Button variant="outline" onClick={onClick}>
+      <Plus className="size-4" />
       {label}
     </Button>
-  );
+  )
 }
 
 export function RemoveButton({ onClick }: { onClick: () => void }) {
   return (
     <Button
-      size="icon"
+      type="button"
       variant="ghost"
-      onClick={onClick}
+      size="icon"
       aria-label="Remove item"
       title="Remove"
-      className="h-7 w-7"
+      onClick={onClick}
     >
-      <X className="h-3.5 w-3.5" />
+      <X className="size-4" />
     </Button>
-  );
+  )
 }

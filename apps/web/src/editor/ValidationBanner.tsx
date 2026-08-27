@@ -1,5 +1,5 @@
-import { useValidation } from '../validation/useValidation.js';
-import { Badge } from '../components/ui/badge.js';
+import { useValidation } from '@/validation/useValidation';
+import { Badge } from '@/components/ui/badge';
 import { AlertCircle, AlertTriangle } from 'lucide-react';
 
 export function ValidationBanner() {

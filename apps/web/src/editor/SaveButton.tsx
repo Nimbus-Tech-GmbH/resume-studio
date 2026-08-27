@@ -1,32 +1,29 @@
-import { useState } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
-import { toCms } from '@resume-studio/transformer';
-import { useEditorStore } from '../state/editorStore.js';
-import { executeSave, type OpResult } from '../graphql/executeSave.js';
-import { fetchResumeUpdatedAt } from '../graphql/useResume.js';
-import { useValidation } from '../validation/useValidation.js';
-import { Button } from '../components/ui/button.js';
-import { Spinner } from '../components/ui/spinner.js';
-import { Save } from 'lucide-react';
+import { toast } from "sonner"
+import { useQueryClient } from "@tanstack/react-query"
+import { Save } from "lucide-react"
 
-interface SaveState {
-  running: boolean;
-  message: string | null;
-  results: OpResult[];
-}
+import { useEditorStore } from "@/state/editorStore"
+import { executeSave } from "@/graphql/executeSave"
+import { fetchResumeUpdatedAt } from "@/graphql/useResume"
+import { useValidation } from "@/validation/useValidation"
+import { Button } from "@/components/ui/button"
+import { Spinner } from "@/components/ui/spinner"
 
 export function SaveButton() {
-  const [state, setState] = useState<SaveState>({ running: false, message: null, results: [] });
-  const queryClient = useQueryClient();
-  const validation = useValidation();
-  const canSave = validation.every((i) => i.severity !== 'error');
+  const queryClient = useQueryClient()
+  const validation = useValidation()
+  const canSave = validation.every((issue) => issue.severity !== "error")
 
   const onClick = async () => {
-    const store = useEditorStore.getState();
+    const store = useEditorStore.getState()
+
     if (!store.originalCms || !store.resumeId) {
-      setState({ running: false, message: 'No resume loaded', results: [] });
-      return;
+      toast.error("No resume loaded")
+      return
     }
+
+    const { toCms } = await import("@resume-studio/transformer")
+
     const plan = toCms({
       current: store.resume,
       original: store.original,
@@ -34,69 +31,69 @@ export function SaveButton() {
       cmsIds: store.cmsIds,
       originalCmsIds: store.originalCmsIds,
       resumeId: store.resumeId,
-    });
+    })
+
     if (plan.errors.length > 0) {
-      setState({
-        running: false,
-        message: `${plan.errors.length} field error(s): ${plan.errors
-          .map((e) => e.path)
-          .join(', ')}`,
-        results: [],
-      });
-      return;
+      toast.error(
+        `${plan.errors.length} field error(s): ${plan.errors
+          .map((error) => error.path)
+          .join(", ")}`
+      )
+      return
     }
+
     if (plan.ops.length === 0) {
-      setState({ running: false, message: 'Nothing to save.', results: [] });
-      return;
+      toast.info("Nothing to save.")
+      return
     }
 
-    setState({ running: true, message: null, results: [] });
+    const liveUpdatedAt = await fetchResumeUpdatedAt(store.resumeId)
 
-    // Staleness check: compare the loaded `updatedAt` against the live CMS one.
-    const liveUpdatedAt = await fetchResumeUpdatedAt(store.resumeId);
-    if (liveUpdatedAt && store.loadedUpdatedAt && liveUpdatedAt !== store.loadedUpdatedAt) {
-      setState({
-        running: false,
-        message:
-          'This resume changed on the server since you loaded it. Reload the resume and re-apply your edits.',
-        results: [],
-      });
-      return;
+    if (
+      liveUpdatedAt &&
+      store.loadedUpdatedAt &&
+      liveUpdatedAt !== store.loadedUpdatedAt
+    ) {
+      toast.error(
+        "This resume changed on the server since you loaded it. Reload the resume and re-apply your edits."
+      )
+      return
     }
 
-    const results = await executeSave(plan.ops);
-    const failed = results.filter((r) => !r.ok);
-    setState({
-      running: false,
-      message:
-        failed.length === 0
-          ? `Saved ${results.length} op(s).`
-          : `${failed.length}/${results.length} op(s) failed.`,
-      results,
-    });
-    if (failed.length === 0) {
-      await queryClient.invalidateQueries({ queryKey: ['resume', store.resumeId] });
-    }
-  };
+    const savePromise = (async () => {
+      const results = await executeSave(plan.ops)
+      const failed = results.filter((result) => !result.ok)
+
+      if (failed.length > 0) {
+        throw new Error(
+          `${failed.length}/${results.length} op(s) failed.`
+        )
+      }
+
+      return results
+    })()
+
+    await toast.promise(savePromise, {
+      loading: "Saving…",
+      success: async () => {
+        await queryClient.invalidateQueries({
+          queryKey: ["resume", store.resumeId],
+        })
+        return "Saved successfully"
+      },
+      error: (error) =>
+        error instanceof Error ? error.message : "Save failed",
+    })
+  }
 
   return (
-    <div className="flex flex-col items-end gap-1">
-      <Button
-        onClick={onClick}
-        variant="outline"
-        disabled={state.running || !canSave}
-        title={canSave ? 'Save changes' : 'Fix validation errors first'}
-      >
-        {state.running ? (
-          <Spinner data-icon="inline-start" />
-        ) : (
-          <Save data-icon="inline-start" />
-        )}
-        {state.running ? 'Saving…' : 'Save'}
-      </Button>
-      {state.message && (
-        <span className="text-[10px] text-muted-foreground">{state.message}</span>
-      )}
-    </div>
-  );
+    <Button
+      type="button"
+      variant="outline"
+      disabled={!canSave}
+      onClick={onClick}
+    >
+      {canSave ? <Save data-icon="inline-start" data-title="Save changes" /> : <Spinner data-icon="inline-start" />}
+    </Button>
+  )
 }
