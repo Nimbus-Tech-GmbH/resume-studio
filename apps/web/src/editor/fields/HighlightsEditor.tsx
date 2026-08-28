@@ -71,11 +71,10 @@ export function HighlightsEditor({
 
       <ul className="flex min-w-0 flex-wrap items-center gap-2">
         {highlights.map((highlight, index) => (
-          <li key={index}>
+          <li key={highlight}>
             <Button
               type="button"
               variant="secondary"
-              size="sm"
               className="cursor-pointer"
               title={highlight}
               onClick={() => setEditIndex(index)}
@@ -88,10 +87,11 @@ export function HighlightsEditor({
         <li>
           <Button
             type="button"
-            variant="outline"
+            variant="secondary"
             size="icon"
             aria-label="Add highlight"
             onClick={add}
+            className="cursor-pointer"
           >
             <Plus />
           </Button>

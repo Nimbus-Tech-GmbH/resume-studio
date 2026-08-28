@@ -9,7 +9,7 @@ export function AddButton({
   onClick: () => void
 }) {
   return (
-    <Button variant="outline" onClick={onClick}>
+    <Button variant="default" onClick={onClick}>
       <Plus className="size-4" />
       {label}
     </Button>

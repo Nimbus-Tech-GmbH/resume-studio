@@ -2,10 +2,20 @@ import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import { isThemeId } from '@resume-studio/themes';
 import type { JsonResume } from '@resume-studio/transformer';
-import { renderResume } from './render';
-import { ipAllowlist } from './auth';
+import { renderResume } from '@/render';
+import { ipAllowlist } from '@/auth';
 
-const PORT = Number(process.env.RENDER_PORT ?? 8787);
+function safePort(fallback: number): number {
+  const raw = process.env.RENDER_PORT;
+  if (raw === undefined) return fallback;
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n < 0 || n > 65535) {
+    throw new Error(`Invalid RENDER_PORT: ${raw}`);
+  }
+  return n;
+}
+
+const PORT = safePort(8787);
 const HOST = process.env.RENDER_HOST ?? '127.0.0.1';
 const CORS_ORIGIN = (process.env.RENDER_CORS_ORIGIN ?? 'http://localhost:5173')
   .split(',')
@@ -46,7 +56,7 @@ app.post<{ Body: RenderBody }>('/render', async (req, reply) => {
     reply.type('text/html').send(html);
   } catch (err) {
     req.log.error({ err }, 'render failed');
-    reply.code(500).send({ error: err instanceof Error ? err.message : 'render failed' });
+    reply.code(500).send({ error: 'Render failed' });
   }
 });
 
@@ -57,3 +67,18 @@ app
     app.log.error(err);
     process.exit(1);
   });
+
+const shutdownSignals: readonly NodeJS.Signals[] = ['SIGTERM', 'SIGINT'];
+
+for (const signal of shutdownSignals) {
+  process.on(signal, () => {
+    app.log.info({ signal }, 'shutting down');
+    app.close().then(
+      () => process.exit(0),
+      (err) => {
+        app.log.error(err, 'shutdown error');
+        process.exit(1);
+      },
+    );
+  });
+}

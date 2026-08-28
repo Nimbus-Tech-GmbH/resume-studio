@@ -68,10 +68,12 @@ export function SkillsForm() {
           )}
         />
       )}
-      <AddButton
-        label="Add skill"
-        onClick={() => addItem('skills', {} as JsonResumeSkill)}
-      />
+      <div className="flex justify-end p-4">
+        <AddButton
+          label="Add skill"
+          onClick={() => addItem('skills', {} as JsonResumeSkill)}
+        />
+      </div>
     </div>
   );
 }

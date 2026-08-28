@@ -89,7 +89,6 @@ export function SaveButton() {
   return (
     <Button
       type="button"
-      variant="outline"
       disabled={!canSave}
       onClick={onClick}
     >

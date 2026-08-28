@@ -125,7 +125,7 @@ export function WorkForm() {
         />
       )}
 
-      <div className="flex justify-end p-6">
+      <div className="flex justify-end p-4">
         <AddButton
           label="Add work"
           onClick={() => addItem("work", {} as JsonResumeWork)}

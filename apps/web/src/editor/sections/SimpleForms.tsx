@@ -65,7 +65,7 @@ function List<T>({
           </Card>
         ))
       )}
-      <div className="flex justify-end p-6">
+      <div className="flex justify-end p-4">
         <AddButton label={addLabel} onClick={onAdd} />
       </div>
     </div>

@@ -94,7 +94,7 @@ export function EducationForm() {
           )}
         />
       )}
-      <div className="flex justify-end p-6">
+      <div className="flex justify-end p-4">
         <AddButton
           label="Add education"
           onClick={() => addItem('education', {} as JsonResumeEducation)}

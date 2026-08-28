@@ -1,11 +1,11 @@
 import { createHash } from 'node:crypto';
 import type { JsonResume } from '@resume-studio/transformer';
 import { renderTheme, type ThemeId } from '@resume-studio/themes';
-import { htmlCache } from './cache';
-import { postProcess } from './postProcess';
+import { htmlCache } from '@/cache';
+import { postProcess } from '@/postProcess';
 
 function hashKey(resume: JsonResume, theme: ThemeId): string {
-  return createHash('sha1')
+  return createHash('sha256')
     .update(theme)
     .update('\0')
     .update(JSON.stringify(resume))
@@ -22,21 +22,32 @@ export async function renderResume(resume: JsonResume, theme: ThemeId): Promise<
   if (cached) return cached;
 
   let html: string;
+  let isError = false;
   try {
     html = await renderTheme(theme, resume);
   } catch (err) {
+    isError = true;
     html = renderErrorCard(theme, err);
   }
   const processed = postProcess(html);
-  htmlCache.set(key, processed);
+  if (!isError) {
+    htmlCache.set(key, processed);
+  }
   return processed;
 }
 
 function renderErrorCard(theme: ThemeId, err: unknown): string {
   const message = err instanceof Error ? err.message : String(err);
-  const escaped = message.replace(/[&<>]/g, (c) =>
-    c === '&' ? '&amp;' : c === '<' ? '&lt;' : '&gt;',
-  );
+  const escaped = message.replace(/[&<>"']/g, (c) => {
+    switch (c) {
+      case '&': return '&amp;';
+      case '<': return '&lt;';
+      case '>': return '&gt;';
+      case '"': return '&quot;';
+      case "'": return '&#39;';
+      default: return c;
+    }
+  });
   return `<!doctype html><html><body style="font-family:system-ui;padding:2rem;color:#7f1d1d;background:#fef2f2">
     <h2 style="margin:0 0 0.5rem">Theme "${theme}" failed to render</h2>
     <pre style="white-space:pre-wrap;font-size:0.85rem">${escaped}</pre>
