@@ -1,4 +1,3 @@
-import { useState } from "react"
 import { Image as ImageIcon } from "lucide-react"
 
 import { useEditorStore } from "@/state/editorStore"
@@ -10,6 +9,10 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
+import {
+  Attachment,
+  AttachmentMedia,
+} from "@/components/ui/attachment"
 
 export function BasicsForm() {
   const basics = useEditorStore((state) => state.resume.basics) ?? {}
@@ -141,31 +144,21 @@ export function BasicsForm() {
 }
 
 function ImagePreview({ url }: { url?: string }) {
-  const [failed, setFailed] = useState(false)
   const src = url?.trim()
-  const [seenSrc, setSeenSrc] = useState(src)
-
-  if (src !== seenSrc) {
-    setSeenSrc(src)
-    setFailed(false)
-  }
 
   return (
     <div className="space-y-2">
       <Label>Preview</Label>
 
-      {src && !failed ? (
-        <img
-          src={src}
-          alt="Profile preview"
-          onError={() => setFailed(true)}
-          className="size-20 border object-cover"
-        />
-      ) : (
-        <div className="flex size-20 items-center justify-center border border-dashed">
-          <ImageIcon />
-        </div>
-      )}
+      <Attachment orientation="vertical">
+        <AttachmentMedia variant={src ? "image" : "icon"}>
+          {src ? (
+            <img src={src} alt="Profile preview" />
+          ) : (
+            <ImageIcon className="size-4 text-muted-foreground" />
+          )}
+        </AttachmentMedia>
+      </Attachment>
     </div>
   )
 }

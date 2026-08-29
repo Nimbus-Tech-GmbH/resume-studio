@@ -15,6 +15,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
+import { GripVertical } from "lucide-react"
 import { type ReactNode, useId } from "react"
 
 interface SortableListProps<T> {
@@ -104,7 +105,7 @@ function SortableRow({ id, children }: SortableRowProps) {
       className="cursor-grab select-none text-muted-foreground hover:text-foreground"
       aria-label="Drag to reorder"
     >
-      ⋮⋮
+      <GripVertical className="size-4" />
     </span>
   )
 

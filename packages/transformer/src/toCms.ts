@@ -68,7 +68,10 @@ export type MutationOp =
   | { kind: 'createResumeLanguage'; data: Record<string, unknown> }
   | { kind: 'deleteResumeLanguage'; id: string }
   | { kind: 'updateCertification'; id: string; data: Record<string, unknown> }
-  | { kind: 'updateResume'; id: string; data: Record<string, unknown> };
+  | { kind: 'updateResume'; id: string; data: Record<string, unknown> }
+  | { kind: 'createResumeProfile'; data: Record<string, unknown> }
+  | { kind: 'updateResumeProfile'; id: string; data: Record<string, unknown> }
+  | { kind: 'deleteResumeProfile'; id: string };
 
 export interface ValidationError {
   path: string;
@@ -95,6 +98,7 @@ export interface CmsIdMap {
   projects: Array<string | null>;
   certificates: Array<string | null>;
   languages: Array<string | null>;
+  profiles: Array<string | null>;
 }
 
 export interface ToCmsInput {
@@ -114,6 +118,7 @@ export function toCms(input: ToCmsInput): MutationPlan {
 
   diffBasics(input, ops);
   diffLocation(input, ops);
+  diffProfiles(input, ops);
   diffWork(input, ops, errors);
   diffSection(input, ops, errors, {
     section: 'education',
@@ -169,9 +174,22 @@ function diffBasics(input: ToCmsInput, ops: MutationOp[]): void {
   const orig = input.original.basics;
   const cmsBi = input.originalCms.basicInformation;
   if (!cmsBi) return;
-  const changed = diffScalars(flattenBasics(cur), flattenBasics(orig));
-  if (Object.keys(changed).length > 0) {
-    ops.push({ kind: 'updateResumeBasicInformation', id: cmsBi.id, data: changed });
+  const data = diffScalars(flattenBasics(cur), flattenBasics(orig));
+
+  const curImageUrl = cur?.image;
+  const origImageUrl = orig?.image;
+  if (curImageUrl !== origImageUrl) {
+    if (curImageUrl && cmsBi.image?.id) {
+      data.image = { connect: { id: cmsBi.image.id } };
+    } else if (curImageUrl) {
+      data.image = { create: { src: curImageUrl } };
+    } else {
+      data.image = { disconnect: true };
+    }
+  }
+
+  if (Object.keys(data).length > 0) {
+    ops.push({ kind: 'updateResumeBasicInformation', id: cmsBi.id, data });
   }
 }
 
@@ -195,6 +213,42 @@ function diffLocation(input: ToCmsInput, ops: MutationOp[]): void {
   const changed = diffScalars(cur ?? {}, orig ?? {});
   if (Object.keys(changed).length > 0) {
     ops.push({ kind: 'updateResumeLocation', id: cmsLoc.id, data: changed });
+  }
+}
+
+// ─── profiles (list under basicInformation) ──────────────────────────────
+
+function diffProfiles(input: ToCmsInput, ops: MutationOp[]): void {
+  const current = input.current.basics?.profiles ?? [];
+  const original = input.original.basics?.profiles ?? [];
+  const liveIds = input.cmsIds.profiles;
+  const originalIds = input.originalCmsIds.profiles;
+  const cmsBiId = input.originalCms.basicInformation?.id;
+
+  for (let i = 0; i < current.length; i += 1) {
+    const item = current[i]!;
+    const id = liveIds[i];
+    if (id === null || id === undefined) {
+      const data = encodeProfile(item, undefined, true);
+      if (cmsBiId) {
+        data.basicInformation = { connect: { id: cmsBiId } };
+      }
+      ops.push({ kind: 'createResumeProfile', data });
+      continue;
+    }
+    const origIdx = originalIds.indexOf(id);
+    const orig = origIdx >= 0 ? original[origIdx] : undefined;
+    const data = encodeProfile(item, orig, false);
+    if (Object.keys(data).length > 0) {
+      ops.push({ kind: 'updateResumeProfile', id, data });
+    }
+  }
+
+  const liveSet = new Set(liveIds.filter((x): x is string => x !== null));
+  for (const id of originalIds) {
+    if (id !== null && !liveSet.has(id)) {
+      ops.push({ kind: 'deleteResumeProfile', id });
+    }
   }
 }
 
@@ -391,6 +445,18 @@ function encodeLanguage(
   if (isCreate || c.language !== o?.language) data.language = c.language;
   if (isCreate || c.fluency !== o?.fluency) data.fluency = c.fluency;
   if (isCreate) data.resume = { connect: { id: resumeId } };
+  return data;
+}
+
+function encodeProfile(
+  c: { network?: string; username?: string; url?: string },
+  o: { network?: string; username?: string; url?: string } | undefined,
+  isCreate: boolean,
+): Record<string, unknown> {
+  const data: Record<string, unknown> = {};
+  if (isCreate || c.network !== o?.network) data.network = c.network;
+  if (isCreate || c.username !== o?.username) data.username = c.username;
+  if (isCreate || c.url !== o?.url) data.url = c.url;
   return data;
 }
 

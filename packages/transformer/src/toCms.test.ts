@@ -63,6 +63,7 @@ function baseIds(): CmsIdMap {
     projects: [],
     certificates: ['c1'],
     languages: ['l1'],
+    profiles: [],
   };
 }
 
@@ -84,6 +85,7 @@ function makeInput(overrides: Partial<ToCmsInput> = {}): ToCmsInput {
       projects: [...ids.projects],
       certificates: [...ids.certificates],
       languages: [...ids.languages],
+      profiles: [...ids.profiles],
     },
     resumeId: 'r1',
     ...overrides,

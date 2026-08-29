@@ -338,3 +338,21 @@ export const DELETE_RESUME_LANGUAGE = /* GraphQL */ `
     deleteResumeLanguage(where: { id: $id }) { id }
   }
 `;
+
+export const CREATE_RESUME_PROFILE = /* GraphQL */ `
+  mutation CreateResumeProfile($data: ResumeProfileCreateInput!) {
+    createResumeProfile(data: $data) { id }
+  }
+`;
+
+export const UPDATE_RESUME_PROFILE = /* GraphQL */ `
+  mutation UpdateResumeProfile($id: ID!, $data: ResumeProfileUpdateInput!) {
+    updateResumeProfile(where: { id: $id }, data: $data) { id }
+  }
+`;
+
+export const DELETE_RESUME_PROFILE = /* GraphQL */ `
+  mutation DeleteResumeProfile($id: ID!) {
+    deleteResumeProfile(where: { id: $id }) { id }
+  }
+`;

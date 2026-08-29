@@ -21,6 +21,7 @@ import {
 import { Separator } from "@/components/ui/separator"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { Toaster } from "@/components/ui/sonner"
+import { Avatar, AvatarImage } from "./components/ui/avatar"
 
 export function App() {
   const theme = useEditorStore((state) => state.theme)
@@ -35,7 +36,12 @@ export function App() {
       <div className="flex h-screen flex-col overflow-hidden">
         <header className="flex shrink-0 items-center justify-between gap-3 border-b px-3 py-2">
           <div className="flex min-w-0 items-center gap-2">
-            <Button variant="ghost">resume-studio</Button>
+            <Avatar size="lg">
+              <AvatarImage src="./logo.png"/>
+            </Avatar>
+            <Button variant="ghost">
+              <span className="text-primary text-lg">resume-studio</span>
+            </Button>
 
             <Separator orientation="vertical" />
 
@@ -45,7 +51,7 @@ export function App() {
           <div className="flex shrink-0 items-center gap-2">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost">
+                <Button variant="ghost" className=" text-primary">
                   <Palette />
                   {activeTheme}
                 </Button>

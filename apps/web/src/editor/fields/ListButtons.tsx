@@ -21,12 +21,12 @@ export function RemoveButton({ onClick }: { onClick: () => void }) {
     <Button
       type="button"
       variant="ghost"
-      size="icon"
       aria-label="Remove item"
+      size="icon"
       title="Remove"
       onClick={onClick}
     >
-      <X className="size-4" />
+      <X className="size-4 text-destructive" />
     </Button>
   )
 }

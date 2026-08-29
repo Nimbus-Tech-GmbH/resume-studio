@@ -3,6 +3,7 @@ import {
   CREATE_RESUME_HIGHLIGHT,
   CREATE_RESUME_INTEREST,
   CREATE_RESUME_LANGUAGE,
+  CREATE_RESUME_PROFILE,
   CREATE_RESUME_PROJECT,
   CREATE_RESUME_SKILL,
   CREATE_RESUME_VOLUNTEER,
@@ -11,6 +12,7 @@ import {
   DELETE_RESUME_HIGHLIGHT,
   DELETE_RESUME_INTEREST,
   DELETE_RESUME_LANGUAGE,
+  DELETE_RESUME_PROFILE,
   DELETE_RESUME_PROJECT,
   DELETE_RESUME_SKILL,
   DELETE_RESUME_VOLUNTEER,
@@ -23,6 +25,7 @@ import {
   UPDATE_RESUME_INTEREST,
   UPDATE_RESUME_LANGUAGE,
   UPDATE_RESUME_LOCATION,
+  UPDATE_RESUME_PROFILE,
   UPDATE_RESUME_PROJECT,
   UPDATE_RESUME_SKILL,
   UPDATE_RESUME_VOLUNTEER,
@@ -163,6 +166,16 @@ async function runOne(op: MutationOp): Promise<void> {
       return;
     case 'deleteResumeLanguage':
       await gqlClient.request(DELETE_RESUME_LANGUAGE, { id: op.id });
+      return;
+
+    case 'createResumeProfile':
+      await gqlClient.request(CREATE_RESUME_PROFILE, { data: op.data });
+      return;
+    case 'updateResumeProfile':
+      await gqlClient.request(UPDATE_RESUME_PROFILE, { id: op.id, data: op.data });
+      return;
+    case 'deleteResumeProfile':
+      await gqlClient.request(DELETE_RESUME_PROFILE, { id: op.id });
       return;
 
     case 'updateCertification':

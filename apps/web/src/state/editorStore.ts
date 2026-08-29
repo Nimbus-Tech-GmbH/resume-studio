@@ -24,7 +24,9 @@ export type ListSection =
  * from these arrays; `toCms` diffs against `originalCmsIds` to figure out
  * which ids to delete.
  */
-export type CmsIdMap = Record<ListSection, Array<string | null>>;
+export type CmsIdMap = Record<ListSection, Array<string | null>> & {
+  profiles: Array<string | null>;
+};
 
 /**
  * Which sub-list of `JsonResume` a `ListSection` maps to. Kept as constants
@@ -74,6 +76,7 @@ function emptyIdMap(): CmsIdMap {
     projects: [],
     certificates: [],
     languages: [],
+    profiles: [],
   };
 }
 
@@ -87,6 +90,7 @@ function buildIdMap(cms: CmsResume): CmsIdMap {
     projects: (cms.projects ?? []).map((x) => x.id),
     certificates: (cms.certificates ?? []).map((x) => x.id),
     languages: (cms.resumeLanguages ?? []).map((x) => x.id),
+    profiles: (cms.basicInformation?.profiles ?? []).map((x) => x.id),
   };
 }
 
@@ -100,6 +104,7 @@ function cloneIdMap(map: CmsIdMap): CmsIdMap {
     projects: [...map.projects],
     certificates: [...map.certificates],
     languages: [...map.languages],
+    profiles: [...map.profiles],
   };
 }
 
