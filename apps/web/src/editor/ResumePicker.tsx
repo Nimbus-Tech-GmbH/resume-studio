@@ -3,7 +3,7 @@ import { ClientError } from 'graphql-request';
 import { fromCms } from '@resume-studio/transformer';
 import { useResume, useResumeList } from '@/graphql/useResume';
 import { useEditorStore } from '@/state/editorStore';
-import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectSeparator, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
 
