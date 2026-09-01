@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { Plus } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -20,39 +20,48 @@ export function HighlightsEditor({
   onChange: (next: string[]) => void
 }) {
   const [editIndex, setEditIndex] = useState<number | null>(null)
+  const highlightsRef = useRef(highlights)
+  useEffect(() => {
+    highlightsRef.current = highlights
+  })
 
   const editing = editIndex === null ? undefined : highlights[editIndex]
 
-  const remove = (index: number) =>
-    onChange(highlights.filter((_, highlightIndex) => highlightIndex !== index))
+  const remove = useCallback(
+    (index: number) =>
+      onChange(highlights.filter((_, highlightIndex) => highlightIndex !== index)),
+    [highlights, onChange],
+  )
 
-  const commit = (value: string) => {
-    if (editIndex === null) {
-      return
-    }
+  const commit = useCallback(
+    (value: string) => {
+      if (editIndex === null) return
 
-    const trimmed = value.trim()
+      const trimmed = value.trim()
 
-    if (trimmed) {
-      onChange(
-        highlights.map((highlight, highlightIndex) =>
-          highlightIndex === editIndex ? trimmed : highlight
+      if (trimmed) {
+        onChange(
+          highlights.map((highlight, highlightIndex) =>
+            highlightIndex === editIndex ? trimmed : highlight,
+          ),
         )
-      )
-    } else {
-      onChange(
-        highlights.filter(
-          (_, highlightIndex) => highlightIndex !== editIndex
+      } else {
+        onChange(
+          highlights.filter(
+            (_, highlightIndex) => highlightIndex !== editIndex,
+          ),
         )
-      )
-    }
+      }
 
-    setEditIndex(null)
-  }
+      setEditIndex(null)
+    },
+    [editIndex, highlights, onChange],
+  )
 
   const add = () => {
-    onChange([...highlights, ""])
-    setEditIndex(highlights.length)
+    const next = [...highlightsRef.current, ""]
+    onChange(next)
+    setEditIndex(next.length - 1)
   }
 
   const close = () => {
@@ -71,7 +80,7 @@ export function HighlightsEditor({
 
       <ul className="flex min-w-0 flex-wrap items-center gap-2">
         {highlights.map((highlight, index) => (
-          <li key={highlight}>
+          <li key={index}>
             <Button
               type="button"
               variant="secondary"
@@ -117,16 +126,14 @@ export function HighlightsEditor({
             autoFocus
             placeholder="Describe achievement…"
             onChange={(event) => {
-              if (editIndex === null) {
-                return
-              }
+              if (editIndex === null) return
 
               onChange(
                 highlights.map((highlight, highlightIndex) =>
                   highlightIndex === editIndex
                     ? event.target.value
-                    : highlight
-                )
+                    : highlight,
+                ),
               )
             }}
           />

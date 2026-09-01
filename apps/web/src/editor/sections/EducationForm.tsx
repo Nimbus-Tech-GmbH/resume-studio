@@ -4,6 +4,7 @@ import { TextField, KeywordsField } from '@/editor/fields/Fields';
 import { SortableList } from '@/editor/SortableList';
 import { AddButton, RemoveButton } from '@/editor/fields/ListButtons';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { DatePickerSimple } from '@/components/ui/datepicker';
 
 const EMPTY: never[] = [];
 
@@ -66,13 +67,13 @@ export function EducationForm() {
                     value={item.url}
                     onChange={(v) => update(idx, { ...item, url: v })}
                   />
-                  <TextField
+                  <DatePickerSimple
                     label="Start"
                     value={item.startDate}
                     placeholder="YYYY-MM-DD"
                     onChange={(v) => update(idx, { ...item, startDate: v })}
                   />
-                  <TextField
+                  <DatePickerSimple
                     label="End"
                     value={item.endDate}
                     placeholder="YYYY-MM-DD"

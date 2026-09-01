@@ -179,9 +179,7 @@ function diffBasics(input: ToCmsInput, ops: MutationOp[]): void {
   const curImageUrl = cur?.image;
   const origImageUrl = orig?.image;
   if (curImageUrl !== origImageUrl) {
-    if (curImageUrl && cmsBi.image?.id) {
-      data.image = { connect: { id: cmsBi.image.id } };
-    } else if (curImageUrl) {
+    if (curImageUrl) {
       data.image = { create: { src: curImageUrl } };
     } else {
       data.image = { disconnect: true };

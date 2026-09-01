@@ -17,12 +17,23 @@ export function PreviewFrame({ resume, theme }: PreviewFrameProps) {
   const [loading, setLoading] = useState(false);
   const timer = useRef<number | undefined>(undefined);
 
+  const [debouncedResume, setDebouncedResume] = useState(resume);
+  const resumeTimer = useRef<number | undefined>(undefined);
+
+  useEffect(() => {
+    window.clearTimeout(resumeTimer.current);
+    resumeTimer.current = window.setTimeout(() => {
+      setDebouncedResume(resume);
+    }, DEBOUNCE_MS);
+    return () => window.clearTimeout(resumeTimer.current);
+  }, [resume]);
+
   useEffect(() => {
     window.clearTimeout(timer.current);
     timer.current = window.setTimeout(() => {
       setLoading(true);
       const controller = new AbortController();
-      requestRender({ resume, theme }, controller.signal)
+      requestRender({ resume: debouncedResume, theme }, controller.signal)
         .then((res: string) => {
           setHtml(res);
           setError(null);
@@ -35,7 +46,7 @@ export function PreviewFrame({ resume, theme }: PreviewFrameProps) {
     }, DEBOUNCE_MS);
 
     return () => window.clearTimeout(timer.current);
-  }, [resume, theme]);
+  }, [debouncedResume, theme]);
 
   if (error) {
     return (

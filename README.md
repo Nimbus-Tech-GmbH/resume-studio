@@ -1,5 +1,9 @@
 # resume-studio
 
+<p align="center">
+  <img src="apps/web/public/logo.png" alt="resume-studio logo" width="200" />
+</p>
+
 Edit your resume. See it live. Ship it.
 
 Real-time resume editor web app. Loads resume data from the Keystone CMS GraphQL API, renders live previews via multiple [JSON Resume](https://jsonresume.org/) themes, and persists changes on explicit **Save**.

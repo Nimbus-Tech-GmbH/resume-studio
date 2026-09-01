@@ -60,6 +60,21 @@ describe('validateResume', () => {
     expect(validateResume({ basics: { name: 'Alice' } })).toEqual([]);
   });
 
+  it('allows an empty phone string', () => {
+    expect(validateResume({ basics: { phone: '' } })).toEqual([]);
+  });
+
+  // ── basics.url ────────────────────────────────────────────────────────
+
+  it('flags an invalid basics.url', () => {
+    const issues = validateResume({ basics: { url: 'not-a-url' } });
+    expect(issues.some((i) => i.path === '/basics/url')).toBe(true);
+  });
+
+  it('accepts a valid basics.url', () => {
+    expect(validateResume({ basics: { url: 'https://example.com' } })).toEqual([]);
+  });
+
   // ── select enums ───────────────────────────────────────────────────────
 
   it('flags a language.fluency outside the CMS select options as a warning (legacy data)', () => {

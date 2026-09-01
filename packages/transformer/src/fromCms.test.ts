@@ -83,3 +83,117 @@ describe('fromCms property tests', () => {
     );
   });
 });
+
+describe('fromCms deterministic tests', () => {
+  it('maps profiles from CMS to JSON Resume', () => {
+    const cms: CmsResume = {
+      id: 'r1',
+      basicInformation: {
+        id: 'bi1',
+        profiles: [
+          { id: 'p1', network: 'LinkedIn', username: 'alice', url: 'https://linkedin.com/in/alice' },
+          { id: 'p2', network: 'GitHub', username: 'alicegh', url: 'https://github.com/alice' },
+        ],
+      },
+    };
+    const json = fromCms(cms);
+    expect(json.basics?.profiles).toEqual([
+      { network: 'LinkedIn', username: 'alice', url: 'https://linkedin.com/in/alice' },
+      { network: 'GitHub', username: 'alicegh', url: 'https://github.com/alice' },
+    ]);
+  });
+
+  it('maps image src to basics.image string', () => {
+    const cms: CmsResume = {
+      id: 'r1',
+      basicInformation: {
+        id: 'bi1',
+        image: { id: 'img1', src: 'https://example.com/photo.jpg' },
+      },
+    };
+    const json = fromCms(cms);
+    expect(json.basics?.image).toBe('https://example.com/photo.jpg');
+  });
+
+  it('returns undefined image when CMS image is null', () => {
+    const cms: CmsResume = {
+      id: 'r1',
+      basicInformation: { id: 'bi1', image: null },
+    };
+    const json = fromCms(cms);
+    expect(json.basics?.image).toBeUndefined();
+  });
+
+  it('maps work highlights from CmsHighlight[] to string[]', () => {
+    const cms: CmsResume = {
+      id: 'r1',
+      work: [
+        {
+          id: 'w1',
+          name: 'Acme',
+          position: 'Dev',
+          highlights: [
+            { id: 'h1', value: 'Shipped feature' },
+            { id: 'h2', value: '' },
+            { id: 'h3', value: 'Reduced latency' },
+          ],
+        },
+      ],
+    };
+    const json = fromCms(cms);
+    expect(json.work![0]!.highlights).toEqual(['Shipped feature', 'Reduced latency']);
+  });
+
+  it('maps certificates with field renames', () => {
+    const cms: CmsResume = {
+      id: 'r1',
+      certificates: [{ id: 'c1', title: 'AWS SAA', description: 'Cloud cert', link: 'https://aws' }],
+    };
+    const json = fromCms(cms);
+    expect(json.certificates).toEqual([{ name: 'AWS SAA', summary: 'Cloud cert', url: 'https://aws' }]);
+  });
+
+  it('maps resumeLanguages to languages', () => {
+    const cms: CmsResume = {
+      id: 'r1',
+      resumeLanguages: [
+        { id: 'l1', language: 'English', fluency: 'Native' },
+        { id: 'l2', language: 'German', fluency: 'B2' },
+      ],
+    };
+    const json = fromCms(cms);
+    expect(json.languages).toEqual([
+      { language: 'English', fluency: 'Native' },
+      { language: 'German', fluency: 'B2' },
+    ]);
+  });
+
+  it('maps meta fields', () => {
+    const cms: CmsResume = {
+      id: 'r1',
+      title: 'My Resume',
+      updatedAt: '2024-06-15T10:00:00.000Z',
+      language: { id: 'lang1', label: 'English', value: 'en' },
+    };
+    const json = fromCms(cms);
+    expect(json.meta).toEqual({
+      title: 'My Resume',
+      language: 'en',
+      lastModified: '2024-06-15T10:00:00.000Z',
+    });
+  });
+
+  it('returns undefined basics when basicInformation is absent', () => {
+    const cms: CmsResume = { id: 'r1' };
+    const json = fromCms(cms);
+    expect(json.basics).toBeUndefined();
+  });
+
+  it('returns empty arrays for missing sections', () => {
+    const cms: CmsResume = { id: 'r1' };
+    const json = fromCms(cms);
+    expect(json.work).toEqual([]);
+    expect(json.skills).toEqual([]);
+    expect(json.education).toEqual([]);
+  });
+});

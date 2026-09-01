@@ -4,6 +4,7 @@ import { useEditorStore } from "@/state/editorStore"
 import { TextAreaField, TextField } from "@/editor/fields/Fields"
 import { HighlightsEditor } from "@/editor/fields/HighlightsEditor"
 import { SortableList } from "@/editor/SortableList"
+import { DatePickerSimple } from "@/components/ui/datepicker"
 import {
   Card,
   CardContent,
@@ -85,7 +86,7 @@ export function WorkForm() {
                   />
 
                   <div className="grid gap-4 sm:grid-cols-2">
-                    <TextField
+                    <DatePickerSimple
                       label="Start"
                       value={item.startDate}
                       placeholder="YYYY-MM-DD"
@@ -94,7 +95,7 @@ export function WorkForm() {
                       }
                     />
 
-                    <TextField
+                    <DatePickerSimple
                       label="End"
                       value={item.endDate}
                       placeholder="YYYY-MM-DD"

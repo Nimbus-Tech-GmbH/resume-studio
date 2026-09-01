@@ -47,7 +47,7 @@ const schema = {
         phone: {
           type: 'string',
           pattern: PHONE_REGEX.source,
-          nullable: true,
+          minLength: 1,
         },
         url: { type: 'string', format: 'uri', nullable: true },
       },

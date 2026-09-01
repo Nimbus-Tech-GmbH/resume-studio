@@ -332,4 +332,203 @@ describe('toCms', () => {
       expect(workOp.data.startDate).toBeUndefined();
     }
   });
+
+  // ── profiles CRUD ─────────────────────────────────────────────────────
+
+  it('creates a new profile', () => {
+    const original = baseJson();
+    const current: JsonResume = {
+      ...original,
+      basics: {
+        ...original.basics,
+        profiles: [{ network: 'LinkedIn', username: 'alice', url: 'https://linkedin.com/in/alice' }],
+      },
+    };
+    const input = makeInput({ current });
+    input.cmsIds = { ...input.cmsIds, profiles: [null] };
+    const plan = toCms(input);
+    expect(plan.ops).toContainEqual({
+      kind: 'createResumeProfile',
+      data: {
+        network: 'LinkedIn',
+        username: 'alice',
+        url: 'https://linkedin.com/in/alice',
+        basicInformation: { connect: { id: 'bi1' } },
+      },
+    });
+  });
+
+  it('updates an existing profile', () => {
+    const originalCms = {
+      ...baseCms(),
+      basicInformation: {
+        ...baseCms().basicInformation!,
+        profiles: [{ id: 'p1', network: 'LinkedIn', username: 'alice', url: 'https://old' }],
+      },
+    };
+    const original: JsonResume = {
+      ...baseJson(),
+      basics: {
+        ...baseJson().basics,
+        profiles: [{ network: 'LinkedIn', username: 'alice', url: 'https://old' }],
+      },
+    };
+    const current: JsonResume = {
+      ...original,
+      basics: {
+        ...original.basics,
+        profiles: [{ network: 'LinkedIn', username: 'alice', url: 'https://new' }],
+      },
+    };
+    const ids = { ...baseIds(), profiles: ['p1'] };
+    const plan = toCms({
+      current,
+      original,
+      originalCms,
+      cmsIds: ids,
+      originalCmsIds: { ...ids, profiles: ['p1'] },
+      resumeId: 'r1',
+    });
+    expect(plan.ops).toContainEqual({
+      kind: 'updateResumeProfile',
+      id: 'p1',
+      data: { url: 'https://new' },
+    });
+  });
+
+  it('deletes a removed profile', () => {
+    const originalCms = {
+      ...baseCms(),
+      basicInformation: {
+        ...baseCms().basicInformation!,
+        profiles: [{ id: 'p1', network: 'LinkedIn', username: 'alice' }],
+      },
+    };
+    const original: JsonResume = {
+      ...baseJson(),
+      basics: {
+        ...baseJson().basics,
+        profiles: [{ network: 'LinkedIn', username: 'alice' }],
+      },
+    };
+    const current: JsonResume = {
+      ...original,
+      basics: { ...original.basics, profiles: [] },
+    };
+    const ids = { ...baseIds(), profiles: [] };
+    const plan = toCms({
+      current,
+      original,
+      originalCms,
+      cmsIds: ids,
+      originalCmsIds: { ...ids, profiles: ['p1'] },
+      resumeId: 'r1',
+    });
+    expect(plan.ops).toContainEqual({ kind: 'deleteResumeProfile', id: 'p1' });
+  });
+
+  // ── image handling ────────────────────────────────────────────────────
+
+  it('connects existing image when URL unchanged', () => {
+    const originalCms = {
+      ...baseCms(),
+      basicInformation: {
+        ...baseCms().basicInformation!,
+        image: { id: 'img1', src: 'https://example.com/photo.jpg' },
+      },
+    };
+    const original: JsonResume = {
+      ...baseJson(),
+      basics: { ...baseJson().basics, image: 'https://example.com/photo.jpg' },
+    };
+    const plan = toCms(makeInput({ current: original, original, originalCms }));
+    expect(plan.ops.filter((o) => o.kind === 'updateResumeBasicInformation')).toHaveLength(0);
+  });
+
+  it('creates new image when URL changes to new value', () => {
+    const originalCms = {
+      ...baseCms(),
+      basicInformation: {
+        ...baseCms().basicInformation!,
+        image: { id: 'img1', src: 'https://old.com/photo.jpg' },
+      },
+    };
+    const original: JsonResume = {
+      ...baseJson(),
+      basics: { ...baseJson().basics, image: 'https://old.com/photo.jpg' },
+    };
+    const current: JsonResume = {
+      ...original,
+      basics: { ...original.basics, image: 'https://new.com/photo.jpg' },
+    };
+    const plan = toCms(makeInput({ current, original, originalCms }));
+    const op = plan.ops.find(
+      (o) => o.kind === 'updateResumeBasicInformation' && o.id === 'bi1',
+    );
+    expect(op).toBeTruthy();
+    if (op?.kind === 'updateResumeBasicInformation') {
+      expect(op.data.image).toEqual({ create: { src: 'https://new.com/photo.jpg' } });
+    }
+  });
+
+  it('disconnects image when URL cleared', () => {
+    const originalCms = {
+      ...baseCms(),
+      basicInformation: {
+        ...baseCms().basicInformation!,
+        image: { id: 'img1', src: 'https://example.com/photo.jpg' },
+      },
+    };
+    const original: JsonResume = {
+      ...baseJson(),
+      basics: { ...baseJson().basics, image: 'https://example.com/photo.jpg' },
+    };
+    const current: JsonResume = {
+      ...original,
+      basics: { ...original.basics, image: undefined },
+    };
+    const plan = toCms(makeInput({ current, original, originalCms }));
+    const op = plan.ops.find(
+      (o) => o.kind === 'updateResumeBasicInformation' && o.id === 'bi1',
+    );
+    expect(op).toBeTruthy();
+    if (op?.kind === 'updateResumeBasicInformation') {
+      expect(op.data.image).toEqual({ disconnect: true });
+    }
+  });
+
+  it('creates image when URL added to empty', () => {
+    const original: JsonResume = {
+      ...baseJson(),
+      basics: { ...baseJson().basics, image: undefined },
+    };
+    const current: JsonResume = {
+      ...original,
+      basics: { ...original.basics, image: 'https://new.com/photo.jpg' },
+    };
+    const plan = toCms(makeInput({ current, original }));
+    const op = plan.ops.find(
+      (o) => o.kind === 'updateResumeBasicInformation' && o.id === 'bi1',
+    );
+    expect(op).toBeTruthy();
+    if (op?.kind === 'updateResumeBasicInformation') {
+      expect(op.data.image).toEqual({ create: { src: 'https://new.com/photo.jpg' } });
+    }
+  });
+
+  // ── work scalar update ────────────────────────────────────────────────
+
+  it('updates work scalar fields', () => {
+    const original = baseJson();
+    const current: JsonResume = {
+      ...original,
+      work: [{ ...original.work![0]!, name: 'NewCo', position: 'Staff Eng' }],
+    };
+    const plan = toCms(makeInput({ current }));
+    expect(plan.ops).toContainEqual({
+      kind: 'updateResumeWork',
+      id: 'w1',
+      data: { name: 'NewCo', position: 'Staff Eng' },
+    });
+  });
 });

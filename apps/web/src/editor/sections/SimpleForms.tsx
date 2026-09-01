@@ -23,6 +23,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import { DatePickerSimple } from "@/components/ui/datepicker"
 
 const EMPTY: never[] = []
 
@@ -165,7 +166,7 @@ export function VolunteerForm() {
               onChange={(value) => update(index, { ...item, url: value })}
             />
 
-            <TextField
+            <DatePickerSimple
               label="Start"
               value={item.startDate}
               placeholder="YYYY-MM-DD"
@@ -174,7 +175,7 @@ export function VolunteerForm() {
               }
             />
 
-            <TextField
+            <DatePickerSimple
               label="End"
               value={item.endDate}
               placeholder="YYYY-MM-DD"
@@ -240,7 +241,7 @@ export function ProjectsForm() {
               onChange={(value) => update(index, { ...item, url: value })}
             />
 
-            <TextField
+            <DatePickerSimple
               label="Start"
               value={item.startDate}
               placeholder="YYYY-MM-DD"
@@ -249,7 +250,7 @@ export function ProjectsForm() {
               }
             />
 
-            <TextField
+            <DatePickerSimple
               label="End"
               value={item.endDate}
               placeholder="YYYY-MM-DD"
