@@ -3,7 +3,7 @@ import { ClientError } from 'graphql-request';
 import { fromCms } from '@resume-studio/transformer';
 import { useResume, useResumeList } from '@/graphql/useResume';
 import { useEditorStore } from '@/state/editorStore';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectSeparator, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
 
@@ -48,15 +48,18 @@ export function ResumePicker() {
   return (
     <div className="relative">
       <Select value={resumeId ?? ''} onValueChange={(v) => setResumeId(v || null)} disabled={resumeLoading}>
-        <SelectTrigger className="h-8 min-w-56 text-sm" data-loading={resumeFetching || undefined}>
+        <SelectTrigger className="h-8 min-w-56" data-loading={resumeFetching || undefined}>
           <SelectValue placeholder="Select resume" />
         </SelectTrigger>
         <SelectContent>
-          {list.map((r) => (
-            <SelectItem key={r.id} value={r.id}>
+          <SelectGroup>
+            <SelectLabel>Resumes</SelectLabel>
+            {list.map((r) => (
+              <SelectItem key={r.id} value={r.id}>
               {r.title ?? r.basicInformation?.name ?? r.id} ({r.language?.value ?? r.language?.label ?? '—'})
             </SelectItem>
           ))}
+            </SelectGroup>
         </SelectContent>
       </Select>
       {resumeFetching && (
