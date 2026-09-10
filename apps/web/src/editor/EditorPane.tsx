@@ -1,6 +1,6 @@
-import { useState, type ReactNode } from "react"
+import { useState, type ComponentType } from "react"
 
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { BasicsForm } from "@/editor/sections/BasicsForm"
 import { WorkForm } from "@/editor/sections/WorkForm"
@@ -17,53 +17,43 @@ import {
 interface Tab {
   id: string
   label: string
-  render: () => ReactNode
+  component: ComponentType
 }
 
 const TABS: Tab[] = [
-  { id: "basics", label: "Basics", render: () => <BasicsForm /> },
-  { id: "work", label: "Work", render: () => <WorkForm /> },
-  { id: "education", label: "Education", render: () => <EducationForm /> },
-  { id: "skills", label: "Skills", render: () => <SkillsForm /> },
-  { id: "interests", label: "Interests", render: () => <InterestsForm /> },
-  { id: "volunteer", label: "Volunteer", render: () => <VolunteerForm /> },
-  { id: "projects", label: "Projects", render: () => <ProjectsForm /> },
-  {
-    id: "certificates",
-    label: "Certificates",
-    render: () => <CertificatesForm />,
-  },
-  { id: "languages", label: "Languages", render: () => <LanguagesForm /> },
+  { id: "basics", label: "Basics", component: BasicsForm },
+  { id: "work", label: "Work", component: WorkForm },
+  { id: "education", label: "Education", component: EducationForm },
+  { id: "skills", label: "Skills", component: SkillsForm },
+  { id: "interests", label: "Interests", component: InterestsForm },
+  { id: "volunteer", label: "Volunteer", component: VolunteerForm },
+  { id: "projects", label: "Projects", component: ProjectsForm },
+  { id: "certificates", label: "Certificates", component: CertificatesForm },
+  { id: "languages", label: "Languages", component: LanguagesForm },
 ]
 
 export function EditorPane() {
-  const [active, setActive] = useState("basics")
+  const [active, setActive] = useState(TABS[0].id)
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
-      <Tabs
-        value={active}
-        onValueChange={setActive}
-        className="shrink-0 border-b p-2"
-      >
-        <TabsList className="h-auto flex-wrap">
+    <Tabs value={active} onValueChange={setActive} className="flex h-full min-h-0 flex-col">
+      <div className="relative shrink-0 border-b">
+        <TabsList variant="line" className="w-full justify-start overflow-x-auto px-2 [&>div]:flex-none">
           {TABS.map((tab) => (
-            <TabsTrigger key={tab.id} value={tab.id} className="cursor-pointer text-sm">
+            <TabsTrigger key={tab.id} value={tab.id} className="text-sm">
               {tab.label}
             </TabsTrigger>
           ))}
         </TabsList>
-      </Tabs>
+      </div>
 
       <ScrollArea className="min-h-0 flex-1">
-        <div>
-          {TABS.map((tab) => (
-            <div key={tab.id} hidden={active !== tab.id}>
-              {tab.render()}
-            </div>
-          ))}
-        </div>
+        {TABS.map((tab) => (
+          <TabsContent key={tab.id} value={tab.id} className="mt-0">
+            <tab.component />
+          </TabsContent>
+        ))}
       </ScrollArea>
-    </div>
+    </Tabs>
   )
 }

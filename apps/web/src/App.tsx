@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, type ReactNode } from "react"
 import { DEFAULT_THEME, THEMES, type ThemeId } from "@resume-studio/themes"
 import { Palette } from "lucide-react"
 
@@ -22,6 +22,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Separator } from "@/components/ui/separator"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { Toaster } from "@/components/ui/sonner"
 import {
@@ -32,109 +33,114 @@ import {
 import { Avatar, AvatarImage } from "@/components/ui/avatar"
 import { PanelHeader } from "@/components/PanelHeader"
 
-export function App() {
-  const theme = useEditorStore((state) => state.theme)
-  const setTheme = useEditorStore((state) => state.setTheme)
-  const resume = useEditorStore((state) => state.resume)
-  const resumeId = useEditorStore((state) => state.resumeId)
-  const isStartup = useEditorStore((state) => state.isStartup)
+// ─── Derived state selectors ────────────────────────────────────────────────
+
+function useResumeMeta() {
+  const resume = useEditorStore((s) => s.resume)
+  const resumeId = useEditorStore((s) => s.resumeId)
+  const isStartup = useEditorStore((s) => s.isStartup)
   const issues = useValidation()
 
-  const isDesktop = useMediaQuery("(min-width: 768px)")
-  const [mobileTab, setMobileTab] = useState<"editor" | "preview">("editor")
+  const name = resume.basics?.name || "Untitled"
+  const pdfName = name.toLowerCase().replace(/\s+/g, "-") + ".pdf"
+  const previewStatus = issues.some((i) => i.severity === "error")
+    ? "error"
+    : issues.some((i) => i.severity === "warning")
+      ? "warning"
+      : ("live" as const)
 
-  const resumeName = resume.basics?.name || "Untitled"
-  const pdfName = resumeName.toLowerCase().replace(/\s+/g, "-") + ".pdf"
-  const hasErrors = issues.some((i) => i.severity === "error")
-  const hasWarnings = issues.some((i) => i.severity === "warning")
-  const previewStatus = hasErrors ? "error" : hasWarnings ? "warning" : "live"
+  return { resume, resumeId, isStartup, name, pdfName, previewStatus }
+}
+
+// ─── Panel content components ───────────────────────────────────────────────
+
+function EmptyPanel({ label }: { label: string }) {
+  return (
+    <div className="flex h-full items-center justify-center">
+      <p className="text-sm text-muted-foreground">{label}</p>
+    </div>
+  )
+}
+
+interface PanelShellProps {
+  header: ReactNode
+  children: ReactNode
+}
+
+function PanelShell({ header, children }: PanelShellProps) {
+  return (
+    <div className="flex h-full flex-col overflow-hidden">
+      {header}
+      <div className="min-h-0 flex-1 overflow-hidden">{children}</div>
+    </div>
+  )
+}
+
+function EditorPanel({ name, isEmpty }: { name: string; isEmpty: boolean }) {
+  return (
+    <PanelShell header={<PanelHeader title={name} />}>
+      {isEmpty ? <EmptyPanel label="No resume selected" /> : <EditorPane />}
+    </PanelShell>
+  )
+}
+
+function PreviewPanel({
+  pdfName,
+  resume,
+  theme,
+  previewStatus,
+  isEmpty,
+}: {
+  pdfName: string
+  resume: ReturnType<typeof useEditorStore.getState>["resume"]
+  theme: ThemeId
+  previewStatus: "live" | "error" | "warning"
+  isEmpty: boolean
+}) {
+  return (
+    <PanelShell header={<PanelHeader title={pdfName} status={isEmpty ? undefined : previewStatus} />}>
+      {isEmpty ? (
+        <EmptyPanel label="No resume selected" />
+      ) : (
+        <div className="h-full p-6">
+          <PreviewFrame resume={resume} theme={theme} />
+        </div>
+      )}
+    </PanelShell>
+  )
+}
+
+const MOBILE_TABS = [
+  { id: "editor", label: "Editor" },
+  { id: "preview", label: "Preview" },
+] as const
+
+type MobileTabId = (typeof MOBILE_TABS)[number]["id"]
+
+// ─── App ────────────────────────────────────────────────────────────────────
+
+const noop = () => {}
+
+export function App() {
+  const theme = useEditorStore((s) => s.theme)
+  const setTheme = useEditorStore((s) => s.setTheme)
+  const isStartup = useEditorStore((s) => s.isStartup)
+  const { resume, resumeId, name, pdfName, previewStatus } = useResumeMeta()
+
+  const isDesktop = useMediaQuery("(min-width: 768px)")
+  const [mobileTab, setMobileTab] = useState<MobileTabId>("editor")
 
   const activeTheme =
-    THEMES.find((candidate) => candidate.id === theme)?.label ?? DEFAULT_THEME
+    THEMES.find((c) => c.id === theme)?.label ?? DEFAULT_THEME
 
-  const hasNoResume = !resumeId;
+  const isEmpty = !resumeId
 
-  const editorContent = (
-    <div className="flex h-full flex-col overflow-hidden">
-      <PanelHeader title={resumeName}/>
-      <div className="min-h-0 flex-1 overflow-hidden">
-        {hasNoResume ? (
-          <div className="flex h-full items-center justify-center">
-            <p className="text-sm text-muted-foreground">No resume selected</p>
-          </div>
-        ) : (
-          <EditorPane />
-        )}
-      </div>
-    </div>
-  )
-
-  const previewContent = (
-    <div className="flex h-full flex-col overflow-hidden">
-      <PanelHeader title={pdfName} status={hasNoResume ? undefined : previewStatus} />
-      <div className="min-h-0 flex-1 overflow-hidden p-6">
-        {hasNoResume ? (
-          <div className="flex h-full items-center justify-center">
-            <p className="text-sm text-muted-foreground">No resume selected</p>
-          </div>
-        ) : (
-          <PreviewFrame resume={resume} theme={theme} />
-        )}
-      </div>
-    </div>
-  )
+  const panelProps = { resume, theme, pdfName, previewStatus, isEmpty }
 
   return (
     <TooltipProvider>
       <div className="flex h-dvh flex-col overflow-hidden">
-        <header className="flex shrink-0 items-center justify-between gap-2 px-3 py-2 sm:px-4">
-          <div className="flex min-w-0 items-center gap-2">
-            <Avatar size="lg">
-              <AvatarImage src="./logo.png"/>
-            </Avatar>
-            <Button variant="ghost">
-              <span className="text-primary text-lg">resume-studio</span>
-            </Button>
-
-            <Separator orientation="vertical" />
-
-            <ResumePicker />
-          </div>
-
-          <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="text-primary">
-                  <Palette />
-                  {activeTheme}
-                </Button>
-              </DropdownMenuTrigger>
-
-              <DropdownMenuContent align="end">
-                <DropdownMenuLabel>Resume theme</DropdownMenuLabel>
-
-                <DropdownMenuRadioGroup
-                  value={theme}
-                  onValueChange={(value) => setTheme(value as ThemeId)}
-                >
-                  {THEMES.map((candidate) => (
-                    <DropdownMenuRadioItem
-                      key={candidate.id}
-                      value={candidate.id}
-                    >
-                      {candidate.label}
-                    </DropdownMenuRadioItem>
-                  ))}
-                </DropdownMenuRadioGroup>
-              </DropdownMenuContent>
-            </DropdownMenu>
-
-            <Separator orientation="vertical" />
-
-            <PrintButton />
-            <SaveButton />
-          </div>
-        </header>
+        <Header activeTheme={activeTheme} theme={theme} setTheme={setTheme} />
 
         <ValidationBanner />
 
@@ -143,42 +149,137 @@ export function App() {
             {isDesktop ? (
               <ResizablePanelGroup orientation="horizontal" autoSave="editor-layout">
                 <ResizablePanel defaultSize="50%" minSize="20%">
-                  {editorContent}
+                  <EditorPanel name={name} isEmpty={isEmpty} />
                 </ResizablePanel>
                 <ResizableHandle withHandle />
                 <ResizablePanel defaultSize="50%" minSize="20%">
-                  {previewContent}
+                  <PreviewPanel {...panelProps} />
                 </ResizablePanel>
               </ResizablePanelGroup>
             ) : (
-              <div className="flex h-full flex-col">
-                <div className="border-border flex h-11 shrink-0 items-center justify-between border-b gap-2 px-3">
-                  <div className="bg-muted/60 inline-flex rounded-md border p-0.5 text-[0.8125rem]">
-                    {(["editor", "preview"] as const).map((value) => (
-                      <Button
-                        key={value}
-                        type="button"
-                        data-active={mobileTab === value}
-                        aria-pressed={mobileTab === value}
-                        onClick={() => setMobileTab(value)}
-                        className="data-[active=true]:bg-background data-[active=true]:text-foreground rounded-[5px] px-3 py-1 font-medium transition-colors data-[active=true]:shadow-sm"
-                      >
-                        {value === "editor" ? "Editor" : "Preview"}
-                      </Button>
-                    ))}
-                  </div>
-
-                </div>
-                <div className="min-h-0 flex-1">
-                  {mobileTab === "editor" ? editorContent : previewContent}
-                </div>
-              </div>
+              <MobileLayout
+                mobileTab={mobileTab}
+                setMobileTab={setMobileTab}
+                name={name}
+                {...panelProps}
+              />
             )}
           </div>
         </main>
       </div>
-      <StartupDialog open={isStartup} onOpenChange={() => {}} />
-      <Toaster/>
+      <StartupDialog open={isStartup} onOpenChange={noop} />
+      <Toaster />
     </TooltipProvider>
+  )
+}
+
+// ─── Sub-components ─────────────────────────────────────────────────────────
+
+interface HeaderProps {
+  activeTheme: string
+  theme: ThemeId
+  setTheme: (t: ThemeId) => void
+}
+
+function Header({ activeTheme, theme, setTheme }: HeaderProps) {
+  return (
+    <header className="flex shrink-0 items-center justify-between gap-2 px-3 py-2 sm:px-4">
+      <div className="flex min-w-0 items-center gap-2">
+        <Avatar size="lg">
+          <AvatarImage src="./logo.png" />
+        </Avatar>
+        <Button variant="ghost">
+          <span className="text-primary text-lg">resume-studio</span>
+        </Button>
+
+        <Separator orientation="vertical" />
+
+        <ResumePicker />
+      </div>
+
+      <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+        <ThemePicker activeTheme={activeTheme} theme={theme} setTheme={setTheme} />
+        <Separator orientation="vertical" />
+        <PrintButton />
+        <SaveButton />
+      </div>
+    </header>
+  )
+}
+
+function ThemePicker({ activeTheme, theme, setTheme }: HeaderProps) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" className="text-primary">
+          <Palette />
+          {activeTheme}
+        </Button>
+      </DropdownMenuTrigger>
+
+      <DropdownMenuContent align="end">
+        <DropdownMenuLabel>Resume theme</DropdownMenuLabel>
+        <DropdownMenuRadioGroup value={theme} onValueChange={(v) => setTheme(v as ThemeId)}>
+          {THEMES.map((c) => (
+            <DropdownMenuRadioItem key={c.id} value={c.id}>
+              {c.label}
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+}
+
+interface MobileLayoutProps {
+  mobileTab: MobileTabId
+  setMobileTab: (tab: MobileTabId) => void
+  name: string
+  resume: ReturnType<typeof useEditorStore.getState>["resume"]
+  theme: ThemeId
+  pdfName: string
+  previewStatus: "live" | "error" | "warning"
+  isEmpty: boolean
+}
+
+function MobileLayout({
+  mobileTab,
+  setMobileTab,
+  name,
+  resume,
+  theme,
+  pdfName,
+  previewStatus,
+  isEmpty,
+}: MobileLayoutProps) {
+  return (
+    <Tabs
+      value={mobileTab}
+      onValueChange={(v) => setMobileTab(v as MobileTabId)}
+      className="flex h-full flex-col"
+    >
+      <TabsList variant="line" className="w-full shrink-0 justify-start border-b px-2">
+        {MOBILE_TABS.map((tab) => (
+          <TabsTrigger key={tab.id} value={tab.id} className="text-sm">
+            {tab.label}
+          </TabsTrigger>
+        ))}
+      </TabsList>
+
+      <div className="min-h-0 flex-1">
+        <TabsContent value="editor" className="h-full mt-0">
+          <EditorPanel name={name} isEmpty={isEmpty} />
+        </TabsContent>
+        <TabsContent value="preview" className="h-full mt-0">
+          <PreviewPanel
+            resume={resume}
+            theme={theme}
+            pdfName={pdfName}
+            previewStatus={previewStatus}
+            isEmpty={isEmpty}
+          />
+        </TabsContent>
+      </div>
+    </Tabs>
   )
 }
