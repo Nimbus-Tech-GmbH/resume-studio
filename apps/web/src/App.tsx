@@ -11,6 +11,7 @@ import { SaveButton } from "@/editor/SaveButton"
 import { PrintButton } from "@/editor/PrintButton"
 import { ValidationBanner } from "@/editor/ValidationBanner"
 import { ResumePicker } from "@/editor/ResumePicker"
+import { StartupDialog } from "@/components/StartupDialog"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -35,6 +36,8 @@ export function App() {
   const theme = useEditorStore((state) => state.theme)
   const setTheme = useEditorStore((state) => state.setTheme)
   const resume = useEditorStore((state) => state.resume)
+  const resumeId = useEditorStore((state) => state.resumeId)
+  const isStartup = useEditorStore((state) => state.isStartup)
   const issues = useValidation()
 
   const isDesktop = useMediaQuery("(min-width: 768px)")
@@ -49,20 +52,34 @@ export function App() {
   const activeTheme =
     THEMES.find((candidate) => candidate.id === theme)?.label ?? DEFAULT_THEME
 
+  const hasNoResume = !resumeId;
+
   const editorContent = (
     <div className="flex h-full flex-col overflow-hidden">
       <PanelHeader title={resumeName}/>
       <div className="min-h-0 flex-1 overflow-hidden">
-        <EditorPane />
+        {hasNoResume ? (
+          <div className="flex h-full items-center justify-center">
+            <p className="text-sm text-muted-foreground">No resume selected</p>
+          </div>
+        ) : (
+          <EditorPane />
+        )}
       </div>
     </div>
   )
 
   const previewContent = (
     <div className="flex h-full flex-col overflow-hidden">
-      <PanelHeader title={pdfName} status={previewStatus} />
+      <PanelHeader title={pdfName} status={hasNoResume ? undefined : previewStatus} />
       <div className="min-h-0 flex-1 overflow-hidden p-6">
-        <PreviewFrame resume={resume} theme={theme} />
+        {hasNoResume ? (
+          <div className="flex h-full items-center justify-center">
+            <p className="text-sm text-muted-foreground">No resume selected</p>
+          </div>
+        ) : (
+          <PreviewFrame resume={resume} theme={theme} />
+        )}
       </div>
     </div>
   )
@@ -160,6 +177,7 @@ export function App() {
           </div>
         </main>
       </div>
+      <StartupDialog open={isStartup} onOpenChange={() => {}} />
       <Toaster/>
     </TooltipProvider>
   )
