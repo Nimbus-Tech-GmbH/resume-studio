@@ -24,7 +24,7 @@ export function PanelHeader({ title, status, className }: PanelHeaderProps) {
       <span className="truncate">{title}</span>
       {status && (
         <span className="flex items-center gap-1.5">
-          <Circle className={cn("size-2 fill-current", statusStyles[status])} />
+          <Circle className={cn("size-2 fill-current animate-pulse", statusStyles[status])} />
         </span>
       )}
     </div>
