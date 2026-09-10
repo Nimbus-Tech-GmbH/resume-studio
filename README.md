@@ -53,8 +53,9 @@ resume-studio/
 │   └── render-service/   # Fastify + resumed (port 8787)
 ├── packages/
 │   ├── transformer/     # CMS ⇄ JSON Resume codecs + toCms diff planner
-│   ├── graphql-client/  # graphql-codegen output + hand-written operations
-│   └── themes/          # pinned JSON Resume theme registry
+│   ├── graphql-client/  # hand-written GraphQL operations
+│   ├── themes/          # pinned JSON Resume theme registry
+│   └── vendor/          # vendored upstream JSON Resume themes (9)
 └── docs/
     ├── ARCHITECTURE.md
     ├── FUNCTIONAL_REQUIREMENTS.md
@@ -83,7 +84,7 @@ pnpm dev:render     # http://localhost:8787
 Other scripts:
 
 ```sh
-pnpm test           # vitest across workspace (50+ tests)
+pnpm test           # vitest across workspace (89 tests)
 pnpm typecheck
 pnpm lint           # eslint (root flat config)
 pnpm build          # tsc + vite production build
@@ -92,7 +93,7 @@ pnpm codegen        # regenerate GraphQL types (needs Keystone reachable)
 
 The Keystone CMS must be running separately at `http://localhost:3000` with `http://localhost:5173` and `http://localhost:8787` in its `CORS_ORIGIN`.
 
-See [docs/LOCAL_DEV.md](./docs/LOCAL_DEV.md) for full local setup, [docs/CONTRIBUTING.md](./docs/CONTRIBUTING.md) for the contribution flow, [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) and [docs/FUNCTIONAL_REQUIREMENTS.md](./docs/FUNCTIONAL_REQUIREMENTS.md) for design + feature specs, and [docs/KNOWN_ISSUES.md](./docs/KNOWN_ISSUES.md) for known application/schema issues.
+See [docs/LOCAL_DEV.md](./docs/LOCAL_DEV.md) for full local setup, [docs/CONTRIBUTING.md](./docs/CONTRIBUTING.md) for the contribution flow, [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) and [docs/FUNCTIONAL_REQUIREMENTS.md](./docs/FUNCTIONAL_REQUIREMENTS.md) for design + feature specs, [docs/KNOWN_ISSUES.md](./docs/KNOWN_ISSUES.md) for known issues, and `AGENTS.md` for AI agent onboarding.
 
 ## License
 
