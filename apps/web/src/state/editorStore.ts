@@ -55,12 +55,15 @@ interface EditorState {
   resumeId: string | null;
   /** CMS `updatedAt` captured at load time — used for staleness checks on save. */
   loadedUpdatedAt: string | null;
+  /** True while the startup dialog is waiting for user selection. */
+  isStartup: boolean;
 
   setResume: (r: JsonResume) => void;
   patchResume: (updater: (r: JsonResume) => JsonResume) => void;
   setTheme: (t: ThemeId) => void;
   loadFromCms: (payload: { json: JsonResume; cms: CmsResume }) => void;
   setResumeId: (id: string | null) => void;
+  setIsStartup: (v: boolean) => void;
   addItem: <K extends ListSection>(section: K, item: NonNullable<JsonResume[K]>[number]) => void;
   removeItem: (section: ListSection, index: number) => void;
   reorderItems: (section: ListSection, from: number, to: number) => void;
@@ -117,6 +120,7 @@ export const useEditorStore = create<EditorState>()((set) => ({
   theme: DEFAULT_THEME,
   resumeId: null,
   loadedUpdatedAt: null,
+  isStartup: true,
 
   setResume: (resume) => set({ resume }),
   patchResume: (updater) => set((prev) => ({ resume: updater(prev.resume) })),
@@ -133,6 +137,7 @@ export const useEditorStore = create<EditorState>()((set) => ({
     });
   },
   setResumeId: (resumeId) => set({ resumeId }),
+  setIsStartup: (isStartup) => set({ isStartup }),
 
   addItem: (section, item) =>
     set((prev) => {
