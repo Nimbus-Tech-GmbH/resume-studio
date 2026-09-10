@@ -393,3 +393,9 @@ export const DELETE_RESUME_PROFILE = /* GraphQL */ `
     deleteResumeProfile(where: { id: $id }) { id }
   }
 `;
+
+export const CREATE_RESUME = /* GraphQL */ `
+  mutation CreateResume($data: ResumeCreateInput!) {
+    createResume(data: $data) { id }
+  }
+`;

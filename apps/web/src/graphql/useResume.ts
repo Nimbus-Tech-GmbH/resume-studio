@@ -1,5 +1,5 @@
-import { useQuery } from '@tanstack/react-query';
-import { GET_RESUME, LIST_RESUMES } from '@resume-studio/graphql-client';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { GET_RESUME, LIST_RESUMES, CREATE_RESUME } from '@resume-studio/graphql-client';
 import type { CmsResume } from '@resume-studio/transformer';
 import { gqlClient } from './client';
 
@@ -54,4 +54,23 @@ export async function fetchResumeUpdatedAt(id: string): Promise<string | null> {
     { id },
   );
   return res.resume?.updatedAt ?? null;
+}
+
+interface CreateResumeResponse {
+  createResume: { id: string };
+}
+
+export function useCreateResume() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ title }: { title?: string } = {}) => {
+      const res = await gqlClient.request<CreateResumeResponse>(CREATE_RESUME, {
+        data: { title: title || 'Untitled Resume' },
+      });
+      return res.createResume.id;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['resumes'] });
+    },
+  });
 }
