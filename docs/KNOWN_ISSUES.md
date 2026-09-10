@@ -7,20 +7,7 @@ or discovered. Cross-reference `TODO.md` for completed work.
 
 ## Tooling / UI issues
 
-### T1. Tailwind v3 vs shadcn v4 registry mismatch
-
-- **Where:** `apps/web` — any component added/updated via the shadcn CLI
-- **What:** The shadcn registry targets Tailwind v4; this project runs v3.4.
-  Upstream components ship classes that don't compile under v3
-  (`gap-(--x)`, `rounded-4xl`, `field-sizing-content`, `data-active:`,
-  `ring-3`, `size-4!`) and oklch token values that break the
-  `hsl(var(--x))` mapping in `tailwind.config.ts`.
-- **Impact:** Silent style failures — invisible borders, transparent
-  dropdown backgrounds, unstyled selected tabs. Nothing errors at build time.
-- **Mitigation:** After every CLI add/update, rewrite v4-only classes and
-  verify against `dist/assets/*.css`. Checklist in FUNCTIONAL_REQUIREMENTS
-  FR-12 rule 6. Tokens must stay HSL triplets (rule 7).
-- **Status:** Handled case-by-case; long-term fix is a Tailwind v4 migration.
+> No current tooling issues.
 
 ---
 
@@ -122,18 +109,7 @@ or discovered. Cross-reference `TODO.md` for completed work.
 
 ### A9b. Highlights matching was positional (now fixed)
 
-- **Where:** `packages/transformer/src/toCms.ts` (`diffHighlights`)
-- **What:** The original `diffHighlights` used positional indexing
-  (`cmsHighlights[i]`) to match current highlight values to CMS row IDs.
-  When highlights were reordered, added in the middle, or when Keystone
-  returned them in a different order, the wrong CMS rows got updated with
-  wrong values. The mutations fired but updated the wrong rows.
-- **Impact:** Highlight edits appeared to not persist after reload because
-  the values ended up on the wrong highlight IDs.
-- **Fix path:** Replaced with content-based matching via
-  `Map<value, id>`. New values reuse orphaned CMS rows or create new ones;
-  deleted values produce delete ops.
-- **Status:** Fixed.
+- **Status:** Fixed. Replaced with content-based matching via `Map<value, id>` in `packages/transformer/src/toCms.ts` (`diffHighlights`). See FUNCTIONAL_REQUIREMENTS FR-5.
 
 ### A10. Pre-existing lint warnings
 
