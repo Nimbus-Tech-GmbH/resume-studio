@@ -43,11 +43,11 @@ function useResumeMeta() {
 
   const name = resume.basics?.name || "Untitled"
   const pdfName = name.toLowerCase().replace(/\s+/g, "-") + ".pdf"
-  const previewStatus = issues.some((i) => i.severity === "error")
+  const previewStatus: "live" | "error" | "warning" = issues.some((i) => i.severity === "error")
     ? "error"
     : issues.some((i) => i.severity === "warning")
       ? "warning"
-      : ("live" as const)
+      : "live"
 
   return { resume, resumeId, isStartup, name, pdfName, previewStatus }
 }
