@@ -48,7 +48,7 @@ export function EditorPane() {
       >
         <TabsList className="h-auto flex-wrap">
           {TABS.map((tab) => (
-            <TabsTrigger key={tab.id} value={tab.id}>
+            <TabsTrigger key={tab.id} value={tab.id} className="cursor-pointer text-sm">
               {tab.label}
             </TabsTrigger>
           ))}

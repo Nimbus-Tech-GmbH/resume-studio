@@ -51,7 +51,7 @@ export function App() {
 
   const editorContent = (
     <div className="flex h-full flex-col overflow-hidden">
-      <PanelHeader title={resumeName} />
+      <PanelHeader title={resumeName}/>
       <div className="min-h-0 flex-1 overflow-hidden">
         <EditorPane />
       </div>
@@ -138,7 +138,7 @@ export function App() {
                 <div className="border-border flex h-11 shrink-0 items-center justify-between border-b gap-2 px-3">
                   <div className="bg-muted/60 inline-flex rounded-md border p-0.5 text-[0.8125rem]">
                     {(["editor", "preview"] as const).map((value) => (
-                      <button
+                      <Button
                         key={value}
                         type="button"
                         data-active={mobileTab === value}
@@ -147,7 +147,7 @@ export function App() {
                         className="data-[active=true]:bg-background data-[active=true]:text-foreground rounded-[5px] px-3 py-1 font-medium transition-colors data-[active=true]:shadow-sm"
                       >
                         {value === "editor" ? "Editor" : "Preview"}
-                      </button>
+                      </Button>
                     ))}
                   </div>
 
