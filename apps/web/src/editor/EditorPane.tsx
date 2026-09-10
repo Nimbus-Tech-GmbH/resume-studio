@@ -20,7 +20,7 @@ interface Tab {
   component: ComponentType
 }
 
-const TABS: Tab[] = [
+const TABS: [Tab, ...Tab[]] = [
   { id: "basics", label: "Basics", component: BasicsForm },
   { id: "work", label: "Work", component: WorkForm },
   { id: "education", label: "Education", component: EducationForm },
@@ -33,7 +33,7 @@ const TABS: Tab[] = [
 ]
 
 export function EditorPane() {
-  const [active, setActive] = useState(TABS[0]!.id)
+  const [active, setActive] = useState(TABS[0].id)
 
   return (
     <Tabs value={active} onValueChange={setActive} className="flex h-full min-h-0 flex-col">
