@@ -76,9 +76,8 @@ runs identically in browser and Node tests.
 
 | Path | Role |
 |---|---|
-| `apps/web/components.json` | shadcn config (radix base, nova preset) — CLI managed |
-| `apps/web/tailwind.config.ts` | Tailwind v3 theme; maps CSS vars via `hsl(var(--x))` |
-| `apps/web/src/index.css` | Design tokens — **HSL triplets only** (see FR-12 rule 7) |
+| `apps/web/components.json` | shadcn config — CLI managed |
+| `apps/web/src/index.css` | Design tokens, Tailwind v4 theme, keyframe animations |
 | `packages/transformer/src/types.ts` | `JsonResume*` (editor shape) + `Cms*` (CMS shape) interfaces |
 | `packages/transformer/src/fromCms.ts` | CMS → JSON Resume (load path) |
 | `packages/transformer/src/toCms.ts` | JSON Resume diff → mutation plan (save path) |
@@ -94,7 +93,7 @@ runs identically in browser and Node tests.
 ```
 src/
 ├── main.tsx                  Entry; routes '/' (App) vs '/print' (PrintPage)
-├── App.tsx                   Shell: header (picker/theme/print/save), editor+preview grid
+├── App.tsx                   Shell: header (picker/theme/print/save), editor+preview grid, startup dialog
 ├── PrintPage.tsx             Standalone print view; reads payload key from localStorage
 │
 ├── state/
@@ -102,13 +101,13 @@ src/
 │   └── (themeStore removed)
 │
 ├── editor/
-│   ├── EditorPane.tsx        Tab layout; registers section forms
+│   ├── EditorPane.tsx        Responsive tab layout (horizontal scroll); registers section forms
 │   ├── sections/             One component per resume section
 │   ├── fields/               Reusable field primitives (text/select/tags)
-│   ├── SaveButton.tsx        Staleness check → plan → execute pipeline trigger
+│   ├── SaveButton.tsx        Staleness check → plan → execute pipeline trigger; saving state (spinner + disabled)
 │   ├── ValidationBanner.tsx  Error/warning display from useValidation
 │   ├── SortableList.tsx      Generic dnd-kit reorder wrapper
-│   ├── ResumePicker.tsx      Loads list + selected resume into store
+│   ├── ResumePicker.tsx      Loads list + selected resume into store; "New Resume" button
 │   └── PrintButton.tsx       Opens /print with a localStorage payload key
 │
 ├── preview/
@@ -119,12 +118,15 @@ src/
 │   ├── schema.ts             ajv schema mirroring CMS validations
 │   └── useValidation.ts      Hook: store resume → ValidationIssue[]
 │
-├── graphql/
-│   ├── client.ts             graphql-request client (credentials: include)
-│   ├── useResume.ts          TanStack Query hooks + fetchResumeUpdatedAt
-│   └── executeSave.ts        Executes MutationOp[] against the CMS
+│   ├── graphql/
+│   │   ├── client.ts             graphql-request client (credentials: include)
+│   │   ├── useResume.ts          TanStack Query hooks, fetchResumeUpdatedAt, useCreateResume
+│   │   └── executeSave.ts        Executes MutationOp[] against the CMS
 │
-└── components/ui/            shadcn-style primitives (button, card, input…)
+├── components/
+│   └── components/ui/            shadcn-style primitives (button, card, input…)
+│   └── components/StartupDialog.tsx  Launch dialog
+│   └── StartupDialog.tsx    Launch dialog: list resumes, create new, or fetch
 ```
 
 ### State model (`state/editorStore.ts`)
@@ -141,6 +143,7 @@ interface EditorState {
   theme: ThemeId;
   resumeId: string | null;
   loadedUpdatedAt: string | null;  // staleness-check anchor
+  isStartup: boolean;              // true while startup dialog is active
 }
 ```
 
@@ -178,7 +181,14 @@ form onChange → patchResume → store.resume updates
 - Subsequent renders: previous render stays visible; a translucent
   `bg-background/50` overlay signals the refresh. No flash of empty content.
 
-### Resume picker loading states (FR-1)
+### Startup dialog (FR-1)
+
+- On launch, if no resume is loaded, a modal dialog appears (`isStartup` flag
+  in store). Shows existing resumes as selectable buttons with title + language.
+  Empty state briefly shows "No resumes then fades out after 2 seconds.
+  "Create New Resume" button always visible. Dialog stays open until user
+  selects or creates — `ResumePicker` auto-select is suppressed while
+  `isStartup` is true.
 
 - List loading: `Skeleton` shaped like the select trigger (`h-8 w-56`).
 - Resume fetch in flight: small `Spinner` overlay inside the picker
@@ -187,9 +197,9 @@ form onChange → patchResume → store.resume updates
 
 ### Save button pending state (FR-5)
 
-- While saving: `Spinner` (shadcn) with `data-icon="inline-start"`, label
-  "Saving…", button disabled. Per shadcn convention Button has no `isPending`
-  prop — compose Spinner + disabled instead.
+- While saving: `Spinner` (shadcn) with `data-icon="inline-start"`, button
+  disabled. Entire save flow (including early-exit paths) wrapped in
+  `try/finally` to guarantee the saving state is always cleared.
 
 **Edit → validation**
 
@@ -264,7 +274,7 @@ Rule: `toCms(fromCms(x))` round-trips, modulo delimiter normalization to `✌�
 | `volunteer[].highlights` | same | same |
 | `projects[].highlights` | same | same |
 | `education[].courses` | same | same |
-| `work[].highlights: string[]` | `ResumeHighlight[]` relation rows | positional id matching; create/update/delete ops |
+| `work[].highlights: string[]` | `ResumeHighlight[]` relation rows | content-based matching via `Map<value, id>`; create/update/delete ops |
 | dates `YYYY-MM(-DD)` | ISO DateTime | `dateCodec`; invalid blocks save |
 | `certificates[]{name,url,summary}` | `Certification{title,link,description}` | rename map; shared global list (S4) |
 | `basics.image: string` | `Image` relation | read-only (A3/S2) |
@@ -285,10 +295,8 @@ deletes, so new-row references are safe.
   warnings, not errors.
 - **Themes are vendored**, not npm-installed, so preview output is pinned.
   Registry pattern keeps imports lazy (fast boot, pay-per-use).
-- **Tailwind v3 + shadcn v4 registry mismatch** is handled by rewriting
-  v4-only classes after every component add/update (checklist in
-  FUNCTIONAL_REQUIREMENTS FR-12 rule 6). Token values stay HSL triplets so
-  `hsl(var(--x))` mappings in `tailwind.config.ts` remain valid.
+- **Tailwind v4 + shadcn/ui.** Project migrated to Tailwind v4. shadcn
+  components use v4-compatible classes. Token values stay HSL triplets.
 - **Testing**: Vitest everywhere. Transformer has unit + property tests;
   web tests pure logic only (validation); render-service tests postProcess.
   No component/E2E tests yet.

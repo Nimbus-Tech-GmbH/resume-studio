@@ -12,9 +12,12 @@ Real-time resume editor web app. Loads resume data from the Keystone CMS GraphQL
 
 ## Features
 
+- Startup dialog — on launch, shows existing resumes as selectable cards or prompts to create a new one. Fetching/empty/error states handled gracefully.
+- Create new resumes from the header `+` button or the startup dialog — creates via `CREATE_RESUME` mutation and loads immediately.
 - Edit any JSON Resume section: basics, work (with highlights), education, skills, interests, volunteer, projects, certificates, languages.
 - Live preview updates 300 ms after last keystroke, in a sandboxed iframe — with skeleton/overlay loading states so edits never flash blank.
 - Loading states throughout via shadcn `Skeleton` / `Spinner`: resume picker, preview first paint + refresh overlay, save pending, print page.
+- Save button shows a saving state (spinner + disabled) during the entire save flow, including early-exit paths (`try/finally`).
 - Schema-aligned validation: email/phone regexes and required-field rules mirror the Keystone CMS; legacy select values surface as non-blocking warnings.
 - CMS `select` fields render as dropdowns (skill level, language fluency) with options mirrored from the schema.
 - Save-time staleness check blocks writes when the resume changed on the server since load.
@@ -22,6 +25,7 @@ Real-time resume editor web app. Loads resume data from the Keystone CMS GraphQL
 - Preview / print flow — opens a dedicated `/print` page with the rendered resume in a full-height iframe; use the browser's **Print → Save as PDF** to export.
 - Drag-and-drop reorder for work, education, and skills.
 - Explicit save → typed mutation plan → batched execute against Keystone.
+- Empty states — both editor and preview panes show "No resume selected" when no resume is loaded.
 
 ## Architecture
 
@@ -29,7 +33,7 @@ Real-time resume editor web app. Loads resume data from the Keystone CMS GraphQL
 Browser (React 19 SPA)
   ├─ editor state (Zustand)
   ├─ TanStack Query cache
-  ├─ shadcn/ui primitives (radix base) + Tailwind CSS
+  ├─ shadcn/ui primitives (radix base) + Tailwind CSS v4
   ├─ @dnd-kit sortable lists
   └─ iframe preview (JSON Resume themes)
         │

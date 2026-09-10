@@ -1,8 +1,18 @@
-Needs Doing
+# TODO
 
 ### Docs drift (quick)
 - ~~**README.md** still says "10 in-repo themes" including `brutalist` — update theme list (now 9 vendored) and mention Preview/print flow.~~ ✅ Done.
 - ~~**PLAN.md §7** still references old stackoverflow/even/elegant themes — stale.~~ ✅ Done (also fixed stale theme refs in LOCAL_DEV + CONTRIBUTING).
+
+### Recently completed
+- **Startup dialog** — modal on launch showing existing resumes + create new. Discriminated union phase state (`loading`/`error`/`empty`/`ready`). Auto-select suppressed via `isStartup` flag in store.
+- **New resume creation** — `CREATE_RESUME` mutation + `useCreateResume` hook. Button in header (`+` icon) and startup dialog. Creates via GraphQL, invalidates list, loads immediately.
+- **Save button saving state** — `try/finally` wrapping the entire save flow (including early exits). Spinner + disabled during save. Never stuck in loading state.
+- **Responsive editor tabs** — horizontal scroll instead of wrapping; `line` variant; `TabsContent` replaces manual `hidden` divs.
+- **App.tsx refactor** — extracted `Header`, `ThemePicker`, `EditorPanel`, `PreviewPanel`, `MobileLayout`, `PanelShell`, `EmptyPanel`. Mobile uses Radix `Tabs` instead of custom button group.
+- **StartupDialog refactor** — discriminated union `DialogPhase` state, `useStartupDialogState` hook, `DESCRIPTIONS` record for dynamic text, extracted `LoadingState`/`ErrorState`/`EmptyFlash`/`ResumeList` sub-components.
+- **Known issues cleanup** — removed T1 (Tailwind v3/v4 mismatch, now on v4), removed A9b body (highlights matching fixed).
+- **Tailwind v4 migration** — project now uses `tailwindcss: ^4.3.3`.
 
 ### Known gaps / follow-ups
 1. **Auth + public deploy** — the declared follow-up phase. Render service must stay local-only until then. *(Deferred — needs Cognito/infra decisions.)*
