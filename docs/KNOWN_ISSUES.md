@@ -36,7 +36,7 @@ or discovered. Cross-reference `TODO.md` for completed work.
   from the server until reload.
 - **Mitigation:** Per-op errors surface in the save toast; staleness check
   (A2) reduces the window for conflicting writes.
-- **Status:** Accepted risk (PLAN §10.3).
+- **Status:** Accepted risk (see ARCHITECTURE.md §5 mutation op ordering).
 
 ### A2. Staleness check is advisory only
 
@@ -48,17 +48,23 @@ or discovered. Cross-reference `TODO.md` for completed work.
 - **Impact:** Last-write-wins within a single tab session.
 - **Status:** Known limitation; full concurrent-edit protection deferred.
 
-### A3. `basics.image` edits are preview-only
+### A3. `basics.image` relation payload — partially implemented
 
-- **Where:** `packages/transformer/src/toCms.ts` (`flattenBasics`), `BasicsForm.tsx`
-- **What:** The Image URL field updates local state and the live preview, but
-  is excluded from mutation payloads. The CMS stores `image` as an `Image`
-  relation (`ImageRelateToOneForUpdateInput`), and the correct payload shape
-  (`create: { src }` vs `connect: { id }`) is unverified until codegen runs
-  against live Keystone.
-- **Impact:** Image changes are lost on save/reload.
-- **Fix path:** Run `pnpm codegen`, inspect `ResumeBasicInformationUpdateInput`,
-  wire the relation payload in `toCms`.
+- **Where:** `packages/transformer/src/toCms.ts` (`diffBasics`)
+- **What:** The Image URL field updates local state and the live preview.
+  `diffBasics` emits `{ create: { src } }` when a URL is set and
+  `{ disconnect: true }` when cleared. The payload shape matches
+  `ImageCreateInput` (`{ src: String }`) from the schema. However, the actual
+  round-trip (create Image row → connect to BasicInformation → persist → reload)
+  has not been verified end-to-end against a live Keystone instance.
+- **Impact:** Image changes may persist or may fail silently depending on
+  Keystone's Image upload handling (the Image type may expect file uploads,
+  not arbitrary URLs).
+- **Fix path:** Verify against live Keystone. If Image type requires uploaded
+  files, switch to a plain `text` URL field in the CMS or add a dedicated
+  `imageUrl` text field.
+- **Status:** Partially implemented; schema shape is correct but CMS-side
+  behavior unverified.
 
 ### A4. PDF export is browser-print only
 
@@ -103,7 +109,7 @@ or discovered. Cross-reference `TODO.md` for completed work.
 
 - **What:** Drag-and-drop reordering works in the editor but emits no
   mutations — the CMS lists have no `order` field, so order resets on reload.
-- **Status:** Documented constraint (PLAN §2, types.ts header).
+- **Status:** Documented constraint (see types.ts header comment).
 
 ### A9. Profiles / awards / publications / references not editable
 
@@ -113,6 +119,21 @@ or discovered. Cross-reference `TODO.md` for completed work.
   which are read-only here (profiles feed `basics.profiles`; the rest aren't
   surfaced at all).
 - **Status:** MVP scope decision; sections exist in the CMS.
+
+### A9b. Highlights matching was positional (now fixed)
+
+- **Where:** `packages/transformer/src/toCms.ts` (`diffHighlights`)
+- **What:** The original `diffHighlights` used positional indexing
+  (`cmsHighlights[i]`) to match current highlight values to CMS row IDs.
+  When highlights were reordered, added in the middle, or when Keystone
+  returned them in a different order, the wrong CMS rows got updated with
+  wrong values. The mutations fired but updated the wrong rows.
+- **Impact:** Highlight edits appeared to not persist after reload because
+  the values ended up on the wrong highlight IDs.
+- **Fix path:** Replaced with content-based matching via
+  `Map<value, id>`. New values reuse orphaned CMS rows or create new ones;
+  deleted values produce delete ops.
+- **Status:** Fixed.
 
 ### A10. Pre-existing lint warnings
 
@@ -191,6 +212,10 @@ or discovered. Cross-reference `TODO.md` for completed work.
   types.ts documents the mirrored shape manually.
 - **Fix path:** Generate `types.ts` + operations from introspection
   (`pnpm codegen` against live Keystone) instead of hand-maintaining copies.
+  Operations and fragment fields in `packages/graphql-client/src/operations.ts`
+  must stay in sync with the actual CMS schema. Missing fields (e.g., the
+  recently added `awards`, `publications`, `references` in `ResumeFields`)
+  cause silent data omission in the editor.
 
 ### S7. Phone/email regexes are duplicated
 

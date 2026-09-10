@@ -223,6 +223,12 @@ produces a typed mutation plan, executes sequentially against the CMS.
 - Certificates: shared list — creates/deletes go through ONE
   `updateResume { certificates: { create/disconnect } }` op; edits via
   `updateCertification`.
+- Location: new rows create via `createResumeLocation` with
+  `basicInformation: { connect }`; cleared locations emit
+  `deleteResumeLocation`.
+- Highlights: content-based matching — existing values reuse CMS rows by
+  value; new values create via `createResumeHighlight` with
+  `work: { connect }`; removed values emit `deleteResumeHighlight`.
 - New op kind? Add to `MutationOp` union, `runOne` switch (exhaustive — the
   compiler will force you), and a graphql document.
 

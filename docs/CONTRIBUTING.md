@@ -58,7 +58,7 @@ Full step-by-step recipes (including CMS-select dropdown fields and validation) 
 
 ## Milestone tracker
 
-See [`PLAN.md`](../PLAN.md) for the historical roadmap. Post-MVP work happens on GitHub issues.
+Post-MVP work happens on GitHub issues.
 
 ## Code review checklist
 
