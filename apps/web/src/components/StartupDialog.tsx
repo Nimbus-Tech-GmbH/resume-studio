@@ -52,6 +52,14 @@ export function StartupDialog({ open, onOpenChange }: StartupDialogProps) {
     onOpenChange(false);
   };
 
+  const description = isLoading
+    ? 'Fetching your resumes…'
+    : error
+      ? 'Something went wrong loading your resumes.'
+      : list && list.length > 0
+        ? 'Select an existing resume or create a new one to get started.'
+        : 'Create your first resume to get started.';
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md" showCloseButton={false}>
@@ -63,7 +71,7 @@ export function StartupDialog({ open, onOpenChange }: StartupDialogProps) {
             <div>
               <DialogTitle>Welcome to Resume Studio</DialogTitle>
               <DialogDescription>
-                Select an existing resume or create a new one to get started.
+                {description}
               </DialogDescription>
             </div>
           </div>
