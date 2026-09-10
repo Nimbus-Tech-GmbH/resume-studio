@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { FileText, Plus } from 'lucide-react';
 
 import { useResumeList, useCreateResume } from '@/graphql/useResume';
@@ -19,21 +19,23 @@ interface StartupDialogProps {
 }
 
 export function StartupDialog({ open, onOpenChange }: StartupDialogProps) {
-  const { data: list, isLoading, error } = useResumeList();
+  const { data: list, isLoading } = useResumeList();
   const setResumeId = useEditorStore((s) => s.setResumeId);
   const setIsStartup = useEditorStore((s) => s.setIsStartup);
   const createResume = useCreateResume();
 
   const [showEmpty, setShowEmpty] = useState(false);
+  const wasLoading = useRef(true);
 
-  // When list finishes loading and is empty, briefly show "No resumes yet"
+  // When loading transitions to done with an empty list, briefly show
+  // the empty-state text then hide it after 2 seconds.
   useEffect(() => {
-    if (!isLoading && list && list.length === 0) {
+    if (wasLoading.current && !isLoading && list && list.length === 0) {
       setShowEmpty(true);
       const timer = setTimeout(() => setShowEmpty(false), 2000);
       return () => clearTimeout(timer);
     }
-    setShowEmpty(false);
+    wasLoading.current = isLoading;
   }, [isLoading, list]);
 
   const handleSelectResume = (id: string) => {
@@ -65,12 +67,6 @@ export function StartupDialog({ open, onOpenChange }: StartupDialogProps) {
               <Spinner className="size-4 text-muted-foreground" />
               <span className="text-sm text-muted-foreground">Fetching resumes…</span>
             </div>
-          )}
-
-          {error && (
-            <p className="text-sm text-destructive">
-              Failed to load resumes. Please try again.
-            </p>
           )}
 
           {!isLoading && list && list.length > 0 && (
