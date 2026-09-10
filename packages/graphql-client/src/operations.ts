@@ -106,6 +106,27 @@ export const RESUME_FIELDS = /* GraphQL */ `
       description
       link
     }
+    awards {
+      id
+      title
+      date
+      awarder
+      summary
+      url
+    }
+    publications {
+      id
+      name
+      publisher
+      releaseDate
+      url
+      summary
+    }
+    references {
+      id
+      name
+      reference
+    }
     resumeLanguages {
       id
       language
@@ -159,6 +180,22 @@ export const UPDATE_RESUME_BASIC_INFORMATION = /* GraphQL */ `
 export const UPDATE_RESUME_LOCATION = /* GraphQL */ `
   mutation UpdateResumeLocation($id: ID!, $data: ResumeLocationUpdateInput!) {
     updateResumeLocation(where: { id: $id }, data: $data) {
+      id
+    }
+  }
+`;
+
+export const CREATE_RESUME_LOCATION = /* GraphQL */ `
+  mutation CreateResumeLocation($data: ResumeLocationCreateInput!) {
+    createResumeLocation(data: $data) {
+      id
+    }
+  }
+`;
+
+export const DELETE_RESUME_LOCATION = /* GraphQL */ `
+  mutation DeleteResumeLocation($id: ID!) {
+    deleteResumeLocation(where: { id: $id }) {
       id
     }
   }

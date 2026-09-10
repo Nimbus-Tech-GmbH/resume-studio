@@ -155,6 +155,22 @@ describe('toCms', () => {
     });
   });
 
+  it('updates an existing work highlight text', () => {
+    const original = baseJson();
+    const current: JsonResume = {
+      ...original,
+      work: [{ ...original.work![0]!, highlights: ['Shipped X v2', 'Wrote Y'] }],
+    };
+    const plan = toCms(makeInput({ current }));
+    expect(plan.ops).toContainEqual({
+      kind: 'updateResumeHighlight',
+      id: 'h1',
+      data: { value: 'Shipped X v2' },
+    });
+    // h2 unchanged → no op
+    expect(plan.ops.filter((o) => o.kind === 'updateResumeHighlight')).toHaveLength(1);
+  });
+
   it('deletes a removed work highlight', () => {
     const original = baseJson();
     const current: JsonResume = {

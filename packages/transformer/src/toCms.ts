@@ -43,6 +43,8 @@ import type {
 export type MutationOp =
   | { kind: 'updateResumeBasicInformation'; id: string; data: Record<string, unknown> }
   | { kind: 'updateResumeLocation'; id: string; data: Record<string, unknown> }
+  | { kind: 'createResumeLocation'; data: Record<string, unknown> }
+  | { kind: 'deleteResumeLocation'; id: string }
   | { kind: 'updateResumeWork'; id: string; data: Record<string, unknown> }
   | { kind: 'createResumeWork'; data: Record<string, unknown> }
   | { kind: 'deleteResumeWork'; id: string }
@@ -207,8 +209,26 @@ function diffLocation(input: ToCmsInput, ops: MutationOp[]): void {
   const cur = input.current.basics?.location;
   const orig = input.original.basics?.location;
   const cmsLoc = input.originalCms.basicInformation?.location;
-  if (!cmsLoc) return;
-  const changed = diffScalars(cur ?? {}, orig ?? {});
+
+  if (!cmsLoc) {
+    // No existing location in CMS — create one if user has location data.
+    if (cur && Object.keys(diffScalars(cur, {})).length > 0) {
+      const data: Record<string, unknown> = { ...cur };
+      if (input.resumeId) {
+        data.basicInformation = { connect: { id: input.originalCms.basicInformation?.id } };
+      }
+      ops.push({ kind: 'createResumeLocation', data });
+    }
+    return;
+  }
+
+  // Location exists in CMS but user cleared it — delete it.
+  if (!cur || Object.keys(cur).length === 0) {
+    ops.push({ kind: 'deleteResumeLocation', id: cmsLoc.id });
+    return;
+  }
+
+  const changed = diffScalars(cur, orig ?? {});
   if (Object.keys(changed).length > 0) {
     ops.push({ kind: 'updateResumeLocation', id: cmsLoc.id, data: changed });
   }
@@ -608,26 +628,48 @@ interface DiffHighlightsArgs {
 
 function diffHighlights(args: DiffHighlightsArgs): void {
   const { workId, current, original, cmsHighlights, ops } = args;
-  const usedIds = new Set<string>();
 
-  for (let i = 0; i < current.length; i += 1) {
-    const value = current[i];
-    const cmsRow = cmsHighlights[i];
-    if (cmsRow?.id) {
-      usedIds.add(cmsRow.id);
-      if (value !== original[i]) {
-        ops.push({ kind: 'updateResumeHighlight', id: cmsRow.id, data: { value } });
-      }
-    } else {
-      ops.push({
-        kind: 'createResumeHighlight',
-        data: { value, work: { connect: { id: workId } } },
-      });
+  // Build a map of CMS highlights by their value for content-based matching.
+  const cmsByValue = new Map<string, { id: string }>();
+  for (const row of cmsHighlights) {
+    if (row.id && row.value !== undefined) {
+      cmsByValue.set(row.value, { id: row.id });
     }
   }
 
+  // Build a set of original values to detect which CMS rows are still relevant.
+  const originalValues = new Set(original);
+
+  const usedCmsIds = new Set<string>();
+
+  for (const value of current) {
+    const existing = cmsByValue.get(value);
+    if (existing) {
+      // This value already exists in CMS — reuse its row (no update needed).
+      usedCmsIds.add(existing.id);
+    } else {
+      // New value not in CMS — find a CMS row whose value was in the original
+      // snapshot but no longer matches any current value (user changed it).
+      const orphanedRow = cmsHighlights.find(
+        (r) => r.id && !usedCmsIds.has(r.id) && originalValues.has(r.value ?? ''),
+      );
+      if (orphanedRow?.id) {
+        // Reuse this CMS row — its old value was changed by the user.
+        usedCmsIds.add(orphanedRow.id);
+        ops.push({ kind: 'updateResumeHighlight', id: orphanedRow.id, data: { value } });
+      } else {
+        // Truly new highlight — create it.
+        ops.push({
+          kind: 'createResumeHighlight',
+          data: { value, work: { connect: { id: workId } } },
+        });
+      }
+    }
+  }
+
+  // Delete CMS highlights that are no longer present in current.
   for (const row of cmsHighlights) {
-    if (row.id && !usedIds.has(row.id)) {
+    if (row.id && !usedCmsIds.has(row.id)) {
       ops.push({ kind: 'deleteResumeHighlight', id: row.id });
     }
   }
