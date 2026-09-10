@@ -130,7 +130,7 @@ function LoadingState() {
   return (
     <div className="flex items-center justify-center gap-2 py-3">
       <Spinner className="size-4 text-muted-foreground" />
-      <span className="text-sm text-muted-foreground">Fetching resumes…</span>
+      <span className="text-sm text-muted-foreground">{DESCRIPTIONS["loading"]}</span>
     </div>
   );
 }
