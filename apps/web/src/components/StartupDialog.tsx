@@ -3,6 +3,7 @@ import { FileText, Plus } from 'lucide-react';
 
 import { useResumeList, useCreateResume } from '@/graphql/useResume';
 import { useEditorStore } from '@/state/editorStore';
+import { Avatar, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import {
@@ -55,10 +56,17 @@ export function StartupDialog({ open, onOpenChange }: StartupDialogProps) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md" showCloseButton={false}>
         <DialogHeader>
-          <DialogTitle>Welcome to Resume Studio</DialogTitle>
-          <DialogDescription>
-            Select an existing resume or create a new one to get started.
-          </DialogDescription>
+          <div className="flex items-center gap-3">
+            <Avatar size="lg">
+              <AvatarImage src="./logo.png" />
+            </Avatar>
+            <div>
+              <DialogTitle>Welcome to Resume Studio</DialogTitle>
+              <DialogDescription>
+                Select an existing resume or create a new one to get started.
+              </DialogDescription>
+            </div>
+          </div>
         </DialogHeader>
 
         <div className="space-y-3">
