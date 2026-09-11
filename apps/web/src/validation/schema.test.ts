@@ -51,17 +51,17 @@ describe('validateResume', () => {
   it('accepts common phone formats', () => {
     expect(
       validateResume({
-        basics: { phone: '+1 415-555-2671' },
+        basics: { email: 'a@b.co', phone: '+1 415-555-2671' },
       }),
     ).toEqual([]);
   });
 
   it('allows an absent phone (optional in CMS)', () => {
-    expect(validateResume({ basics: { name: 'Alice' } })).toEqual([]);
+    expect(validateResume({ basics: { email: 'alice@example.com', name: 'Alice' } })).toEqual([]);
   });
 
   it('allows an empty phone string', () => {
-    expect(validateResume({ basics: { phone: '' } })).toEqual([]);
+    expect(validateResume({ basics: { email: 'test@example.com', phone: '' } })).toEqual([]);
   });
 
   // ── basics.url ────────────────────────────────────────────────────────
@@ -72,7 +72,7 @@ describe('validateResume', () => {
   });
 
   it('accepts a valid basics.url', () => {
-    expect(validateResume({ basics: { url: 'https://example.com' } })).toEqual([]);
+    expect(validateResume({ basics: { email: 'a@b.co', url: 'https://example.com' } })).toEqual([]);
   });
 
   // ── select enums ───────────────────────────────────────────────────────
@@ -110,33 +110,45 @@ describe('validateResume', () => {
   it('flags work missing name/position/startDate', () => {
     const issues = validateResume({ work: [{ url: 'https://x.co' }] });
     const paths = issues.map((i) => i.path);
-    expect(paths).toContain('/work/0');
-    expect(issues.length).toBeGreaterThan(0);
+    expect(paths).toContain('/work/0/name');
+    expect(paths).toContain('/work/0/position');
+    expect(paths).toContain('/work/0/startDate');
+    expect(issues.length).toBeGreaterThanOrEqual(3);
   });
 
   it('flags education missing institution', () => {
     const issues = validateResume({ education: [{ area: 'CS' }] });
-    expect(issues.some((i) => i.path === '/education/0')).toBe(true);
+    expect(issues.some((i) => i.path === '/education/0/institution')).toBe(true);
   });
 
   it('flags skill missing name', () => {
     const issues = validateResume({ skills: [{ level: 'Expert' }] });
-    expect(issues.some((i) => i.path === '/skills/0')).toBe(true);
+    expect(issues.some((i) => i.path === '/skills/0/name')).toBe(true);
   });
 
   it('flags language missing language name', () => {
     const issues = validateResume({ languages: [{ fluency: 'Native' }] });
-    expect(issues.some((i) => i.path === '/languages/0')).toBe(true);
+    expect(issues.some((i) => i.path === '/languages/0/language')).toBe(true);
   });
 
   it('flags volunteer missing organization or position', () => {
     const issues = validateResume({ volunteer: [{ organization: 'Red Cross' }] });
-    expect(issues.some((i) => i.path === '/volunteer/0')).toBe(true);
+    expect(issues.some((i) => i.path === '/volunteer/0/position')).toBe(true);
   });
 
   it('flags project missing description', () => {
     const issues = validateResume({ projects: [{ name: 'X' }] });
-    expect(issues.some((i) => i.path === '/projects/0')).toBe(true);
+    expect(issues.some((i) => i.path === '/projects/0/description')).toBe(true);
+  });
+
+  it('flags award missing awarder', () => {
+    const issues = validateResume({ awards: [{ title: 'Best Dev' }] });
+    expect(issues.some((i) => i.path === '/awards/0/awarder')).toBe(true);
+  });
+
+  it('flags publication missing publisher', () => {
+    const issues = validateResume({ publications: [{ name: 'Paper' }] });
+    expect(issues.some((i) => i.path === '/publications/0/publisher')).toBe(true);
   });
 
   // ── dates + URLs ───────────────────────────────────────────────────────
@@ -156,7 +168,7 @@ describe('validateResume', () => {
   it('ignores empty strings (treated as blank)', () => {
     expect(
       validateResume({
-        basics: { email: '', url: '' },
+        basics: { email: 'a@b.co', url: '' },
         work: [{ name: 'Acme', position: 'Dev', startDate: '2020-01-01', endDate: '' }],
       }),
     ).toEqual([]);

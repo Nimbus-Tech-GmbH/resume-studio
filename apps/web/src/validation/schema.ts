@@ -11,14 +11,15 @@
  *   - date fields     — blank or YYYY-MM(-DD) (CMS stores DateTime)
  *   - URL fields      — valid URL or empty
  *   - required text   — work.name/position/startDate, education.institution,
- *                       skill.name, project.name/description,
- *                       volunteer.organization/position (isRequired in CMS)
+ *                       skill.name, language.language, project.name/description,
+ *                       volunteer.organization/position,
+ *                       award.title/awarder, publication.name/publisher
+ *                       (isRequired in CMS)
  *
  * Runs on every store mutation; results feed a top-of-editor banner and gate Save.
  */
 
-import Ajv, { type ErrorObject } from 'ajv';
-import addFormats from 'ajv-formats';
+import { z } from 'zod';
 import { FLUENCY_LEVELS, SKILL_LEVELS } from '@resume-studio/transformer';
 import type { JsonResume } from '@resume-studio/transformer';
 
@@ -27,117 +28,119 @@ const PHONE_REGEX = /^(\+\d{1,2}\s?)?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}$/;
 // Mirrors ResumeBasicInformation.email validation in schema.ts.
 const EMAIL_REGEX = /^[\w-]+(\.[\w-]+)*@([\w-]+\.)+[a-zA-Z]{2,7}$/;
 
-const DATE_PATTERN = '^\\d{4}-\\d{2}(-\\d{2})?$';
+const DATE_PATTERN = /^\d{4}-\d{2}(-\d{2})?$/;
 
-const schema = {
-  type: 'object',
-  additionalProperties: true,
-  properties: {
-    basics: {
-      type: 'object',
-      additionalProperties: true,
-      properties: {
-        // CMS: isRequired + email regex.
-        email: {
-          type: 'string',
-          pattern: EMAIL_REGEX.source,
-          nullable: true,
-        },
-        // CMS: optional, but must match the phone regex when present.
-        phone: {
-          type: 'string',
-          pattern: PHONE_REGEX.source,
-          minLength: 1,
-        },
-        url: { type: 'string', format: 'uri', nullable: true },
-      },
-    },
-    work: {
-      type: 'array',
-      items: {
-        type: 'object',
-        additionalProperties: true,
-        // CMS: name/position/startDate are isRequired.
-        required: ['name', 'position', 'startDate'],
-        properties: {
-          url: { type: 'string', format: 'uri', nullable: true },
-          startDate: { type: 'string', pattern: DATE_PATTERN, nullable: true },
-          endDate: { type: 'string', pattern: DATE_PATTERN, nullable: true },
-        },
-      },
-    },
-    education: {
-      type: 'array',
-      items: {
-        type: 'object',
-        additionalProperties: true,
-        // CMS: institution isRequired.
-        required: ['institution'],
-        properties: {
-          url: { type: 'string', format: 'uri', nullable: true },
-          startDate: { type: 'string', pattern: DATE_PATTERN, nullable: true },
-          endDate: { type: 'string', pattern: DATE_PATTERN, nullable: true },
-        },
-      },
-    },
-    skills: {
-      type: 'array',
-      items: {
-        type: 'object',
-        additionalProperties: true,
-        // CMS: name isRequired; level is a select.
-        required: ['name'],
-        properties: {
-          level: { type: 'string', enum: [...SKILL_LEVELS], nullable: true },
-        },
-      },
-    },
-    languages: {
-      type: 'array',
-      items: {
-        type: 'object',
-        additionalProperties: true,
-        // CMS: language isRequired; fluency is a select.
-        required: ['language'],
-        properties: {
-          fluency: { type: 'string', enum: [...FLUENCY_LEVELS], nullable: true },
-        },
-      },
-    },
-    volunteer: {
-      type: 'array',
-      items: {
-        type: 'object',
-        additionalProperties: true,
-        // CMS: organization/position are isRequired.
-        required: ['organization', 'position'],
-        properties: {
-          url: { type: 'string', format: 'uri', nullable: true },
-          startDate: { type: 'string', pattern: DATE_PATTERN, nullable: true },
-          endDate: { type: 'string', pattern: DATE_PATTERN, nullable: true },
-        },
-      },
-    },
-    projects: {
-      type: 'array',
-      items: {
-        type: 'object',
-        additionalProperties: true,
-        // CMS: name/description are isRequired.
-        required: ['name', 'description'],
-        properties: {
-          url: { type: 'string', format: 'uri', nullable: true },
-          startDate: { type: 'string', pattern: DATE_PATTERN, nullable: true },
-          endDate: { type: 'string', pattern: DATE_PATTERN, nullable: true },
-        },
-      },
-    },
-  },
-} as const;
+// ─── Shared sub-schemas ──────────────────────────────────────────────────
 
-const ajv = new Ajv({ allErrors: true, strict: false, coerceTypes: false });
-addFormats(ajv);
-const validateFn = ajv.compile(schema);
+/** Valid URL or omitted (empty strings are stripped by deepClean). */
+const urlField = z.string().url('must be a valid URL').optional();
+
+/** YYYY-MM(-DD) date or omitted. */
+const dateField = z
+  .string()
+  .regex(DATE_PATTERN, 'must be YYYY-MM or YYYY-MM-DD')
+  .optional();
+
+// ─── Item schemas ────────────────────────────────────────────────────────
+
+const workItemSchema = z
+  .object({
+    name: z.string().min(1, 'is required'),
+    position: z.string().min(1, 'is required'),
+    startDate: z.string().regex(DATE_PATTERN, 'must be YYYY-MM or YYYY-MM-DD'),
+    url: urlField,
+    endDate: dateField,
+  })
+  .passthrough();
+
+const educationItemSchema = z
+  .object({
+    institution: z.string().min(1, 'is required'),
+    url: urlField,
+    startDate: dateField,
+    endDate: dateField,
+  })
+  .passthrough();
+
+const skillItemSchema = z
+  .object({
+    name: z.string().min(1, 'is required'),
+    level: z.enum(SKILL_LEVELS).optional(),
+  })
+  .passthrough();
+
+const languageItemSchema = z
+  .object({
+    language: z.string().min(1, 'is required'),
+    fluency: z.enum(FLUENCY_LEVELS).optional(),
+  })
+  .passthrough();
+
+const volunteerItemSchema = z
+  .object({
+    organization: z.string().min(1, 'is required'),
+    position: z.string().min(1, 'is required'),
+    url: urlField,
+    startDate: dateField,
+    endDate: dateField,
+  })
+  .passthrough();
+
+const projectItemSchema = z
+  .object({
+    name: z.string().min(1, 'is required'),
+    description: z.string().min(1, 'is required'),
+    url: urlField,
+    startDate: dateField,
+    endDate: dateField,
+  })
+  .passthrough();
+
+const awardItemSchema = z
+  .object({
+    title: z.string().min(1, 'is required'),
+    awarder: z.string().min(1, 'is required'),
+    date: dateField,
+    url: urlField,
+  })
+  .passthrough();
+
+const publicationItemSchema = z
+  .object({
+    name: z.string().min(1, 'is required'),
+    publisher: z.string().min(1, 'is required'),
+    releaseDate: dateField,
+    url: urlField,
+  })
+  .passthrough();
+
+// ─── Resume schema ───────────────────────────────────────────────────────
+
+const resumeSchema = z
+  .object({
+    basics: z
+      .object({
+        email: z.string().regex(EMAIL_REGEX, 'must be a valid email address'),
+        phone: z
+          .string()
+          .regex(PHONE_REGEX, 'must match phone format')
+          .optional(),
+        url: urlField,
+      })
+      .passthrough()
+      .optional(),
+    work: z.array(workItemSchema).optional(),
+    education: z.array(educationItemSchema).optional(),
+    skills: z.array(skillItemSchema).optional(),
+    languages: z.array(languageItemSchema).optional(),
+    volunteer: z.array(volunteerItemSchema).optional(),
+    projects: z.array(projectItemSchema).optional(),
+    awards: z.array(awardItemSchema).optional(),
+    publications: z.array(publicationItemSchema).optional(),
+  })
+  .passthrough();
+
+// ─── Validation issue type ───────────────────────────────────────────────
 
 export interface ValidationIssue {
   path: string;
@@ -161,14 +164,16 @@ function severityFor(path: string): 'error' | 'warning' {
 
 export function validateResume(resume: JsonResume): ValidationIssue[] {
   const cleaned = deepClean(resume);
-  const ok = validateFn(cleaned);
-  if (ok) return [];
-  const errors: ErrorObject[] = validateFn.errors ?? [];
-  return errors.map((e) => ({
-    path: e.instancePath || '/',
-    message: e.message ?? 'invalid',
-    severity: severityFor(e.instancePath || '/'),
-  }));
+  const result = resumeSchema.safeParse(cleaned);
+  if (result.success) return [];
+  return result.error.issues.map((issue) => {
+    const path = '/' + issue.path.map(String).join('/');
+    return {
+      path: path || '/',
+      message: issue.message,
+      severity: severityFor(path || '/'),
+    };
+  });
 }
 
 function deepClean<T>(value: T): T {

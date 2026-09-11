@@ -34,8 +34,6 @@
     "@resume-studio/themes": "workspace:*",
     "@resume-studio/transformer": "workspace:*",
     "@tanstack/react-query": "^5.56.2",
-    "ajv": "^8.20.0",
-    "ajv-formats": "^3.0.1",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
     "date-fns": "^4.4.0",
@@ -52,6 +50,7 @@
     "shadcn": "^4.19.1",
     "sonner": "^2.0.8",
     "tailwind-merge": "^2.5.4",
+    "zod": "^3.24.0",
     "zustand": "^5.0.0"
   },
   "devDependencies": {
