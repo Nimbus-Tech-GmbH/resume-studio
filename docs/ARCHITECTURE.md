@@ -115,7 +115,7 @@ src/
 │   └── renderClient.ts       fetch wrapper for POST /render
 │
 ├── validation/
-│   ├── schema.ts             ajv schema mirroring CMS validations
+│   ├── schema.ts             zod schema mirroring CMS validations
 │   └── useValidation.ts      Hook: store resume → ValidationIssue[]
 │
 │   ├── graphql/
@@ -204,7 +204,7 @@ form onChange → patchResume → store.resume updates
 **Edit → validation**
 
 ```
-store.resume → useValidation → ajv validateResume
+store.resume → useValidation → zod validateResume
   → ValidationBanner (errors block Save; warnings don't)
 ```
 

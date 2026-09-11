@@ -53,8 +53,8 @@ list is selected automatically.
 
 ## FR-2 Section editing
 
-**Behavior.** Nine tabs: Basics, Work, Education, Skills, Interests,
-Volunteer, Projects, Certificates, Languages. Every field maps 1:1 to a
+**Behavior.** Eleven tabs: Basics, Work, Education, Skills, Interests,
+Volunteer, Projects, Certificates, Languages, Awards, Publications. Every field maps 1:1 to a
 `JsonResume*` type in `packages/transformer/src/types.ts`. Edits update the
 store immediately (no save button per field); persistence is FR-5 only.
 
@@ -93,6 +93,8 @@ store immediately (no save button per field); persistence is FR-5 only.
   badges with edit dialog).
 - **Certificates**: name, url, summary.
 - **Languages**: language, fluency (`FLUENCY_LEVELS` select).
+- **Awards**: title, awarder, url, date, summary.
+- **Publications**: name, publisher, url, releaseDate, summary.
 
 **Sortable sections**: work, education, skills use `SortableList`
 (dnd-kit). Reorder is UI-only — see FR-8.
@@ -149,7 +151,7 @@ banner under the header. Errors block Save; warnings do not.
 **Files**
 | File | Change |
 |---|---|
-| `apps/web/src/validation/schema.ts` | ajv schema + severity mapping |
+| `apps/web/src/validation/schema.ts` | zod schema + severity mapping |
 | `apps/web/src/validation/useValidation.ts` | Hook |
 | `apps/web/src/validation/schema.test.ts` | Tests — every rule needs one |
 | `apps/web/src/editor/ValidationBanner.tsx` | Display |
@@ -169,6 +171,8 @@ writes). Current rules:
 | skill.name, language.language present | error | `isRequired` |
 | volunteer.organization/position present | error | `isRequired` |
 | project.name/description present | error | `isRequired` |
+| award.title/awarder present | error | `isRequired` |
+| publication.name/publisher present | error | `isRequired` |
 | dates match `YYYY-MM(-DD)` | error | dateCodec contract |
 | urls valid URI if present | error | hygiene |
 
@@ -486,4 +490,5 @@ Example: awards (CMS list exists: `ResumeAward`).
 - In-app PDF generation (Puppeteer decision pending).
 - Undo/redo (deliberately removed).
 - Persisting reorder (needs CMS `order` field).
-- Editing profiles, awards, publications, references (read-only today).
+- Editing profiles and references (read-only today).
+- Import JSON Resume files from the startup dialog (validates against the zod schema, populates editor locally).

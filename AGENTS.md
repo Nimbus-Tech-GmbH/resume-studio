@@ -45,7 +45,7 @@ Dependency direction: `web → transformer ← render-service`, `web → graphql
 | `apps/web/src/graphql/executeSave.ts` | Runs `MutationOp[]` against CMS sequentially |
 | `apps/web/src/state/editorStore.ts` | Zustand store — single source of client truth |
 | `apps/web/src/editor/SaveButton.tsx` | Staleness check → plan → execute pipeline |
-| `apps/web/src/validation/schema.ts` | ajv schema mirroring CMS validations |
+| `apps/web/src/validation/schema.ts` | zod schema mirroring CMS validations |
 | `schema.graphql` | Keystone schema snapshot (read-only reference) |
 
 ## Data flow

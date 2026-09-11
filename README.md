@@ -14,11 +14,12 @@ Real-time resume editor web app. Loads resume data from the Keystone CMS GraphQL
 
 - Startup dialog — on launch, shows existing resumes as selectable cards or prompts to create a new one. Fetching/empty/error states handled gracefully.
 - Create new resumes from the header `+` button or the startup dialog — creates via `CREATE_RESUME` mutation and loads immediately.
-- Edit any JSON Resume section: basics, work (with highlights), education, skills, interests, volunteer, projects, certificates, languages.
+- Edit any JSON Resume section: basics, work (with highlights), education, skills, interests, volunteer, projects, certificates, languages, awards, publications.
 - Live preview updates 300 ms after last keystroke, in a sandboxed iframe — with skeleton/overlay loading states so edits never flash blank.
 - Loading states throughout via shadcn `Skeleton` / `Spinner`: resume picker, preview first paint + refresh overlay, save pending, print page.
 - Save button shows a saving state (spinner + disabled) during the entire save flow, including early-exit paths (`try/finally`).
-- Schema-aligned validation: email/phone regexes and required-field rules mirror the Keystone CMS; legacy select values surface as non-blocking warnings.
+- Import JSON Resume files from the startup dialog.
+- Schema-aligned validation: email/phone regexes and required-field rules mirror the Keystone CMS; legacy select values surface as non-blocking warnings. Powered by Zod.
 - CMS `select` fields render as dropdowns (skill level, language fluency) with options mirrored from the schema.
 - Save-time staleness check blocks writes when the resume changed on the server since load.
 - Theme switcher — 9 vendored in-repo themes: `developer-mono`, `flat`, `modern-classic`, `writers-portfolio`, `nordic-minimal`, `graph-paper-grid`, `monochrome-noir`, `new-york-editorial`, `claude`.

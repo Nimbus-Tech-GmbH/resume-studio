@@ -98,13 +98,13 @@ or discovered. Cross-reference `TODO.md` for completed work.
   mutations — the CMS lists have no `order` field, so order resets on reload.
 - **Status:** Documented constraint (see types.ts header comment).
 
-### A9. Profiles / awards / publications / references not editable
+### A9. Profiles / references not editable
 
 - **What:** The editor covers basics, work, education, skills, interests,
-  volunteer, projects, certificates, languages. The schema also has
-  `ResumeProfile`, `ResumeAward`, `ResumePublication`, `ResumeReference`
-  which are read-only here (profiles feed `basics.profiles`; the rest aren't
-  surfaced at all).
+  volunteer, projects, certificates, languages, awards, publications.
+  The schema also has `ResumeProfile` and `ResumeReference` which are
+  read-only here (profiles feed `basics.profiles`; references aren't
+  surfaced in the editor).
 - **Status:** MVP scope decision; sections exist in the CMS.
 
 ### A9b. Highlights matching was positional (now fixed)

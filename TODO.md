@@ -5,6 +5,9 @@
 - ~~**PLAN.md §7** still references old stackoverflow/even/elegant themes — stale.~~ ✅ Done (also fixed stale theme refs in LOCAL_DEV + CONTRIBUTING).
 
 ### Recently completed
+- **Awards & publications editor sections** — added `JsonResumeAward`/`JsonResumePublication` types, `AwardsForm`/`PublicationsForm` components, CMS CRUD ops, and validation rules. Sections registered in `EditorPane.tsx`.
+- **Validation migrated AJV → Zod** — replaced ajv/ajv-formats with Zod in `apps/web/src/validation/schema.ts`. Full field coverage including awards/publications. Updated tests.
+- **Import JSON Resume** — file picker in StartupDialog validates `.json` uploads against the Zod schema and populates the editor locally (no CMS creation). Validation errors displayed in dialog.
 - **Startup dialog** — modal on launch showing existing resumes + create new. Discriminated union phase state (`loading`/`error`/`empty`/`ready`). Auto-select suppressed via `isStartup` flag in store.
 - **New resume creation** — `CREATE_RESUME` mutation + `useCreateResume` hook. Button in header (`+` icon) and startup dialog. Creates via GraphQL, invalidates list, loads immediately.
 - **Save button saving state** — `try/finally` wrapping the entire save flow (including early exits). Spinner + disabled during save. Never stuck in loading state.
