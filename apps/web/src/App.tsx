@@ -133,7 +133,7 @@ export function App() {
   const activeTheme =
     THEMES.find((c) => c.id === theme)?.label ?? DEFAULT_THEME
 
-  const isEmpty = !resumeId
+  const isEmpty = !resumeId && Object.keys(resume).length === 0
 
   const panelProps = { resume, theme, pdfName, previewStatus, isEmpty }
 

@@ -22,6 +22,9 @@ export function ResumePicker() {
     isFetching: resumeFetching,
   } = useResume(resumeId);
 
+  // Whether the store already holds resume data (e.g. from a JSON import).
+  const hasLocalData = useEditorStore((s) => Object.keys(s.resume).length > 0);
+
   useEffect(() => {
     if (resume) {
       loadFromCms({ json: fromCms(resume), cms: resume });
@@ -29,10 +32,10 @@ export function ResumePicker() {
   }, [resume, loadFromCms]);
 
   useEffect(() => {
-    if (!isStartup && !resumeId && list && list.length > 0) {
+    if (!isStartup && !resumeId && !hasLocalData && list && list.length > 0) {
       setResumeId(list[0]!.id);
     }
-  }, [isStartup, list, resumeId, setResumeId]);
+  }, [isStartup, list, resumeId, setResumeId, hasLocalData]);
 
   const handleCreateResume = async () => {
     const id = await createResume.mutateAsync({});

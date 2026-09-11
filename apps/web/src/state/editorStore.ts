@@ -66,6 +66,8 @@ interface EditorState {
   patchResume: (updater: (r: JsonResume) => JsonResume) => void;
   setTheme: (t: ThemeId) => void;
   loadFromCms: (payload: { json: JsonResume; cms: CmsResume }) => void;
+  /** Initialise the store for a locally-imported JSON Resume (no CMS backing). */
+  loadFromJson: (json: JsonResume) => void;
   setResumeId: (id: string | null) => void;
   setIsStartup: (v: boolean) => void;
   addItem: <K extends ListSection>(section: K, item: NonNullable<JsonResume[K]>[number]) => void;
@@ -121,6 +123,23 @@ function cloneIdMap(map: CmsIdMap): CmsIdMap {
   };
 }
 
+/** Build a CmsIdMap with null slots matching the length of each section. */
+function buildIdMapFromJson(json: JsonResume): CmsIdMap {
+  return {
+    work: json.work?.map(() => null) ?? [],
+    education: json.education?.map(() => null) ?? [],
+    skills: json.skills?.map(() => null) ?? [],
+    interests: json.interests?.map(() => null) ?? [],
+    volunteer: json.volunteer?.map(() => null) ?? [],
+    projects: json.projects?.map(() => null) ?? [],
+    awards: json.awards?.map(() => null) ?? [],
+    publications: json.publications?.map(() => null) ?? [],
+    certificates: json.certificates?.map(() => null) ?? [],
+    languages: json.languages?.map(() => null) ?? [],
+    profiles: json.basics?.profiles?.map(() => null) ?? [],
+  };
+}
+
 export const useEditorStore = create<EditorState>()((set) => ({
   resume: {},
   original: {},
@@ -144,6 +163,19 @@ export const useEditorStore = create<EditorState>()((set) => ({
       cmsIds: ids,
       originalCmsIds: cloneIdMap(ids),
       loadedUpdatedAt: cms.updatedAt ?? null,
+    });
+  },
+
+  loadFromJson: (json) => {
+    const ids = buildIdMapFromJson(json);
+    set({
+      resume: json,
+      original: json,
+      originalCms: null,
+      cmsIds: ids,
+      originalCmsIds: cloneIdMap(ids),
+      loadedUpdatedAt: null,
+      resumeId: null,
     });
   },
   setResumeId: (resumeId) => set({ resumeId }),

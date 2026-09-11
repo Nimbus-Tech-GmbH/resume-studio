@@ -97,7 +97,7 @@ export function StartupDialog({ open, onOpenChange }: StartupDialogProps) {
 
         // Valid — populate store
         setImportErrors([]);
-        useEditorStore.getState().setResume(json);
+        useEditorStore.getState().loadFromJson(json);
         setIsStartup(false);
         dismiss();
       } catch {
