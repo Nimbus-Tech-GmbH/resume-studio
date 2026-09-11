@@ -153,16 +153,31 @@ Invariants:
 2. `cmsIds[section][i] === null` ⇒ row i was added locally ⇒ save emits a create.
 3. An id present in `originalCmsIds` but absent from `cmsIds[section]` ⇒ emit delete.
 4. `loadFromCms` resets everything atomically (switching resumes mid-edit discards changes).
+5. `loadFromJson` populates the store for locally-imported JSON files (no CMS
+   backing). All `cmsIds` are null (every row is a pending create),
+   `originalCms` is null, `resumeId` is null.
 
 ### Data flow
 
-**Load**
+**Load (CMS)**
 
 ```
 ResumePicker → useResume(id) [TanStack Query]
   → fromCms(cms) : JsonResume
   → loadFromCms({ json, cms })   // seeds all store slices
 ```
+
+**Load (JSON import)**
+
+```
+StartupDialog → file input → JSON.parse → validateResume
+  → loadFromJson(json)   // seeds resume, original, cmsIds (all null),
+                         // originalCms = null, resumeId = null
+```
+Imported resumes have no CMS backing — `resumeId` is null and `originalCms`
+is null. The `isEmpty` check in `App.tsx` uses `!resumeId && Object.keys(resume).length === 0`
+to show the editor/preview for imported data. Saving is blocked because
+`originalCms` is null (see KNOWN_ISSUES A11).
 
 **Edit → preview**
 ### Edit → preview
@@ -185,10 +200,11 @@ form onChange → patchResume → store.resume updates
 
 - On launch, if no resume is loaded, a modal dialog appears (`isStartup` flag
   in store). Shows existing resumes as selectable buttons with title + language.
-  Empty state briefly shows "No resumes then fades out after 2 seconds.
-  "Create New Resume" button always visible. Dialog stays open until user
-  selects or creates — `ResumePicker` auto-select is suppressed while
-  `isStartup` is true.
+  Empty state briefly shows "No resumes" then fades out after 2 seconds.
+  "Create New Resume" button always visible. "Import JSON Resume" button
+  allows loading a local JSON Resume file. Dialog stays open until user
+  selects, creates, or imports — `ResumePicker` auto-select is suppressed
+  while `isStartup` is true.
 
 - List loading: `Skeleton` shaped like the select trigger (`h-8 w-56`).
 - Resume fetch in flight: small `Spinner` overlay inside the picker

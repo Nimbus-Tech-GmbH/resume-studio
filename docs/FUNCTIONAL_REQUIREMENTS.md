@@ -19,15 +19,18 @@ Conventions used below:
 
 **Behavior.** The header shows a dropdown of all resumes (title + language).
 Selecting one loads it into the editor. On first load, the first resume in the
-list is selected automatically.
+list is selected automatically. The startup dialog also supports importing a
+local JSON Resume file via file input — the file is validated and loaded
+into the editor without creating a CMS resume.
 
 **Files**
 | File | Change |
 |---|---|
-| `apps/web/src/editor/ResumePicker.tsx` | Dropdown UI; auto-select first; loading states |
+| `apps/web/src/editor/ResumePicker.tsx` | Dropdown UI; auto-select first; loading states; skip auto-select when local data exists |
 | `apps/web/src/graphql/useResume.ts` | `useResumeList`, `useResume`, `fetchResumeUpdatedAt` hooks |
 | `packages/graphql-client/src/operations.ts` | `LIST_RESUMES`, `GET_RESUME` documents |
-| `apps/web/src/state/editorStore.ts` | `loadFromCms` seeds all slices |
+| `apps/web/src/state/editorStore.ts` | `loadFromCms` seeds all slices; `loadFromJson` seeds slices for local import |
+| `apps/web/src/components/StartupDialog.tsx` | Launch dialog with list, create, and JSON import |
 
 **Loading states**
 - List query loading → `Skeleton className="h-8 w-56"` in place of the select.
@@ -43,11 +46,17 @@ list is selected automatically.
    (`packages/transformer/src/types.ts`). Adding a CMS field to edit ⇒ add it
    to `RESUME_FIELDS` too, or it will silently be `undefined`.
 3. GraphQL errors surface inline in the picker (`Keystone error: …`), not as a crash.
+4. JSON import (`loadFromJson`) populates the editor without a CMS resume.
+   `resumeId` remains null; saving is blocked (see KNOWN_ISSUES A11).
+   The `ResumePicker` auto-select is suppressed when local data exists.
 
 **AC**
 - [ ] With N resumes, dropdown lists N entries labeled `<title> (<lang>)`.
 - [ ] Switching resumes resets forms, cmsIds, and validation state.
 - [ ] Keystone down → picker shows error text; app does not crash.
+- [ ] Importing a valid JSON Resume file populates editor and preview.
+- [ ] Importing a file with validation errors shows error messages in the dialog.
+- [ ] Imported resume (no CMS backing) shows "No resume loaded" on save attempt.
 
 ---
 

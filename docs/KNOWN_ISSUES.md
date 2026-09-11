@@ -117,6 +117,20 @@ or discovered. Cross-reference `TODO.md` for completed work.
   one `console.error` in `PrintButton.tsx`.
 - **Impact:** Cosmetic; 0 errors.
 
+### A11. Imported JSON resumes cannot be saved to CMS
+
+- **Where:** `apps/web/src/components/StartupDialog.tsx`, `apps/web/src/state/editorStore.ts`
+- **What:** The "Import JSON Resume" feature loads a local JSON file into the
+  editor via `loadFromJson`. This sets `resumeId = null` and `originalCms = null`
+  because there is no backing CMS resume. The `SaveButton` checks
+  `!store.originalCms || !store.resumeId` and shows "No resume loaded" toast.
+- **Impact:** Imported resumes can be viewed and edited but not persisted to
+  the CMS. Editing is session-only — closing the tab loses all changes.
+- **Fix path:** After import, create a new CMS resume via `CREATE_RESUME`,
+  push all sections via mutations, then re-load from CMS. Alternatively,
+  implement a local-only save path (e.g., download as JSON).
+- **Status:** Known limitation; documented in FR-1 AC.
+
 ---
 
 ## Schema issues
