@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { FileText, Plus } from 'lucide-react';
+import { FileText, Plus, Upload } from 'lucide-react';
 
 import { useResumeList, useCreateResume } from '@/graphql/useResume';
 import { useEditorStore } from '@/state/editorStore';
+import { validateResume } from '@/validation/schema';
+import type { JsonResume } from '@resume-studio/transformer';
 import { Avatar, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
@@ -58,6 +60,8 @@ export function StartupDialog({ open, onOpenChange }: StartupDialogProps) {
   const setResumeId = useEditorStore((s) => s.setResumeId);
   const setIsStartup = useEditorStore((s) => s.setIsStartup);
   const createResume = useCreateResume();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [importErrors, setImportErrors] = useState<string[]>([]);
 
   const dismiss = useCallback(
     () => onOpenChange(false),
@@ -71,6 +75,39 @@ export function StartupDialog({ open, onOpenChange }: StartupDialogProps) {
       dismiss();
     },
     [setIsStartup, setResumeId, dismiss],
+  );
+
+  const handleFileChange = useCallback(
+    async (event: React.ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0];
+      if (!file) return;
+
+      try {
+        const text = await file.text();
+        const json = JSON.parse(text) as JsonResume;
+        const errors = validateResume(json);
+
+        // Filter to only blocking errors (not warnings)
+        const blockingErrors = errors.filter((e) => e.severity === 'error');
+
+        if (blockingErrors.length > 0) {
+          setImportErrors(blockingErrors.map((e) => `${e.path}: ${e.message}`));
+          return;
+        }
+
+        // Valid — populate store
+        setImportErrors([]);
+        useEditorStore.getState().setResume(json);
+        setIsStartup(false);
+        dismiss();
+      } catch {
+        setImportErrors(['Invalid JSON file.']);
+      } finally {
+        // Reset file input so the same file can be re-selected
+        event.target.value = '';
+      }
+    },
+    [dismiss, setIsStartup],
   );
 
   const createNew = useCallback(async () => {
@@ -108,6 +145,20 @@ export function StartupDialog({ open, onOpenChange }: StartupDialogProps) {
             <ResumeList resumes={phase.resumes} onSelect={selectResume} />
           )}
 
+          {importErrors.length > 0 && (
+            <div className="rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
+              <p className="font-medium">Import validation failed:</p>
+              <ul className="mt-1 list-inside list-disc">
+                {importErrors.slice(0, 5).map((err, i) => (
+                  <li key={i}>{err}</li>
+                ))}
+                {importErrors.length > 5 && (
+                  <li>…and {importErrors.length - 5} more</li>
+                )}
+              </ul>
+            </div>
+          )}
+
           <Button
             className="w-full"
             onClick={createNew}
@@ -120,6 +171,13 @@ export function StartupDialog({ open, onOpenChange }: StartupDialogProps) {
             )}
             Create New Resume
           </Button>
+
+          <Button variant="outline" className="w-full" onClick={() => fileInputRef.current?.click()}>
+            <Upload className="size-4" />
+            Import JSON Resume
+          </Button>
+
+          <input type="file" accept=".json" ref={fileInputRef} onChange={handleFileChange} className="hidden" />
         </div>
       </DialogContent>
     </Dialog>
