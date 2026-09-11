@@ -13,6 +13,8 @@ export type ListSection =
   | 'interests'
   | 'volunteer'
   | 'projects'
+  | 'awards'
+  | 'publications'
   | 'certificates'
   | 'languages';
 
@@ -39,6 +41,8 @@ export const SECTION_TO_RESUME_KEY: Record<ListSection, keyof JsonResume> = {
   interests: 'interests',
   volunteer: 'volunteer',
   projects: 'projects',
+  awards: 'awards',
+  publications: 'publications',
   certificates: 'certificates',
   languages: 'languages',
 };
@@ -77,6 +81,8 @@ function emptyIdMap(): CmsIdMap {
     interests: [],
     volunteer: [],
     projects: [],
+    awards: [],
+    publications: [],
     certificates: [],
     languages: [],
     profiles: [],
@@ -91,6 +97,8 @@ function buildIdMap(cms: CmsResume): CmsIdMap {
     interests: (cms.interests ?? []).map((x) => x.id),
     volunteer: (cms.volunteer ?? []).map((x) => x.id),
     projects: (cms.projects ?? []).map((x) => x.id),
+    awards: (cms.awards ?? []).map((x) => x.id),
+    publications: (cms.publications ?? []).map((x) => x.id),
     certificates: (cms.certificates ?? []).map((x) => x.id),
     languages: (cms.resumeLanguages ?? []).map((x) => x.id),
     profiles: (cms.basicInformation?.profiles ?? []).map((x) => x.id),
@@ -105,6 +113,8 @@ function cloneIdMap(map: CmsIdMap): CmsIdMap {
     interests: [...map.interests],
     volunteer: [...map.volunteer],
     projects: [...map.projects],
+    awards: [...map.awards],
+    publications: [...map.publications],
     certificates: [...map.certificates],
     languages: [...map.languages],
     profiles: [...map.profiles],

@@ -86,6 +86,22 @@ export interface JsonResumeProject {
   type?: string;
 }
 
+export interface JsonResumeAward {
+  title?: string;
+  date?: string;
+  awarder?: string;
+  summary?: string;
+  url?: string;
+}
+
+export interface JsonResumePublication {
+  name?: string;
+  publisher?: string;
+  releaseDate?: string;
+  url?: string;
+  summary?: string;
+}
+
 export interface JsonResumeCertificate {
   name?: string;
   date?: string;
@@ -112,6 +128,8 @@ export interface JsonResume {
   interests?: JsonResumeInterest[];
   volunteer?: JsonResumeVolunteer[];
   projects?: JsonResumeProject[];
+  awards?: JsonResumeAward[];
+  publications?: JsonResumePublication[];
   certificates?: JsonResumeCertificate[];
   languages?: JsonResumeLanguage[];
   references?: JsonResumeReference[];
@@ -229,6 +247,24 @@ export interface CmsProject {
   url?: string;
 }
 
+export interface CmsAward {
+  id: string;
+  title?: string;
+  date?: string;
+  awarder?: string;
+  summary?: string;
+  url?: string;
+}
+
+export interface CmsPublication {
+  id: string;
+  name?: string;
+  publisher?: string;
+  releaseDate?: string;
+  url?: string;
+  summary?: string;
+}
+
 export interface CmsCertification {
   id: string;
   title?: string;
@@ -254,6 +290,8 @@ export interface CmsResume {
   interests?: CmsInterest[];
   volunteer?: CmsVolunteer[];
   projects?: CmsProject[];
+  awards?: CmsAward[];
+  publications?: CmsPublication[];
   certificates?: CmsCertification[];
   resumeLanguages?: CmsResumeLanguage[];
 }

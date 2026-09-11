@@ -7,10 +7,12 @@ import { WorkForm } from "@/editor/sections/WorkForm"
 import { EducationForm } from "@/editor/sections/EducationForm"
 import { SkillsForm } from "@/editor/sections/SkillsForm"
 import {
+  AwardsForm,
   CertificatesForm,
   InterestsForm,
   LanguagesForm,
   ProjectsForm,
+  PublicationsForm,
   VolunteerForm,
 } from "@/editor/sections/SimpleForms"
 
@@ -29,6 +31,8 @@ const TABS: [Tab, ...Tab[]] = [
   { id: "volunteer", label: "Volunteer", component: VolunteerForm },
   { id: "projects", label: "Projects", component: ProjectsForm },
   { id: "certificates", label: "Certificates", component: CertificatesForm },
+  { id: "awards", label: "Awards", component: AwardsForm },
+  { id: "publications", label: "Publications", component: PublicationsForm },
   { id: "languages", label: "Languages", component: LanguagesForm },
 ]
 

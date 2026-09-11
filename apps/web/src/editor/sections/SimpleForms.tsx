@@ -1,8 +1,10 @@
 import type {
+  JsonResumeAward,
   JsonResumeCertificate,
   JsonResumeInterest,
   JsonResumeLanguage,
   JsonResumeProject,
+  JsonResumePublication,
   JsonResumeVolunteer,
 } from "@resume-studio/transformer"
 import { FLUENCY_LEVELS } from "@resume-studio/transformer"
@@ -316,6 +318,134 @@ export function CertificatesForm() {
               type="url"
               value={item.url}
               onChange={(value) => update(index, { ...item, url: value })}
+            />
+          </div>
+
+          <TextAreaField
+            label="Summary"
+            value={item.summary}
+            onChange={(value) => update(index, { ...item, summary: value })}
+          />
+        </>
+      )}
+    />
+  )
+}
+
+export function AwardsForm() {
+  const items = useEditorStore((state) => state.resume.awards) ?? EMPTY
+  const patchResume = useEditorStore((state) => state.patchResume)
+  const addItem = useEditorStore((state) => state.addItem)
+  const removeItem = useEditorStore((state) => state.removeItem)
+
+  const update = (index: number, next: JsonResumeAward) =>
+    patchResume((resume) => ({
+      ...resume,
+      awards: (resume.awards ?? []).map((item, itemIndex) =>
+        itemIndex === index ? next : item
+      ),
+    }))
+
+  return (
+    <List
+      items={items}
+      empty="No awards yet."
+      addLabel="Add award"
+      onAdd={() => addItem("awards", {} as JsonResumeAward)}
+      onRemove={(index) => removeItem("awards", index)}
+      title={(item, index) => item.title || `Award #${index + 1}`}
+      render={(item, index) => (
+        <>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <TextField
+              label="Title"
+              value={item.title}
+              onChange={(value) => update(index, { ...item, title: value })}
+            />
+
+            <TextField
+              label="Awarder"
+              value={item.awarder}
+              onChange={(value) => update(index, { ...item, awarder: value })}
+            />
+
+            <TextField
+              label="URL"
+              type="url"
+              value={item.url}
+              onChange={(value) => update(index, { ...item, url: value })}
+            />
+
+            <DatePickerSimple
+              label="Date"
+              value={item.date}
+              placeholder="YYYY-MM-DD"
+              onChange={(value) => update(index, { ...item, date: value })}
+            />
+          </div>
+
+          <TextAreaField
+            label="Summary"
+            value={item.summary}
+            onChange={(value) => update(index, { ...item, summary: value })}
+          />
+        </>
+      )}
+    />
+  )
+}
+
+export function PublicationsForm() {
+  const items = useEditorStore((state) => state.resume.publications) ?? EMPTY
+  const patchResume = useEditorStore((state) => state.patchResume)
+  const addItem = useEditorStore((state) => state.addItem)
+  const removeItem = useEditorStore((state) => state.removeItem)
+
+  const update = (index: number, next: JsonResumePublication) =>
+    patchResume((resume) => ({
+      ...resume,
+      publications: (resume.publications ?? []).map((item, itemIndex) =>
+        itemIndex === index ? next : item
+      ),
+    }))
+
+  return (
+    <List
+      items={items}
+      empty="No publications yet."
+      addLabel="Add publication"
+      onAdd={() => addItem("publications", {} as JsonResumePublication)}
+      onRemove={(index) => removeItem("publications", index)}
+      title={(item, index) => item.name || `Publication #${index + 1}`}
+      render={(item, index) => (
+        <>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <TextField
+              label="Name"
+              value={item.name}
+              onChange={(value) => update(index, { ...item, name: value })}
+            />
+
+            <TextField
+              label="Publisher"
+              value={item.publisher}
+              onChange={(value) => update(index, { ...item, publisher: value })}
+            />
+
+            <TextField
+              label="URL"
+              type="url"
+              value={item.url}
+              onChange={(value) => update(index, { ...item, url: value })}
+            />
+
+            <DatePickerSimple
+              label="Release Date"
+              value={item.releaseDate}
+              placeholder="YYYY-MM-DD"
+              onChange={(value) =>
+                update(index, { ...item, releaseDate: value })
+              }
             />
           </div>
 

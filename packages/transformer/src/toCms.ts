@@ -27,12 +27,14 @@ import type {
   CmsHighlight,
   CmsResume,
   JsonResume,
+  JsonResumeAward,
   JsonResumeBasics,
   JsonResumeCertificate,
   JsonResumeEducation,
   JsonResumeInterest,
   JsonResumeLanguage,
   JsonResumeProject,
+  JsonResumePublication,
   JsonResumeSkill,
   JsonResumeVolunteer,
   JsonResumeWork,
@@ -66,6 +68,12 @@ export type MutationOp =
   | { kind: 'updateResumeProject'; id: string; data: Record<string, unknown> }
   | { kind: 'createResumeProject'; data: Record<string, unknown> }
   | { kind: 'deleteResumeProject'; id: string }
+  | { kind: 'updateResumeAward'; id: string; data: Record<string, unknown> }
+  | { kind: 'createResumeAward'; data: Record<string, unknown> }
+  | { kind: 'deleteResumeAward'; id: string }
+  | { kind: 'updateResumePublication'; id: string; data: Record<string, unknown> }
+  | { kind: 'createResumePublication'; data: Record<string, unknown> }
+  | { kind: 'deleteResumePublication'; id: string }
   | { kind: 'updateResumeLanguage'; id: string; data: Record<string, unknown> }
   | { kind: 'createResumeLanguage'; data: Record<string, unknown> }
   | { kind: 'deleteResumeLanguage'; id: string }
@@ -98,6 +106,8 @@ export interface CmsIdMap {
   interests: Array<string | null>;
   volunteer: Array<string | null>;
   projects: Array<string | null>;
+  awards: Array<string | null>;
+  publications: Array<string | null>;
   certificates: Array<string | null>;
   languages: Array<string | null>;
   profiles: Array<string | null>;
@@ -156,6 +166,20 @@ export function toCms(input: ToCmsInput): MutationPlan {
     createKind: 'createResumeProject',
     updateKind: 'updateResumeProject',
     deleteKind: 'deleteResumeProject',
+  });
+  diffSection(input, ops, errors, {
+    section: 'awards',
+    encode: encodeAward,
+    createKind: 'createResumeAward',
+    updateKind: 'updateResumeAward',
+    deleteKind: 'deleteResumeAward',
+  });
+  diffSection(input, ops, errors, {
+    section: 'publications',
+    encode: encodePublication,
+    createKind: 'createResumePublication',
+    updateKind: 'updateResumePublication',
+    deleteKind: 'deleteResumePublication',
   });
   diffSection(input, ops, errors, {
     section: 'languages',
@@ -447,6 +471,52 @@ function encodeProject(
   const curH = encodeList(c.highlights);
   const origH = encodeList(o?.highlights);
   if (isCreate || curH !== origH) data.highlights = curH;
+  if (isCreate) data.resume = { connect: { id: resumeId } };
+  return data;
+}
+
+function encodeAward(
+  c: JsonResumeAward,
+  o: JsonResumeAward | undefined,
+  isCreate: boolean,
+  errors: ValidationError[],
+  path: string,
+  resumeId: string,
+): Record<string, unknown> | null {
+  const data: Record<string, unknown> = {};
+  for (const key of ['title', 'awarder', 'summary', 'url'] as const) {
+    if (isCreate || c[key] !== o?.[key]) data[key] = c[key];
+  }
+  if (isCreate || c.date !== o?.date) {
+    if (!isValidDateInput(c.date)) {
+      errors.push({ path: `${path}.date`, message: `Invalid date: ${c.date}` });
+    } else {
+      data.date = encodeDate(c.date);
+    }
+  }
+  if (isCreate) data.resume = { connect: { id: resumeId } };
+  return data;
+}
+
+function encodePublication(
+  c: JsonResumePublication,
+  o: JsonResumePublication | undefined,
+  isCreate: boolean,
+  errors: ValidationError[],
+  path: string,
+  resumeId: string,
+): Record<string, unknown> | null {
+  const data: Record<string, unknown> = {};
+  for (const key of ['name', 'publisher', 'summary', 'url'] as const) {
+    if (isCreate || c[key] !== o?.[key]) data[key] = c[key];
+  }
+  if (isCreate || c.releaseDate !== o?.releaseDate) {
+    if (!isValidDateInput(c.releaseDate)) {
+      errors.push({ path: `${path}.releaseDate`, message: `Invalid date: ${c.releaseDate}` });
+    } else {
+      data.releaseDate = encodeDate(c.releaseDate);
+    }
+  }
   if (isCreate) data.resume = { connect: { id: resumeId } };
   return data;
 }

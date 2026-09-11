@@ -1,4 +1,5 @@
 import {
+  CREATE_RESUME_AWARD,
   CREATE_RESUME_EDUCATION,
   CREATE_RESUME_HIGHLIGHT,
   CREATE_RESUME_INTEREST,
@@ -6,9 +7,11 @@ import {
   CREATE_RESUME_LOCATION,
   CREATE_RESUME_PROFILE,
   CREATE_RESUME_PROJECT,
+  CREATE_RESUME_PUBLICATION,
   CREATE_RESUME_SKILL,
   CREATE_RESUME_VOLUNTEER,
   CREATE_RESUME_WORK,
+  DELETE_RESUME_AWARD,
   DELETE_RESUME_EDUCATION,
   DELETE_RESUME_HIGHLIGHT,
   DELETE_RESUME_INTEREST,
@@ -16,11 +19,13 @@ import {
   DELETE_RESUME_LOCATION,
   DELETE_RESUME_PROFILE,
   DELETE_RESUME_PROJECT,
+  DELETE_RESUME_PUBLICATION,
   DELETE_RESUME_SKILL,
   DELETE_RESUME_VOLUNTEER,
   DELETE_RESUME_WORK,
   UPDATE_CERTIFICATION,
   UPDATE_RESUME,
+  UPDATE_RESUME_AWARD,
   UPDATE_RESUME_BASIC_INFORMATION,
   UPDATE_RESUME_EDUCATION,
   UPDATE_RESUME_HIGHLIGHT,
@@ -29,6 +34,7 @@ import {
   UPDATE_RESUME_LOCATION,
   UPDATE_RESUME_PROFILE,
   UPDATE_RESUME_PROJECT,
+  UPDATE_RESUME_PUBLICATION,
   UPDATE_RESUME_SKILL,
   UPDATE_RESUME_VOLUNTEER,
   UPDATE_RESUME_WORK,
@@ -164,6 +170,26 @@ async function runOne(op: MutationOp): Promise<void> {
       return;
     case 'deleteResumeProject':
       await gqlClient.request(DELETE_RESUME_PROJECT, { id: op.id });
+      return;
+
+    case 'createResumeAward':
+      await gqlClient.request(CREATE_RESUME_AWARD, { data: op.data });
+      return;
+    case 'updateResumeAward':
+      await gqlClient.request(UPDATE_RESUME_AWARD, { id: op.id, data: op.data });
+      return;
+    case 'deleteResumeAward':
+      await gqlClient.request(DELETE_RESUME_AWARD, { id: op.id });
+      return;
+
+    case 'createResumePublication':
+      await gqlClient.request(CREATE_RESUME_PUBLICATION, { data: op.data });
+      return;
+    case 'updateResumePublication':
+      await gqlClient.request(UPDATE_RESUME_PUBLICATION, { id: op.id, data: op.data });
+      return;
+    case 'deleteResumePublication':
+      await gqlClient.request(DELETE_RESUME_PUBLICATION, { id: op.id });
       return;
 
     case 'createResumeLanguage':

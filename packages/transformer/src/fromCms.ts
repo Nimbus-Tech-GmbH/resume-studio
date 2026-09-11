@@ -55,6 +55,20 @@ export function fromCms(cms: CmsResume): JsonResume {
     interests: (cms.interests ?? []).map(mapInterest),
     volunteer: (cms.volunteer ?? []).map(mapVolunteer),
     projects: (cms.projects ?? []).map(mapProject),
+    awards: (cms.awards ?? []).map((a) => ({
+      title: a.title,
+      date: decodeDate(a.date),
+      awarder: a.awarder,
+      summary: a.summary,
+      url: a.url,
+    })),
+    publications: (cms.publications ?? []).map((p) => ({
+      name: p.name,
+      publisher: p.publisher,
+      releaseDate: decodeDate(p.releaseDate),
+      url: p.url,
+      summary: p.summary,
+    })),
     certificates: (cms.certificates ?? []).map((c) => ({
       name: c.title,
       url: c.link,

@@ -376,6 +376,38 @@ export const DELETE_RESUME_LANGUAGE = /* GraphQL */ `
   }
 `;
 
+export const CREATE_RESUME_AWARD = /* GraphQL */ `
+  mutation CreateResumeAward($data: ResumeAwardCreateInput!) {
+    createResumeAward(data: $data) { id }
+  }
+`;
+export const UPDATE_RESUME_AWARD = /* GraphQL */ `
+  mutation UpdateResumeAward($id: ID!, $data: ResumeAwardUpdateInput!) {
+    updateResumeAward(where: { id: $id }, data: $data) { id }
+  }
+`;
+export const DELETE_RESUME_AWARD = /* GraphQL */ `
+  mutation DeleteResumeAward($id: ID!) {
+    deleteResumeAward(where: { id: $id }) { id }
+  }
+`;
+
+export const CREATE_RESUME_PUBLICATION = /* GraphQL */ `
+  mutation CreateResumePublication($data: ResumePublicationCreateInput!) {
+    createResumePublication(data: $data) { id }
+  }
+`;
+export const UPDATE_RESUME_PUBLICATION = /* GraphQL */ `
+  mutation UpdateResumePublication($id: ID!, $data: ResumePublicationUpdateInput!) {
+    updateResumePublication(where: { id: $id }, data: $data) { id }
+  }
+`;
+export const DELETE_RESUME_PUBLICATION = /* GraphQL */ `
+  mutation DeleteResumePublication($id: ID!) {
+    deleteResumePublication(where: { id: $id }) { id }
+  }
+`;
+
 export const CREATE_RESUME_PROFILE = /* GraphQL */ `
   mutation CreateResumeProfile($data: ResumeProfileCreateInput!) {
     createResumeProfile(data: $data) { id }
