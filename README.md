@@ -1,8 +1,9 @@
 # resume-studio
 
-<p align="center">
-  <img src="apps/web/public/logo.png" alt="resume-studio logo" width="200" />
-</p>
+<div align="flex flex-row items-center justify-center">
+  <img src="apps/web/public/logo.png" alt="resume-studio logo" width="50" />
+  <h2>resume-studio</h2>
+</div>
 
 Edit your resume. See it live. Ship it.
 
