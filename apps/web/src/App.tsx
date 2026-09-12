@@ -8,7 +8,7 @@ import { useMediaQuery } from "@/hooks/use-media-query"
 import { PreviewFrame } from "@/preview/PreviewFrame"
 import { EditorPane } from "@/editor/EditorPane"
 import { SaveButton } from "@/editor/SaveButton"
-import { PrintButton } from "@/editor/PrintButton"
+import { ExportMenu } from "@/editor/ExportMenu"
 import { ValidationBanner } from "@/editor/ValidationBanner"
 import { ResumePicker } from "@/editor/ResumePicker"
 import { StartupDialog } from "@/components/StartupDialog"
@@ -200,7 +200,7 @@ function Header({ activeTheme, theme, setTheme }: HeaderProps) {
       <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
         <ThemePicker activeTheme={activeTheme} theme={theme} setTheme={setTheme} />
         <Separator orientation="vertical" />
-        <PrintButton />
+        <ExportMenu />
         <SaveButton />
       </div>
     </header>
