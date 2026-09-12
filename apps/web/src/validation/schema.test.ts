@@ -100,6 +100,11 @@ describe('validateResume', () => {
       languages: [
         { language: 'English', fluency: 'Elementary' },
         { language: 'German', fluency: 'Native' },
+        { language: 'French', fluency: 'Grundkenntnisse' },
+        { language: 'Spanish', fluency: 'Arbeitssprachkenntnisse' },
+        { language: 'Italian', fluency: 'Berufliche Arbeitskenntnisse' },
+        { language: 'Portuguese', fluency: 'Vollständige berufliche Kenntnisse' },
+        { language: 'Japanese', fluency: 'Muttersprache' },
       ],
     };
     expect(validateResume(resume)).toEqual([]);
