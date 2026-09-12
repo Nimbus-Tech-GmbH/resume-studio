@@ -996,10 +996,15 @@ export const lists: Record<string, ReturnType<typeof list>> = {
       fluency: select({
         options: [
           { label: "Elementary", value: "Elementary" },
+          { label: "Grundkenntnisse", value: "Grundkenntnisse" },
           { label: "Limited Working", value: "Limited Working" },
+          { label: "Arbeitssprachkenntnisse", value: "Arbeitssprachkenntnisse" },
           { label: "Professional Working", value: "Professional Working" },
+          { label: "Berufliche Arbeitskenntnisse", value: "Berufliche Arbeitskenntnisse" },
           { label: "Full Professional", value: "Full Professional" },
+          { label: "Vollständige berufliche Kenntnisse", value: "Vollständige berufliche Kenntnisse" },
           { label: "Native", value: "Native" },
+          { label: "Muttersprache", value: "Muttersprache" },
         ],
       }),
       uiLanguage: relationship({ ref: "Language", many: false }),

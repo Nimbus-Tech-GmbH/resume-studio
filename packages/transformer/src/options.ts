@@ -16,10 +16,15 @@ export const SKILL_LEVELS = [
 // ResumeLanguage.fluency
 export const FLUENCY_LEVELS = [
   'Elementary',
+  'Grundkenntnisse',
   'Limited Working',
+  'Arbeitssprachkenntnisse',
   'Professional Working',
+  'Berufliche Arbeitskenntnisse',
   'Full Professional',
+  'Vollständige berufliche Kenntnisse',
   'Native',
+  'Muttersprache',
 ] as const;
 
 // ResumeProfile.network (profiles are not yet editable in the editor,
