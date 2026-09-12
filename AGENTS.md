@@ -212,3 +212,7 @@ These agent skills are installed globally. Use the `skill` tool to load full ins
 - `docs/DOMAIN_RELATIONSHIP.md` — resume domain model and entity relationships
 - `docs/CONTRIBUTING.md` — workflow, conventions, code review checklist
 - `docs/LOCAL_DEV.md` — setup, running, troubleshooting
+
+## Important considerations
+
+Always delegate test runs or any terminal tasks to a sub-agent if the terminal tool either has a persistent issue or fails
