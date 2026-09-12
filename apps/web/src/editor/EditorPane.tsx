@@ -53,7 +53,7 @@ export function EditorPane() {
 
       <ScrollArea className="min-h-0 flex-1">
         {TABS.map((tab) => (
-          <TabsContent key={tab.id} value={tab.id} className="mt-0">
+          <TabsContent key={tab.id} value={tab.id} className="m-4">
             <tab.component />
           </TabsContent>
         ))}
