@@ -5,8 +5,8 @@
  * (as of milestone 3). Notable divergences from earlier drafts:
  *   - No `order` field anywhere. Reorder is not persistable in MVP.
  *   - `ResumeBasicInformation.location` is a relation, not flat scalars.
- *   - `Resume.certificates` uses `Certification { title, description, link }`
- *     — no `date` / `issuer`.
+ *   - `Resume.resumeCertifications` uses a join table with
+ *     `Certification { title, description, link }` — no `date` / `issuer`.
  *   - `Resume.resumeLanguages` (not `languages`) holds spoken languages.
  *   - `Resume.language` is a `Language` relation for the UI/i18n code.
  */
@@ -272,6 +272,12 @@ export interface CmsCertification {
   link?: string;
 }
 
+export interface CmsResumeCertification {
+  id: string;
+  credentialUrl?: string;
+  certification?: CmsCertification;
+}
+
 export interface CmsResumeLanguage {
   id: string;
   language?: string;
@@ -292,6 +298,6 @@ export interface CmsResume {
   projects?: CmsProject[];
   awards?: CmsAward[];
   publications?: CmsPublication[];
-  certificates?: CmsCertification[];
+  resumeCertifications?: CmsResumeCertification[];
   resumeLanguages?: CmsResumeLanguage[];
 }

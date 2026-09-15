@@ -147,7 +147,12 @@ describe('fromCms deterministic tests', () => {
   it('maps certificates with field renames', () => {
     const cms: CmsResume = {
       id: 'r1',
-      certificates: [{ id: 'c1', title: 'AWS SAA', description: 'Cloud cert', link: 'https://aws' }],
+      resumeCertifications: [
+        {
+          id: 'rc1',
+          certification: { id: 'c1', title: 'AWS SAA', description: 'Cloud cert', link: 'https://aws' },
+        },
+      ],
     };
     const json = fromCms(cms);
     expect(json.certificates).toEqual([{ name: 'AWS SAA', summary: 'Cloud cert', url: 'https://aws' }]);

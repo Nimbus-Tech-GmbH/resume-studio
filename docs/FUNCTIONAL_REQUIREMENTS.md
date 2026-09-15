@@ -233,9 +233,9 @@ produces a typed mutation plan, executes sequentially against the CMS.
 - Existing row: encode fields, emit update only if payload non-empty.
 - Work highlights: positional matching against `cmsWork.highlights`;
   create/update/delete `ResumeHighlight` ops independently of the work row.
-- Certificates: shared list — creates/deletes go through ONE
-  `updateResume { certificates: { create/disconnect } }` op; edits via
-  `updateCertification`.
+- Certificates: shared list via `ResumeCertification` join table — creates/deletes go through ONE
+  `updateResume { resumeCertifications: { create/disconnect } }` op; edits via
+  `updateCertification` using `Certification.id`.
 - Location: new rows create via `createResumeLocation` with
   `basicInformation: { connect }`; cleared locations emit
   `deleteResumeLocation`.

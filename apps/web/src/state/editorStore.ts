@@ -101,7 +101,7 @@ function buildIdMap(cms: CmsResume): CmsIdMap {
     projects: (cms.projects ?? []).map((x) => x.id),
     awards: (cms.awards ?? []).map((x) => x.id),
     publications: (cms.publications ?? []).map((x) => x.id),
-    certificates: (cms.certificates ?? []).map((x) => x.id),
+    certificates: (cms.resumeCertifications ?? []).map((x) => x.id),
     languages: (cms.resumeLanguages ?? []).map((x) => x.id),
     profiles: (cms.basicInformation?.profiles ?? []).map((x) => x.id),
   };

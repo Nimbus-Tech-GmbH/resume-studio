@@ -69,10 +69,10 @@ export function fromCms(cms: CmsResume): JsonResume {
       url: p.url,
       summary: p.summary,
     })),
-    certificates: (cms.certificates ?? []).map((c) => ({
-      name: c.title,
-      url: c.link,
-      summary: c.description,
+    certificates: (cms.resumeCertifications ?? []).map((rc) => ({
+      name: rc.certification?.title,
+      url: rc.certification?.link,
+      summary: rc.certification?.description,
     })),
     languages: (cms.resumeLanguages ?? []).map((l) => ({
       language: l.language,

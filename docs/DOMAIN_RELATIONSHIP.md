@@ -29,7 +29,7 @@ The schema separates repeatable concepts into dedicated entities rather than emb
 | `volunteer` | `ResumeVolunteer` | Many | Volunteer roles and community work |
 | `education` | `ResumeEducation` | Many | Academic and training records |
 | `awards` | `ResumeAward` | Many | Awards, recognitions, and distinctions |
-| `certificates` | `Certification` | Many | Reusable certification records |
+| `certificates` | `ResumeCertification` → `Certification` | Many (via join table) | Reusable certification records accessed through join table |
 | `publications` | `ResumePublication` | Many | Published work |
 | `skills` | `ResumeSkill` | Many | Skill groups and keyword-based competencies |
 | `resumeLanguages` | `ResumeLanguage` | Many | Spoken or written language proficiency |
@@ -67,7 +67,8 @@ flowchart TB
     Resume -->|"volunteer · 0..*"| Volunteer
     Resume -->|"education · 0..*"| Education
     Resume -->|"awards · 0..*"| Award
-    Resume -->|"certificates · 0..*"| Certification
+    Resume -->|"resumeCertifications · 0..*"| ResumeCertification
+    ResumeCertification -->|"certification"| Certification
     Resume -->|"publications · 0..*"| Publication
     Resume -->|"skills · 0..*"| Skill
     Resume -->|"resumeLanguages · 0..*"| ResumeLanguage
@@ -192,7 +193,7 @@ The resume domain relies on shared entities to prevent duplication across CMS co
 | `Language` | Linked from `Resume` and most resume child records | Localizes content records through `label` and `value` |
 | `Image` | Used by basic information, work entries, certifications, and projects | Stores `src`, `alt`, dimensions, `fill`, and an optional `type` |
 | `Type` | Linked from `Image` | Classifies an image or media record |
-| `Certification` | Linked through `Resume.certificates` | Reusable credential entity also suitable for non-resume CMS sections |
+| `Certification` | Linked through `ResumeCertification` join table | Reusable credential entity also suitable for non-resume CMS sections |
 
 The root `Resume.language` establishes the intended document locale. Child-level language relationships allow selective override or separate localized versions of individual records. A consumer should normally query the root resume and its child content for a matching locale; where a child locale is absent, it may apply a documented fallback strategy to the root locale. The schema itself exposes no mandatory-field or fallback constraint for this behavior. 
 

@@ -100,11 +100,15 @@ export const RESUME_FIELDS = /* GraphQL */ `
       endDate
       url
     }
-    certificates {
+    resumeCertifications {
       id
-      title
-      description
-      link
+      credentialUrl
+      certification {
+        id
+        title
+        description
+        link
+      }
     }
     awards {
       id

@@ -292,7 +292,7 @@ Rule: `toCms(fromCms(x))` round-trips, modulo delimiter normalization to `✌�
 | `education[].courses` | same | same |
 | `work[].highlights: string[]` | `ResumeHighlight[]` relation rows | content-based matching via `Map<value, id>`; create/update/delete ops |
 | dates `YYYY-MM(-DD)` | ISO DateTime | `dateCodec`; invalid blocks save |
-| `certificates[]{name,url,summary}` | `Certification{title,link,description}` | rename map; shared global list (S4) |
+| `certificates[]{name,url,summary}` | `ResumeCertification` join table → `Certification{title,link,description}` | rename map; shared global list via join table (S4) |
 | `basics.image: string` | `Image` relation | read-only (A3/S2) |
 | skill `level`, language `fluency` | CMS `select` options | `options.ts` canonical lists |
 

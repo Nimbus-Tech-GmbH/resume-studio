@@ -173,9 +173,10 @@ or discovered. Cross-reference `TODO.md` for completed work.
 ### S4. `Certification` is a shared global list
 
 - **Where:** `schema.ts` L328 — no `resume` back-reference
-- **What:** Certifications are not owned by a Resume; create/delete goes
-  through `updateResume { certificates: { create / disconnect } }`. Two
-  resumes sharing a certification row edit the same underlying record.
+- **What:** Certifications are accessed via the `ResumeCertification` join table;
+  create/delete goes through `updateResume { resumeCertifications: { create / disconnect } }`.
+  Edits go through `updateCertification` using the `Certification.id`.
+  Two resumes sharing a certification row edit the same underlying record.
 - **Impact:** Cross-resume coupling; deleting a cert from one resume only
   disconnects it, but *editing* it changes it everywhere.
 - **Status:** By design in the CMS, but surprising behavior worth documenting.

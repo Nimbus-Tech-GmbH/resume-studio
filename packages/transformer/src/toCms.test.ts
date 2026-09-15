@@ -26,7 +26,7 @@ function baseCms(): CmsResume {
         ],
       },
     ],
-    certificates: [{ id: 'c1', title: 'AWS SAA', link: 'https://a', description: 'note' }],
+    resumeCertifications: [{ id: 'rc1', credentialUrl: undefined, certification: { id: 'c1', title: 'AWS SAA', link: 'https://a', description: 'note' } }],
     resumeLanguages: [{ id: 'l1', language: 'English', fluency: 'Native' }],
   };
 }
@@ -63,7 +63,7 @@ function baseIds(): CmsIdMap {
     projects: [],
     awards: [],
     publications: [],
-    certificates: ['c1'],
+    certificates: ['rc1'],
     languages: ['l1'],
     profiles: [],
   };
@@ -250,7 +250,7 @@ describe('toCms', () => {
     expect(plan.ops).toContainEqual({
       kind: 'updateResume',
       id: 'r1',
-      data: { certificates: { disconnect: [{ id: 'c1' }] } },
+      data: { resumeCertifications: { disconnect: [{ id: 'rc1' }] } },
     });
   });
 
@@ -264,14 +264,14 @@ describe('toCms', () => {
       ],
     };
     const input = makeInput({ current });
-    input.cmsIds = { ...input.cmsIds, certificates: ['c1', null] };
+    input.cmsIds = { ...input.cmsIds, certificates: ['rc1', null] };
     const plan = toCms(input);
     const op = plan.ops.find((o) => o.kind === 'updateResume');
     expect(op).toBeTruthy();
     if (op?.kind === 'updateResume') {
       expect(op.data).toEqual({
-        certificates: {
-          create: [{ title: 'K8s CKA', link: 'https://k', description: 's' }],
+        resumeCertifications: {
+          create: [{ credentialUrl: undefined, certification: { create: { title: 'K8s CKA', link: 'https://k', description: 's' } } }],
         },
       });
     }

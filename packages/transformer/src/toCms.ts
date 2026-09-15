@@ -6,17 +6,22 @@
  *   - basics.location scalars        → updateResumeLocation
  *   - list section field edits       → updateResumeXxx / updateCertification
  *   - list section create            → createResumeXxx (or updateResume for
- *                                       certificates via connect/create)
+ *                                       certificates via nested create on
+ *                                       resumeCertifications relation)
  *   - list section delete            → deleteResumeXxx (or updateResume for
- *                                       certificates via disconnect)
+ *                                       certificates via disconnect on
+ *                                       resumeCertifications relation)
  *   - work highlight CRUD            → createResumeHighlight,
  *                                       updateResumeHighlight,
  *                                       deleteResumeHighlight
  *
  * Constraints (see PLAN §10.2):
  *   - No `order` field on any list. Reorder is UI-only.
- *   - `Certification` is a shared list not owned by Resume; create/delete goes
- *     through `updateResume { certificates: { create / disconnect } }`.
+ *   - `Certification` is a shared list accessed via the `ResumeCertification`
+ *     join table; create/delete goes through
+ *     `updateResume { resumeCertifications: { create / disconnect } }`.
+ *   - Edits to existing certifications go through `updateCertification` using
+ *     the `Certification.id` (looked up from `originalCms.resumeCertifications`).
  *   - `Certification` has no `date` / `issuer`, so those are dropped.
  */
 
@@ -26,6 +31,7 @@ import { diffScalars } from './diff';
 import type {
   CmsHighlight,
   CmsResume,
+  CmsResumeCertification,
   JsonResume,
   JsonResumeAward,
   JsonResumeBasics,
@@ -555,6 +561,8 @@ function diffCertificates(input: ToCmsInput, ops: MutationOp[]): void {
   const original = input.original.certificates ?? [];
   const liveIds = input.cmsIds.certificates;
   const originalIds = input.originalCmsIds.certificates;
+  const originalCmsResumeCerts: CmsResumeCertification[] =
+    input.originalCms.resumeCertifications ?? [];
 
   const createDatas: Array<Record<string, unknown>> = [];
 
@@ -562,17 +570,27 @@ function diffCertificates(input: ToCmsInput, ops: MutationOp[]): void {
     const c = current[i]!;
     const id = liveIds[i];
     if (id === null || id === undefined) {
-      createDatas.push(encodeCertificate(c, undefined, true));
+      // New certificate: nested create via updateResume
+      createDatas.push({
+        credentialUrl: undefined,
+        certification: { create: encodeCertificate(c) },
+      });
       continue;
     }
+    // Existing row: find the matching original by ResumeCertification.id
     const origIdx = originalIds.indexOf(id);
     const o = origIdx >= 0 ? original[origIdx] : undefined;
-    const data = encodeCertificate(c, o, false);
+    const data = encodeCertificate(c, o);
     if (Object.keys(data).length > 0) {
-      ops.push({ kind: 'updateCertification', id, data });
+      // Look up Certification.id from the original CMS data
+      const certId = originalCmsResumeCerts[origIdx]?.certification?.id;
+      if (certId) {
+        ops.push({ kind: 'updateCertification', id: certId, data });
+      }
     }
   }
 
+  // Deletes: disconnect ResumeCertification rows
   const liveSet = new Set(liveIds.filter((x): x is string => x !== null));
   const disconnectIds = originalIds.filter(
     (id): id is string => id !== null && !liveSet.has(id),
@@ -587,21 +605,19 @@ function diffCertificates(input: ToCmsInput, ops: MutationOp[]): void {
     ops.push({
       kind: 'updateResume',
       id: input.resumeId,
-      data: { certificates: nested },
+      data: { resumeCertifications: nested },
     });
   }
 }
 
 function encodeCertificate(
   c: JsonResumeCertificate,
-  o: JsonResumeCertificate | undefined,
-  isCreate: boolean,
+  o?: JsonResumeCertificate,
 ): Record<string, unknown> {
   const data: Record<string, unknown> = {};
-  if (isCreate || c.name !== o?.name) data.title = c.name;
-  if (isCreate || c.url !== o?.url) data.link = c.url;
-  if (isCreate || c.summary !== o?.summary) data.description = c.summary;
-  // Certification has no date/issuer fields; silently dropped.
+  if (c.name !== o?.name) data.title = c.name;
+  if (c.url !== o?.url) data.link = c.url;
+  if (c.summary !== o?.summary) data.description = c.summary;
   return data;
 }
 

@@ -102,7 +102,7 @@ type MutationOp =
 
 **Special cases:**
 - `work.highlights` → separate `ResumeHighlight` row ops (create/update/delete), NOT nested in work update
-- `certificates` → shared global list; create/delete go through `updateResume { certificates: { create/disconnect } }`; edits via `updateCertification`
+- `certificates` → shared global list accessed via `ResumeCertification` join table; create/delete go through `updateResume { resumeCertifications: { create/disconnect } }`; edits via `updateCertification` using `Certification.id`
 - `basics.location` → separate `ResumeLocation` row ops
 - `basics.profiles` → separate `ResumeProfile` row ops
 - `basics.image` → relation payload `{ create: { src } }` or `{ disconnect: true }` (A3 — CMS-side unverified)
