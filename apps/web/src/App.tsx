@@ -1,12 +1,14 @@
 import { useState, type ReactNode } from "react"
 import { DEFAULT_THEME, THEMES, type ThemeId } from "@resume-studio/themes"
-import { Palette } from "lucide-react"
+import { Code, FormInput, Moon, Palette, Sun } from "lucide-react"
+import { useTheme } from "next-themes"
 
 import { useEditorStore } from "@/state/editorStore"
 import { useValidation } from "@/validation/useValidation"
 import { useMediaQuery } from "@/hooks/use-media-query"
 import { PreviewFrame } from "@/preview/PreviewFrame"
 import { EditorPane } from "@/editor/EditorPane"
+import { JsonEditor } from "@/editor/JsonEditor"
 import { SaveButton } from "@/editor/SaveButton"
 import { ExportMenu } from "@/editor/ExportMenu"
 import { ValidationBanner } from "@/editor/ValidationBanner"
@@ -76,10 +78,24 @@ function PanelShell({ header, children }: PanelShellProps) {
   )
 }
 
-function EditorPanel({ name, isEmpty }: { name: string; isEmpty: boolean }) {
+function EditorPanel({
+  name,
+  isEmpty,
+  viewMode,
+}: {
+  name: string
+  isEmpty: boolean
+  viewMode: ViewMode
+}) {
   return (
     <PanelShell header={<PanelHeader title={name} />}>
-      {isEmpty ? <EmptyPanel label="No resume selected" /> : <EditorPane />}
+      {isEmpty ? (
+        <EmptyPanel label="No resume selected" />
+      ) : viewMode === "json" ? (
+        <JsonEditor />
+      ) : (
+        <EditorPane />
+      )}
     </PanelShell>
   )
 }
@@ -117,6 +133,8 @@ const MOBILE_TABS = [
 
 type MobileTabId = (typeof MOBILE_TABS)[number]["id"]
 
+type ViewMode = "form" | "json"
+
 // ─── App ────────────────────────────────────────────────────────────────────
 
 const noop = () => {}
@@ -129,6 +147,7 @@ export function App() {
 
   const isDesktop = useMediaQuery("(min-width: 768px)")
   const [mobileTab, setMobileTab] = useState<MobileTabId>("editor")
+  const [viewMode, setViewMode] = useState<ViewMode>("form")
 
   const activeTheme =
     THEMES.find((c) => c.id === theme)?.label ?? DEFAULT_THEME
@@ -140,7 +159,7 @@ export function App() {
   return (
     <TooltipProvider>
       <div className="flex h-dvh flex-col overflow-hidden">
-        <Header activeTheme={activeTheme} theme={theme} setTheme={setTheme} />
+        <Header activeTheme={activeTheme} theme={theme} setTheme={setTheme} viewMode={viewMode} setViewMode={setViewMode} />
 
         <ValidationBanner />
 
@@ -149,7 +168,7 @@ export function App() {
             {isDesktop ? (
               <ResizablePanelGroup orientation="horizontal" autoSave="editor-layout">
                 <ResizablePanel defaultSize="50%" minSize="20%">
-                  <EditorPanel name={name} isEmpty={isEmpty} />
+                  <EditorPanel name={name} isEmpty={isEmpty} viewMode={viewMode} />
                 </ResizablePanel>
                 <ResizableHandle withHandle />
                 <ResizablePanel defaultSize="50%" minSize="20%">
@@ -161,6 +180,7 @@ export function App() {
                 mobileTab={mobileTab}
                 setMobileTab={setMobileTab}
                 name={name}
+                viewMode={viewMode}
                 {...panelProps}
               />
             )}
@@ -179,9 +199,13 @@ interface HeaderProps {
   activeTheme: string
   theme: ThemeId
   setTheme: (t: ThemeId) => void
+  viewMode: ViewMode
+  setViewMode: (m: ViewMode) => void
 }
 
-function Header({ activeTheme, theme, setTheme }: HeaderProps) {
+function Header({ activeTheme, theme, setTheme, viewMode, setViewMode }: HeaderProps) {
+  const { theme: uiTheme, setTheme: setUiTheme } = useTheme()
+
   return (
     <header className="flex shrink-0 items-center justify-between gap-2 px-3 py-2 sm:px-4">
       <div className="flex min-w-0 items-center gap-2">
@@ -195,9 +219,42 @@ function Header({ activeTheme, theme, setTheme }: HeaderProps) {
         <Separator orientation="vertical" />
 
         <ResumePicker />
+
+        <Separator orientation="vertical" />
+
+        <div className="flex items-center gap-0.5 rounded-md border p-0.5">
+          <Button
+            variant={viewMode === "json" ? "secondary" : "ghost"}
+            size="icon-xs"
+            onClick={() => setViewMode("json")}
+            title="JSON editor"
+          >
+            <Code className="size-3.5" />
+          </Button>
+          <Button
+            variant={viewMode === "form" ? "secondary" : "ghost"}
+            size="icon-xs"
+            onClick={() => setViewMode("form")}
+            title="Form editor"
+          >
+            <FormInput className="size-3.5" />
+          </Button>
+        </div>
       </div>
 
       <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          onClick={() => setUiTheme(uiTheme === "dark" ? "light" : "dark")}
+          title="Toggle theme"
+        >
+          {uiTheme === "dark" ? (
+            <Sun className="size-3.5" />
+          ) : (
+            <Moon className="size-3.5" />
+          )}
+        </Button>
         <ThemePicker activeTheme={activeTheme} theme={theme} setTheme={setTheme} />
         <Separator orientation="vertical" />
         <ExportMenu />
@@ -207,7 +264,7 @@ function Header({ activeTheme, theme, setTheme }: HeaderProps) {
   )
 }
 
-function ThemePicker({ activeTheme, theme, setTheme }: HeaderProps) {
+function ThemePicker({ activeTheme, theme, setTheme }: Omit<HeaderProps, "viewMode" | "setViewMode">) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -235,6 +292,7 @@ interface MobileLayoutProps {
   mobileTab: MobileTabId
   setMobileTab: (tab: MobileTabId) => void
   name: string
+  viewMode: ViewMode
   resume: ReturnType<typeof useEditorStore.getState>["resume"]
   theme: ThemeId
   pdfName: string
@@ -246,6 +304,7 @@ function MobileLayout({
   mobileTab,
   setMobileTab,
   name,
+  viewMode,
   resume,
   theme,
   pdfName,
@@ -268,7 +327,7 @@ function MobileLayout({
 
       <div className="min-h-0 flex-1">
         <TabsContent value="editor" className="h-full mt-0">
-          <EditorPanel name={name} isEmpty={isEmpty} />
+          <EditorPanel name={name} isEmpty={isEmpty} viewMode={viewMode} />
         </TabsContent>
         <TabsContent value="preview" className="h-full mt-0">
           <PreviewPanel

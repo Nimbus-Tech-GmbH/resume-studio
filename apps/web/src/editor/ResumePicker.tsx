@@ -1,10 +1,17 @@
 import { useEffect } from 'react';
 import { ClientError } from 'graphql-request';
-import { Plus } from 'lucide-react';
+import { CaretDownIcon, Plus } from '@phosphor-icons/react';
 import { fromCms } from '@resume-studio/transformer';
 import { useResume, useResumeList, useCreateResume } from '@/graphql/useResume';
 import { useEditorStore } from '@/state/editorStore';
-import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
@@ -67,24 +74,42 @@ export function ResumePicker() {
     );
   }
 
+  const currentResume = list?.find((r) => r.id === resumeId)
+  const currentLabel = currentResume
+    ? `${currentResume.title ?? currentResume.basicInformation?.name ?? resumeId} (${currentResume.language?.value ?? currentResume.language?.label ?? "—"})`
+    : "Select resume"
+
   return (
     <div className="flex items-center gap-2">
       <div className="relative">
-        <Select value={resumeId ?? ''} onValueChange={(v) => setResumeId(v || null)} disabled={resumeLoading}>
-          <SelectTrigger className="h-8 min-w-56" data-loading={resumeFetching || undefined}>
-            <SelectValue placeholder="Select resume" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectGroup>
-              <SelectLabel>Resumes</SelectLabel>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              className="min-w-56 justify-start"
+              disabled={resumeLoading}
+            >
+              <span className="truncate">{currentLabel}</span>
+              <CaretDownIcon className="ml-auto size-3.5 shrink-0 text-muted-foreground" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-56">
+            <DropdownMenuLabel>Resumes</DropdownMenuLabel>
+            <DropdownMenuRadioGroup
+              value={resumeId ?? ""}
+              onValueChange={(v) => setResumeId(v || null)}
+            >
               {list.map((r) => (
-                <SelectItem key={r.id} value={r.id}>
-                  {r.title ?? r.basicInformation?.name ?? r.id} ({r.language?.value ?? r.language?.label ?? '—'})
-                </SelectItem>
+                <DropdownMenuRadioItem key={r.id} value={r.id}>
+                  <span className="truncate">
+                    {r.title ?? r.basicInformation?.name ?? r.id} ({r.language?.value ?? r.language?.label ?? "—"})
+                  </span>
+                </DropdownMenuRadioItem>
               ))}
-            </SelectGroup>
-          </SelectContent>
-        </Select>
+            </DropdownMenuRadioGroup>
+          </DropdownMenuContent>
+        </DropdownMenu>
         {resumeFetching && (
           <span
             className="pointer-events-none absolute right-8 top-1/2 -translate-y-1/2"
