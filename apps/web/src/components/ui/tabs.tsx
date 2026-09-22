@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components -- shadcn component + variant exports */
 "use client"
 
 import * as React from "react"

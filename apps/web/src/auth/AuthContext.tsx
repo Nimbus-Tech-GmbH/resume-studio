@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components -- legitimate context provider + hook pattern */
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
 
 interface AuthState {

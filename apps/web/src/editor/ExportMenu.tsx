@@ -31,6 +31,7 @@ export function ExportMenu() {
     try {
       localStorage.setItem(key, payload);
     } catch {
+      // eslint-disable-next-line no-console -- intentional error before early return
       console.error('Failed to write print payload to localStorage');
       return;
     }
