@@ -8,7 +8,7 @@
 - **Guest mode + auth stub** — `AuthProvider` context with guest/authenticated toggle. Guest mode bypasses all GraphQL calls. Save button hidden for guests. ResumePicker shows only `+` button for guests. StartupDialog has guest phase (no resume list). Login/logout toggle button in header. Store resets cleanly on mode transition.
 - **EMPTY_RESUME template** — blank JSON Resume with empty basics, all list sections as `[]`, and `meta.title: "Untitled Resume"`. Used by guest mode and create-new-resume flow.
 - **Create new resume now local-first** — both StartupDialog and ResumePicker use `loadFromJson(EMPTY_RESUME)` instead of `CREATE_RESUME` mutation. No CMS round-trip until explicit Save.
-- **Deployment docs** — step-by-step guide for deploying web to Vercel and render service to Northflank (`docs/DEPLOYMENT.md`).
+- **Deployment docs** — step-by-step guide for deploying both web and render service to Northflank (`docs/DEPLOYMENT.md`).
 - **Awards & publications editor sections** — added `JsonResumeAward`/`JsonResumePublication` types, `AwardsForm`/`PublicationsForm` components, CMS CRUD ops, and validation rules. Sections registered in `EditorPane.tsx`.
 - **Validation migrated AJV → Zod** — replaced ajv/ajv-formats with Zod in `apps/web/src/validation/schema.ts`. Full field coverage including awards/publications. Updated tests.
 - **Import JSON Resume** — file picker in StartupDialog validates `.json` uploads against the Zod schema and populates the editor locally (no CMS creation). Validation errors displayed in dialog.

@@ -111,7 +111,7 @@ pnpm build          # tsc + vite production build
 pnpm codegen        # regenerate GraphQL types (needs Keystone reachable)
 ```
 
-See [docs/LOCAL_DEV.md](./docs/LOCAL_DEV.md) for full local setup, [docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md) for Vercel + Northflank deployment, [docs/CONTRIBUTING.md](./docs/CONTRIBUTING.md) for the contribution flow, [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) and [docs/FUNCTIONAL_REQUIREMENTS.md](./docs/FUNCTIONAL_REQUIREMENTS.md) for design + feature specs, [docs/KNOWN_ISSUES.md](./docs/KNOWN_ISSUES.md) for known issues, and `AGENTS.md` for AI agent onboarding.
+See [docs/LOCAL_DEV.md](./docs/LOCAL_DEV.md) for full local setup, [docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md) for Northflank deployment, [docs/CONTRIBUTING.md](./docs/CONTRIBUTING.md) for the contribution flow, [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) and [docs/FUNCTIONAL_REQUIREMENTS.md](./docs/FUNCTIONAL_REQUIREMENTS.md) for design + feature specs, [docs/KNOWN_ISSUES.md](./docs/KNOWN_ISSUES.md) for known issues, and `AGENTS.md` for AI agent onboarding.
 
 ## License
 
