@@ -1,9 +1,10 @@
 import { useState, type ReactNode } from "react"
 import { DEFAULT_THEME, THEMES, type ThemeId } from "@resume-studio/themes"
-import { Code, FormInput, Moon, Palette, Sun } from "lucide-react"
+import { Code, FormInput, LogOut, Moon, Palette, Sun, User } from "lucide-react"
 import { useTheme } from "next-themes"
 
-import { useEditorStore } from "@/state/editorStore"
+import { useAuth } from "@/auth/AuthContext"
+import { useEditorStore, EMPTY_RESUME } from "@/state/editorStore"
 import { useValidation } from "@/validation/useValidation"
 import { useMediaQuery } from "@/hooks/use-media-query"
 import { PreviewFrame } from "@/preview/PreviewFrame"
@@ -205,6 +206,17 @@ interface HeaderProps {
 
 function Header({ activeTheme, theme, setTheme, viewMode, setViewMode }: HeaderProps) {
   const { theme: uiTheme, setTheme: setUiTheme } = useTheme()
+  const { isAuthenticated, login, logout } = useAuth()
+  const loadFromJson = useEditorStore((s) => s.loadFromJson)
+
+  const handleAuthToggle = () => {
+    if (isAuthenticated) {
+      loadFromJson(EMPTY_RESUME)
+      logout()
+    } else {
+      login()
+    }
+  }
 
   return (
     <header className="flex shrink-0 items-center justify-between gap-2 px-3 py-2 sm:px-4">
@@ -259,6 +271,18 @@ function Header({ activeTheme, theme, setTheme, viewMode, setViewMode }: HeaderP
         <Separator orientation="vertical" />
         <ExportMenu />
         <SaveButton />
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          onClick={handleAuthToggle}
+          title={isAuthenticated ? "Logout" : "Login"}
+        >
+          {isAuthenticated ? (
+            <LogOut className="size-3.5" />
+          ) : (
+            <User className="size-3.5" />
+          )}
+        </Button>
       </div>
     </header>
   )
