@@ -4,7 +4,7 @@
 
 - Node ≥ 20.11 (`.nvmrc` pins 20.11.0). `nvm use` if you use nvm.
 - pnpm ≥ 9 (`corepack enable` will set it up automatically).
-- The Keystone CMS from `nt-keystone-cms` running locally.
+- The Keystone CMS from `nt-keystone-cms` running locally (only needed for authenticated mode).
 
 ## First-time setup
 
@@ -14,6 +14,21 @@ cp .env.example .env
 ```
 
 Edit `.env` if your Keystone or render endpoints differ from defaults.
+
+### Guest mode (no Keystone needed)
+
+**Guest mode** works without Keystone running. No GraphQL calls are made.
+You can create and import resumes locally, preview them via the render
+service, and export as JSON/PDF. Data is session-only (lost on browser close).
+
+To use guest mode, just start the dev server and click the `+` button or
+"Create New Resume" in the startup dialog.
+
+### Authenticated mode (requires Keystone)
+
+For full CMS access (load/edit/save existing resumes), you need Keystone
+running. Click the login button (user icon) in the header to switch to
+authenticated mode.
 
 ### Keystone CORS
 

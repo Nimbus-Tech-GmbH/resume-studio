@@ -8,12 +8,13 @@ Instructions for AI agents working on this codebase. Read this first.
 
 ```
 Browser (React SPA, port 5173)
-  ├── GraphQL ──→ Keystone CMS (external, port 3000, /api/graphql)
+  ├── AuthProvider (guest / authenticated toggle)
+  ├── GraphQL ──→ Keystone CMS (external, port 3000, /api/graphql)  [gated by isAuthenticated]
   └── POST /render ──→ Render Service (Fastify, port 8787, localhost only)
 ```
 
 - **Keystone CMS** = source of truth for ALL resume data. Lives in separate repo `nt-keystone-cms`. This repo mirrors its schema (`schema.ts`, `schema.graphql`) as snapshots.
-- **Web** = editor UI. Never talks to DB directly. All persistence goes through GraphQL mutations.
+- **Web** = editor UI. Never talks to DB directly. All persistence goes through GraphQL mutations. Guest mode bypasses all GraphQL calls — create/import/preview/export work locally.
 - **Render service** = stateless theme renderer. No auth yet (A6). Must stay localhost.
 
 ## Monorepo layout
@@ -38,13 +39,14 @@ Dependency direction: `web → transformer ← render-service`, `web → graphql
 
 | File | What it does |
 |---|---|
+| `apps/web/src/auth/AuthContext.tsx` | AuthProvider + useAuth hook (guest/authenticated toggle) |
 | `packages/transformer/src/types.ts` | `JsonResume*` (editor) + `Cms*` (CMS) interfaces |
 | `packages/transformer/src/fromCms.ts` | CMS → JSON Resume (load) |
 | `packages/transformer/src/toCms.ts` | JSON Resume diff → `MutationOp[]` (save planner) |
 | `packages/graphql-client/src/operations.ts` | All GraphQL documents (queries + mutations) |
 | `apps/web/src/graphql/executeSave.ts` | Runs `MutationOp[]` against CMS sequentially |
-| `apps/web/src/state/editorStore.ts` | Zustand store — single source of client truth |
-| `apps/web/src/editor/SaveButton.tsx` | Staleness check → plan → execute pipeline |
+| `apps/web/src/state/editorStore.ts` | Zustand store — single source of client truth; `EMPTY_RESUME` template |
+| `apps/web/src/editor/SaveButton.tsx` | Staleness check → plan → execute pipeline; hidden for guests |
 | `apps/web/src/validation/schema.ts` | zod schema mirroring CMS validations |
 | `schema.graphql` | Keystone schema snapshot (read-only reference) |
 
@@ -53,6 +55,13 @@ Dependency direction: `web → transformer ← render-service`, `web → graphql
 ### Load
 ```
 ResumePicker → useResume(id) → fromCms(cms) → loadFromCms({ json, cms })
+```
+
+### Load (guest mode / local create / import)
+```
+StartupDialog/ResumePicker → loadFromJson(EMPTY_RESUME) or loadFromJson(importedJson)
+  → store populated locally, resumeId = null, originalCms = null
+  → No GraphQL calls. Preview/export/print work. Save button hidden.
 ```
 
 ### Edit
@@ -77,6 +86,7 @@ SaveButton onClick:
 2. `cmsIds[section][i] === null` → row added locally → save emits create
 3. ID in `originalCmsIds` but absent from `cmsIds` → emit delete
 4. `loadFromCms` resets everything atomically
+5. `loadFromJson` populates the store for local imports/creates — `resumeId = null`, `originalCms = null`, all `cmsIds` are null
 
 ## The mutation pipeline (how saves work)
 

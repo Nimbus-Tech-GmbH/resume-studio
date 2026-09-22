@@ -9,16 +9,18 @@ Edit your resume. See it live. Ship it.
 
 Real-time resume editor web app. Loads resume data from the Keystone CMS GraphQL API, renders live previews via multiple [JSON Resume](https://jsonresume.org/) themes, and persists changes on explicit **Save**.
 
-> **Status:** MVP feature-complete (local-only). Auth + public deploy = follow-up phase.
+> **Status:** Guest mode available (no auth required). Authenticated mode (Cognito) = follow-up phase.
 
 ## Features
 
-- Startup dialog — on launch, shows existing resumes as selectable cards or prompts to create a new one. Fetching/empty/error states handled gracefully.
-- Create new resumes from the header `+` button or the startup dialog — creates via `CREATE_RESUME` mutation and loads immediately.
+- **Guest mode** — try the editor immediately without signing in. Create and import resumes locally, preview and export freely. No data is saved to the CMS.
+- **Authenticated mode** — sign in to load existing resumes from the CMS, edit, and save. Create new resumes locally first, then persist on Save.
+- Startup dialog — on launch, shows existing resumes as selectable cards (authenticated) or prompts to create/import (guest). Fetching/empty/error/guest states handled gracefully.
+- Create new resumes from the header `+` button or the startup dialog — populates the editor locally with a blank template. No CMS round-trip until you Save.
 - Edit any JSON Resume section: basics, work (with highlights), education, skills, interests, volunteer, projects, certificates, languages, awards, publications.
 - Live preview updates 300 ms after last keystroke, in a sandboxed iframe — with skeleton/overlay loading states so edits never flash blank.
 - Loading states throughout via shadcn `Skeleton` / `Spinner`: resume picker, preview first paint + refresh overlay, save pending, print page.
-- Save button shows a saving state (spinner + disabled) during the entire save flow, including early-exit paths (`try/finally`).
+- Save button shows a saving state (spinner + disabled) during the entire save flow, including early-exit paths (`try/finally`). Hidden in guest mode.
 - Import JSON Resume files from the startup dialog.
 - Schema-aligned validation: email/phone regexes and required-field rules mirror the Keystone CMS; legacy select values surface as non-blocking warnings. Powered by Zod.
 - CMS `select` fields render as dropdowns (skill level, language fluency) with options mirrored from the schema.
@@ -33,8 +35,9 @@ Real-time resume editor web app. Loads resume data from the Keystone CMS GraphQL
 
 ```
 Browser (React 19 SPA)
+  ├─ AuthProvider (guest / authenticated toggle)
   ├─ editor state (Zustand)
-  ├─ TanStack Query cache
+  ├─ TanStack Query cache (gated by isAuthenticated)
   ├─ shadcn/ui primitives (radix base) + Tailwind CSS v4
   ├─ @dnd-kit sortable lists
   └─ iframe preview (JSON Resume themes)
@@ -56,6 +59,12 @@ Keystone CMS GraphQL (external — nt-keystone-cms)
 resume-studio/
 ├── apps/
 │   ├── web/              # React + Vite SPA (port 5173)
+│   │   └── src/
+│   │       ├── auth/     # AuthContext (guest/authenticated toggle)
+│   │       ├── editor/   # Form editor, save, resume picker
+│   │       ├── preview/  # iframe preview + render client
+│   │       ├── state/    # Zustand store
+│   │       └── ...
 │   └── render-service/   # Fastify + resumed (port 8787)
 ├── packages/
 │   ├── transformer/     # CMS ⇄ JSON Resume codecs + toCms diff planner
@@ -64,6 +73,7 @@ resume-studio/
 │   └── vendor/          # vendored upstream JSON Resume themes (9)
 └── docs/
     ├── ARCHITECTURE.md
+    ├── DEPLOYMENT.md
     ├── FUNCTIONAL_REQUIREMENTS.md
     ├── KNOWN_ISSUES.md
     ├── CONTRIBUTING.md
@@ -87,6 +97,10 @@ pnpm dev:web        # http://localhost:5173
 pnpm dev:render     # http://localhost:8787
 ```
 
+**Guest mode** works without Keystone running — no GraphQL calls are made. Click the `+` button or "Create New Resume" to start editing locally. Preview and export work via the render service.
+
+**Authenticated mode** requires the Keystone CMS running at `http://localhost:3000` with `http://localhost:5173` and `http://localhost:8787` in its `CORS_ORIGIN`. Click the login button (user icon) in the header to switch modes.
+
 Other scripts:
 
 ```sh
@@ -97,9 +111,7 @@ pnpm build          # tsc + vite production build
 pnpm codegen        # regenerate GraphQL types (needs Keystone reachable)
 ```
 
-The Keystone CMS must be running separately at `http://localhost:3000` with `http://localhost:5173` and `http://localhost:8787` in its `CORS_ORIGIN`.
-
-See [docs/LOCAL_DEV.md](./docs/LOCAL_DEV.md) for full local setup, [docs/CONTRIBUTING.md](./docs/CONTRIBUTING.md) for the contribution flow, [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) and [docs/FUNCTIONAL_REQUIREMENTS.md](./docs/FUNCTIONAL_REQUIREMENTS.md) for design + feature specs, [docs/KNOWN_ISSUES.md](./docs/KNOWN_ISSUES.md) for known issues, and `AGENTS.md` for AI agent onboarding.
+See [docs/LOCAL_DEV.md](./docs/LOCAL_DEV.md) for full local setup, [docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md) for Vercel + Northflank deployment, [docs/CONTRIBUTING.md](./docs/CONTRIBUTING.md) for the contribution flow, [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) and [docs/FUNCTIONAL_REQUIREMENTS.md](./docs/FUNCTIONAL_REQUIREMENTS.md) for design + feature specs, [docs/KNOWN_ISSUES.md](./docs/KNOWN_ISSUES.md) for known issues, and `AGENTS.md` for AI agent onboarding.
 
 ## License
 

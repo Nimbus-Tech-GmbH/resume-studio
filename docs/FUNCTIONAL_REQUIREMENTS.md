@@ -17,20 +17,28 @@ Conventions used below:
 
 ## FR-1 Resume selection and loading
 
-**Behavior.** The header shows a dropdown of all resumes (title + language).
-Selecting one loads it into the editor. On first load, the first resume in the
-list is selected automatically. The startup dialog also supports importing a
-local JSON Resume file via file input — the file is validated and loaded
-into the editor without creating a CMS resume.
+**Behavior.** The header shows a resume picker that behaves differently based
+on auth mode:
+
+- **Guest mode (default):** The picker is a single `+` icon button that
+  creates a new local resume from `EMPTY_RESUME`. No GraphQL calls are made.
+  The startup dialog shows "Create a resume to get started. Your work won't be
+  saved." with two buttons: "Create New Resume" and "Import JSON Resume".
+- **Authenticated mode:** The header shows a dropdown of all resumes (title +
+  language). Selecting one loads it into the editor. On first load, the first
+  resume in the list is selected automatically. The startup dialog shows the
+  resume list with selectable cards, plus "Create New Resume" and "Import JSON
+  Resume" buttons. Saving is available.
 
 **Files**
 | File | Change |
 |---|---|
-| `apps/web/src/editor/ResumePicker.tsx` | Dropdown UI; auto-select first; loading states; skip auto-select when local data exists |
-| `apps/web/src/graphql/useResume.ts` | `useResumeList`, `useResume`, `fetchResumeUpdatedAt` hooks |
+| `apps/web/src/auth/AuthContext.tsx` | AuthProvider + useAuth hook (guest/authenticated toggle) |
+| `apps/web/src/editor/ResumePicker.tsx` | Guest: `+` button only. Auth: dropdown UI; auto-select first; loading states |
+| `apps/web/src/graphql/useResume.ts` | `useResumeList`, `useResume` gated by `isAuthenticated`; `fetchResumeUpdatedAt` |
 | `packages/graphql-client/src/operations.ts` | `LIST_RESUMES`, `GET_RESUME` documents |
-| `apps/web/src/state/editorStore.ts` | `loadFromCms` seeds all slices; `loadFromJson` seeds slices for local import |
-| `apps/web/src/components/StartupDialog.tsx` | Launch dialog with list, create, and JSON import |
+| `apps/web/src/state/editorStore.ts` | `loadFromCms` (auth), `loadFromJson` (guest/import), `EMPTY_RESUME` template |
+| `apps/web/src/components/StartupDialog.tsx` | Guest phase (no list), auth phases (loading/error/empty/ready) |
 
 **Loading states**
 - List query loading → `Skeleton className="h-8 w-56"` in place of the select.
@@ -38,6 +46,7 @@ into the editor without creating a CMS resume.
   select disabled while the resume itself is loading (`isLoading`).
 - Use TanStack Query flags (`isLoading`, `isFetching`, `error`) — never
   hand-rolled boolean state for fetch lifecycle.
+- Guest mode → no loading states; `useResumeList`/`useResume` are disabled.
 
 **Rules**
 1. Loading a resume replaces ALL editor state (`loadFromCms`) — unsaved edits
@@ -49,6 +58,8 @@ into the editor without creating a CMS resume.
 4. JSON import (`loadFromJson`) populates the editor without a CMS resume.
    `resumeId` remains null; saving is blocked (see KNOWN_ISSUES A11).
    The `ResumePicker` auto-select is suppressed when local data exists.
+5. Guest mode bypasses all GraphQL — `useResumeList` and `useResume` have
+   `enabled: isAuthenticated`. Save button is hidden.
 
 **AC**
 - [ ] With N resumes, dropdown lists N entries labeled `<title> (<lang>)`.
@@ -57,6 +68,8 @@ into the editor without creating a CMS resume.
 - [ ] Importing a valid JSON Resume file populates editor and preview.
 - [ ] Importing a file with validation errors shows error messages in the dialog.
 - [ ] Imported resume (no CMS backing) shows "No resume loaded" on save attempt.
+- [ ] Guest mode → `+` button only, no GraphQL calls, save button hidden.
+- [ ] Guest create/import → preview, export, print all work locally.
 
 ---
 

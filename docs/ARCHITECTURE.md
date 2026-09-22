@@ -16,9 +16,10 @@ Three cooperating processes:
 │ Browser — React 19 SPA         │
 │  apps/web (Vite, port 5173)    │
 │                                │
+│  AuthProvider (guest/auth)     │
 │  Zustand store  ←→ form UI     │
 │       │                        │
-│       ├─ GraphQL ──────────┐   │
+│       ├─ GraphQL ──────────┐   │  [gated by isAuthenticated]
 │       └─ POST /render      │   │
 │          (debounced 300ms) │   │
 └────────────────────────────┼───┘
@@ -39,6 +40,8 @@ Three cooperating processes:
 ```
 
 - **Web** is the only user-facing surface. It never talks to the database.
+  In **guest mode** (default), no GraphQL calls are made — create/import/preview/export work locally.
+  In **authenticated mode**, full CMS access is available (load/edit/save).
 - **Render service** is stateless besides an in-memory LRU. Local-only
   (loopback bind + IP allowlist). Must not be exposed publicly until auth
   exists (KNOWN_ISSUES A6).
@@ -93,11 +96,14 @@ runs identically in browser and Node tests.
 ```
 src/
 ├── main.tsx                  Entry; routes '/' (App) vs '/print' (PrintPage)
-├── App.tsx                   Shell: header (picker/theme/print/save), editor+preview grid, startup dialog
+├── App.tsx                   Shell: header (picker/theme/print/save/login), editor+preview grid, startup dialog
 ├── PrintPage.tsx             Standalone print view; reads payload key from localStorage
 │
+├── auth/
+│   └── AuthContext.tsx       AuthProvider + useAuth hook (guest/authenticated toggle)
+│
 ├── state/
-│   ├── editorStore.ts        Zustand store — THE source of client truth
+│   ├── editorStore.ts        Zustand store — THE source of client truth; EMPTY_RESUME template
 │   └── (themeStore removed)
 │
 ├── editor/
@@ -120,7 +126,7 @@ src/
 │
 │   ├── graphql/
 │   │   ├── client.ts             graphql-request client (credentials: include)
-│   │   ├── useResume.ts          TanStack Query hooks, fetchResumeUpdatedAt, useCreateResume
+│   │   ├── useResume.ts          TanStack Query hooks (gated by isAuthenticated), fetchResumeUpdatedAt
 │   │   └── executeSave.ts        Executes MutationOp[] against the CMS
 │
 ├── components/
@@ -199,12 +205,16 @@ form onChange → patchResume → store.resume updates
 ### Startup dialog (FR-1)
 
 - On launch, if no resume is loaded, a modal dialog appears (`isStartup` flag
-  in store). Shows existing resumes as selectable buttons with title + language.
-  Empty state briefly shows "No resumes" then fades out after 2 seconds.
-  "Create New Resume" button always visible. "Import JSON Resume" button
-  allows loading a local JSON Resume file. Dialog stays open until user
-  selects, creates, or imports — `ResumePicker` auto-select is suppressed
-  while `isStartup` is true.
+  in store). Behavior depends on auth mode:
+  - **Guest mode:** Shows "Create a resume to get started. Your work won't be
+    saved." with two buttons: "Create New Resume" (loads `EMPTY_RESUME` locally)
+    and "Import JSON Resume". No GraphQL calls, no resume list.
+  - **Authenticated mode:** Shows existing resumes as selectable buttons with
+    title + language. Empty state briefly shows "No resumes" then fades out
+    after 2 seconds. "Create New Resume" and "Import JSON Resume" buttons
+    always visible.
+  Dialog stays open until user selects, creates, or imports — `ResumePicker`
+  auto-select is suppressed while `isStartup` is true.
 
 - List loading: `Skeleton` shaped like the select trigger (`h-8 w-56`).
 - Resume fetch in flight: small `Spinner` overlay inside the picker
@@ -213,6 +223,7 @@ form onChange → patchResume → store.resume updates
 
 ### Save button pending state (FR-5)
 
+- Hidden entirely for guests (no CMS to save to).
 - While saving: `Spinner` (shadcn) with `data-icon="inline-start"`, button
   disabled. Entire save flow (including early-exit paths) wrapped in
   `try/finally` to guarantee the saving state is always cleared.
@@ -304,7 +315,9 @@ deletes, so new-row references are safe.
 - **Editor shape = JSON Resume, not CMS.** All forms operate on `JsonResume`;
   conversion happens only at load/save boundaries. Adding a field means
   touching types → fromCms/toCms → form — see FUNCTIONAL_REQUIREMENTS §7.
-- **No auth anywhere yet.** All requests send `credentials: 'include'` so a
+- **Auth stub in place.** `AuthProvider` toggles between guest and
+  authenticated modes. Guest mode bypasses all GraphQL calls. Real Cognito
+  integration deferred. All requests send `credentials: 'include'` so a
   future session cookie works without call-site changes.
 - **Validation mirrors the CMS**, not the official JSON Resume schema — the
   CMS is what will actually reject a write. Enum mismatches on legacy data are

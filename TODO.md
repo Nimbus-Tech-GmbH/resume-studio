@@ -5,6 +5,10 @@
 - ~~**PLAN.md §7** still references old stackoverflow/even/elegant themes — stale.~~ ✅ Done (also fixed stale theme refs in LOCAL_DEV + CONTRIBUTING).
 
 ### Recently completed
+- **Guest mode + auth stub** — `AuthProvider` context with guest/authenticated toggle. Guest mode bypasses all GraphQL calls. Save button hidden for guests. ResumePicker shows only `+` button for guests. StartupDialog has guest phase (no resume list). Login/logout toggle button in header. Store resets cleanly on mode transition.
+- **EMPTY_RESUME template** — blank JSON Resume with empty basics, all list sections as `[]`, and `meta.title: "Untitled Resume"`. Used by guest mode and create-new-resume flow.
+- **Create new resume now local-first** — both StartupDialog and ResumePicker use `loadFromJson(EMPTY_RESUME)` instead of `CREATE_RESUME` mutation. No CMS round-trip until explicit Save.
+- **Deployment docs** — step-by-step guide for deploying web to Vercel and render service to Northflank (`docs/DEPLOYMENT.md`).
 - **Awards & publications editor sections** — added `JsonResumeAward`/`JsonResumePublication` types, `AwardsForm`/`PublicationsForm` components, CMS CRUD ops, and validation rules. Sections registered in `EditorPane.tsx`.
 - **Validation migrated AJV → Zod** — replaced ajv/ajv-formats with Zod in `apps/web/src/validation/schema.ts`. Full field coverage including awards/publications. Updated tests.
 - **Import JSON Resume** — file picker in StartupDialog validates `.json` uploads against the Zod schema and populates the editor locally (no CMS creation). Validation errors displayed in dialog.
@@ -18,7 +22,7 @@
 - **Tailwind v4 migration** — project now uses `tailwindcss: ^4.3.3`.
 
 ### Known gaps / follow-ups
-1. **Auth + public deploy** — the declared follow-up phase. Render service must stay local-only until then. *(Deferred — needs Cognito/infra decisions.)*
+1. **Auth + public deploy** — Guest mode / auth stub implemented (`AuthProvider` with guest/authenticated toggle). Real Cognito integration + public deployment still deferred. *(Partial — UI toggle works, no real auth yet.)*
 2. **PDF generation** — currently browser-print only; no in-app PDF export. *(Deferred — print flow documented in README; in-app export needs a new dependency decision.)*
 3. ~~**Concurrent-edit protection** — last-write-wins; staleness check deferred.~~ ✅ Save-time staleness check added: store captures `loadedUpdatedAt`, `SaveButton` compares against live CMS `updatedAt` before executing ops.
 4. **`basics.image` editing** — Image URL field added to Basics form (preview works immediately). `diffBasics` emits `{ create: { src } }` when URL is set and `{ disconnect: true }` when cleared. Payload shape matches `ImageCreateInput` from the schema. However, the actual round-trip (create Image row → connect to BasicInformation → persist → reload) has not been verified end-to-end against a live Keystone instance — the CMS Image type may expect file uploads, not arbitrary URLs. *(Needs live Keystone verification.)*
