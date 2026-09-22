@@ -286,8 +286,8 @@ theme choice lives in memory only (resets on reload).
 4. Add lazy import in `themes.ts` loaders map.
 5. Add ambient module declaration in BOTH
    `packages/themes/src/shims.d.ts` and `apps/render-service/src/shims.d.ts`.
-6. If the theme imports CSS, confirm the css-hook stub covers it (it does for
-   `.css` imports).
+6. If the theme imports CSS, confirm Vite's SSR build handles it (Vite stubs
+   `.css` imports in SSR mode automatically).
 7. Verify against a real resume — themes vary in optional-field tolerance.
 
 **AC**
@@ -422,7 +422,7 @@ logger; blocked IPs logged at warn level.
 pnpm typecheck   # tsc --noEmit across workspace
 pnpm lint        # eslint (flat config, root)
 pnpm test        # vitest across workspace
-pnpm build       # web: tsc -b && vite build; render: tsc + copy css-hook
+pnpm build       # web: tsc -b && vite build; render: vite build (SSR bundle)
 ```
 
 **Files**

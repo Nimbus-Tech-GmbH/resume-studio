@@ -270,8 +270,6 @@ render.ts      renderResume(resume, theme): cache check → renderTheme → post
 cache.ts       LRU (default 100 entries, 15min TTL), SHA-1(theme + resume JSON)
 auth.ts        ipAllowlist middleware — 403 unless req.ip ∈ RENDER_ALLOWED_IPS
 postProcess.ts Injects viewport meta + print-color CSS; wraps partial HTML
-preload.ts     Node loader: stubs `.css` imports (React themes import CSS)
-css-hook.mjs   ESM resolve hook backing preload.ts
 ```
 
 Request lifecycle:
@@ -287,8 +285,9 @@ POST /render {resume, theme}
   → cache set → 200 text/html
 ```
 
-Note: workspace packages export TS sources directly, so production start
-requires a TS loader (`node --import tsx/esm`). See KNOWN_ISSUES A5.
+Build: Vite SSR bundles all workspace packages (themes, transformer) and npm
+deps into self-contained JS. Docker runtime needs only `node dist/server.js`
+— no `node_modules`, no TS loader. See `apps/render-service/vite.config.ts`.
 
 ## 5. Transformer contract
 

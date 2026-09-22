@@ -62,16 +62,11 @@ or discovered. Cross-reference `TODO.md` for completed work.
   but not justified while the print dialog produces identical vector output.
 - **Status:** Deferred; revisit if programmatic/no-dialog PDFs are needed.
 
-### A5. Render service prod runtime needs a TS loader
+### A5. ~~Render service prod runtime needs a TS loader~~ (resolved)
 
-- **Where:** `apps/render-service/package.json`, workspace packages
-- **What:** `@resume-studio/themes` (and transformer) export TS sources
-  directly (`"main": "./src/index.ts"`). The compiled `dist/server.js` cannot
-  resolve them under bare Node — production start currently requires
-  `node --import tsx/esm`. The Dockerfile implicitly depends on this too.
-- **Impact:** Deploy needs tsx as a runtime dependency, or the workspace
-  packages need real `tsc` builds with proper `exports` maps.
-- **Status:** Works locally via tsx; flagged as deploy follow-up.
+- **Status:** Resolved. Vite SSR build bundles all workspace packages into
+  self-contained JS. Docker runtime is plain `node dist/server.js` — no TS
+  loader needed. See `apps/render-service/vite.config.ts`.
 
 ### A6. Render service must stay local-only
 

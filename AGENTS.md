@@ -15,14 +15,14 @@ Browser (React SPA, port 5173)
 
 - **Keystone CMS** = source of truth for ALL resume data. Lives in separate repo `nt-keystone-cms`. This repo mirrors its schema (`schema.ts`, `schema.graphql`) as snapshots.
 - **Web** = editor UI. Never talks to DB directly. All persistence goes through GraphQL mutations. Guest mode bypasses all GraphQL calls — create/import/preview/export work locally.
-- **Render service** = stateless theme renderer. No auth yet (A6). Must stay localhost.
+- **Render service** = stateless theme renderer. Built with Vite SSR (bundles all workspace packages into self-contained JS). No auth yet (A6). Must stay localhost.
 
 ## Monorepo layout
 
 ```
 apps/
   web/                    React SPA (Vite, Zustand, TanStack Query)
-  render-service/         Fastify theme renderer
+  render-service/         Fastify theme renderer (Vite SSR build)
 
 packages/
   transformer/            CMS ⇄ JSON Resume codecs + diff planner (PURE TS, no deps)
@@ -48,6 +48,7 @@ Dependency direction: `web → transformer ← render-service`, `web → graphql
 | `apps/web/src/state/editorStore.ts` | Zustand store — single source of client truth; `EMPTY_RESUME` template |
 | `apps/web/src/editor/SaveButton.tsx` | Staleness check → plan → execute pipeline; hidden for guests |
 | `apps/web/src/validation/schema.ts` | zod schema mirroring CMS validations |
+| `apps/render-service/vite.config.ts` | Vite SSR build config — bundles all deps into self-contained JS |
 | `schema.graphql` | Keystone schema snapshot (read-only reference) |
 
 ## Data flow
@@ -154,6 +155,7 @@ Ops sorted: bucket 0 (creates) → bucket 1 (updates) → bucket 2 (deletes). Wi
 1. **Render service is separate.** Check `apps/render-service/src/` — not the web app.
 2. **Theme errors → error card.** Render service catches theme throws and shows inline card.
 3. **Cache issues.** SHA-1 keyed LRU. Same input = same output. Check `apps/render-service/src/cache.ts`.
+4. **Build output is Vite SSR bundle.** `dist/server.js` + `dist/assets/*.js` are self-contained — no `node_modules` needed at runtime. If adding new imports, verify they bundle correctly with `pnpm --filter @resume-studio/render-service build`.
 
 ### Debugging UI/styling issues
 
