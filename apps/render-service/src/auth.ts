@@ -6,8 +6,10 @@ import type { FastifyRequest, FastifyReply } from 'fastify';
  * Do not expose the render service publicly until Cognito auth is wired.
  */
 export function ipAllowlist(allowed: readonly string[]) {
+  if (allowed.length === 0) return async () => {};
   const set = new Set(allowed);
   return async (req: FastifyRequest, reply: FastifyReply): Promise<void> => {
+    if (req.url === '/health') return;
     const ip = req.ip;
     if (!set.has(ip)) {
       req.log.warn({ ip }, 'blocked by IP allowlist');
