@@ -2,8 +2,8 @@ import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import { isThemeId } from '@resume-studio/themes';
 import type { JsonResume } from '@resume-studio/transformer';
-import { renderResume } from '@/render';
-import { ipAllowlist } from '@/auth';
+import { renderResume } from './render.js';
+import { ipAllowlist } from './auth.js';
 
 function safePort(fallback: number): number {
   const raw = process.env.RENDER_PORT;
