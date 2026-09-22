@@ -44,7 +44,8 @@ Browser (React 19 SPA)
         │
         │ POST /render (debounced 300ms)
         ▼
-Render Service (Fastify + resumed)
+Render Service (Fastify)                ← dev: port 8787, prod: port 5173
+  ├─ serves SPA static files (prod only)
   ├─ 9 vendored themes (lazy-loaded)
   ├─ LRU cache (SHA-1 keyed)
   └─ IP allowlist + CORS
@@ -52,6 +53,9 @@ Render Service (Fastify + resumed)
         │
 Keystone CMS GraphQL (external — nt-keystone-cms)
 ```
+
+**Dev mode:** web (Vite, port 5173) and render-service (Fastify, port 8787) run as separate processes.
+**Prod (Docker):** single container — render-service serves the SPA from `/` and handles `/render` on port 5173.
 
 ## Repo Layout
 

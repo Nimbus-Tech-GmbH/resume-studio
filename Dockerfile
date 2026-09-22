@@ -14,6 +14,8 @@ RUN pnpm --filter @resume-studio/render-service build
 
 # ── Web: build SPA ────────────────────────────────────────────────
 FROM base AS web-build
+ARG VITE_GRAPHQL_ENDPOINT
+ARG VITE_RENDER_ENDPOINT
 COPY apps/web ./apps/web
 COPY packages/themes ./packages/themes
 RUN pnpm --filter @resume-studio/web build
