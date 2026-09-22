@@ -1,47 +1,129 @@
-import { useValidation } from '@/validation/useValidation';
-import { Badge } from '@/components/ui/badge';
+import type { ReactNode } from 'react';
 import { AlertCircle, AlertTriangle } from 'lucide-react';
+
+import { Badge } from '@/components/ui/badge';
+import { useValidation } from '@/validation/useValidation';
+
+type ValidationIssue = ReturnType<typeof useValidation>[number];
+type ValidationSeverity = 'error' | 'warning';
 
 export function ValidationBanner() {
   const issues = useValidation();
-  if (issues.length === 0) return null;
 
-  const errors = issues.filter((i) => i.severity === 'error');
-  const warnings = issues.filter((i) => i.severity === 'warning');
+  if (issues.length === 0) {
+    return null;
+  }
 
-  const renderList = (items: typeof issues) => (
-    <div className="flex flex-wrap gap-2">
-      {items.slice(0, 3).map((i, idx) => (
-        <span key={idx} className="text-amber-800">
-          <code className="rounded bg-amber-100 px-1">{i.path || '/'}</code> — {i.message}
-        </span>
-      ))}
-      {items.length > 3 && <span className="text-amber-700">+{items.length - 3} more</span>}
-    </div>
-  );
+  const errors = issues.filter(({ severity }) => severity === 'error');
+  const warnings = issues.filter(({ severity }) => severity === 'warning');
 
   return (
-    <div className="space-y-1 border-b border-amber-200 bg-amber-50 px-6 py-2 text-sm text-amber-900">
+    <div
+      role="status"
+      aria-label="Resume validation results"
+      className="my-2 space-y-2 border-b bg-muted px-6 py-2 text-sm"
+    >
       {errors.length > 0 && (
-        <div className="flex items-center gap-3">
-          <AlertCircle className="h-4 w-4 shrink-0 text-amber-600" />
-          <Badge variant="outline" className="border-amber-400 text-amber-700">
-            {errors.length}
-          </Badge>
-          <span className="font-medium">Must fix before saving:</span>
-          {renderList(errors)}
-        </div>
+        <ValidationGroup
+          issues={errors}
+          icon={<AlertCircle />}
+          label="Must fix before saving"
+          severity="error"
+        />
       )}
+
       {warnings.length > 0 && (
-        <div className="flex items-center gap-3">
-          <AlertTriangle className="h-4 w-4 shrink-0 text-amber-500" />
-          <Badge variant="outline" className="border-amber-300 text-amber-600">
-            {warnings.length}
-          </Badge>
-          <span className="font-medium">Legacy values (won't block saving):</span>
-          {renderList(warnings)}
-        </div>
+        <ValidationGroup
+          issues={warnings}
+          icon={<AlertTriangle />}
+          label="Legacy values (won't block saving)"
+          severity="warning"
+        />
       )}
     </div>
+  );
+}
+
+interface ValidationGroupProps {
+  issues: ValidationIssue[];
+  icon: ReactNode;
+  label: string;
+  severity: ValidationSeverity;
+}
+
+function ValidationGroup({
+  issues,
+  icon,
+  label,
+  severity,
+}: ValidationGroupProps) {
+  const visibleIssues = issues.slice(0, 3);
+  const remainingCount = issues.length - visibleIssues.length;
+  const isError = severity === 'error';
+
+  return (
+    <div
+      className={[
+        'flex flex-wrap items-center gap-x-3 gap-y-1',
+        isError ? 'text-destructive' : 'text-warning',
+      ].join(' ')}
+    >
+      <span
+        aria-hidden="true"
+        className="flex size-4 shrink-0 items-center justify-center"
+      >
+        {icon}
+      </span>
+
+      <Badge variant={isError ? 'destructive' : 'secondary'}>
+        {issues.length}
+      </Badge>
+
+      <span className="font-medium">{label}:</span>
+
+      <div className="flex min-w-0 flex-wrap gap-x-3 gap-y-1">
+        {visibleIssues.map((issue, index) => (
+          <ValidationIssueText
+            key={`${issue.path}-${issue.message}-${index}`}
+            issue={issue}
+            severity={severity}
+          />
+        ))}
+
+        {remainingCount > 0 && (
+          <span className="whitespace-nowrap">
+            +{remainingCount} more
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+interface ValidationIssueTextProps {
+  issue: ValidationIssue;
+  severity: ValidationSeverity;
+}
+
+function ValidationIssueText({
+  issue,
+  severity,
+}: ValidationIssueTextProps) {
+  const isError = severity === 'error';
+
+  return (
+    <span className="min-w-0">
+      <code
+        className={[
+          'rounded px-1 font-mono text-xs',
+          isError
+            ? 'bg-destructive/10 text-destructive'
+            : 'bg-warning/10 text-warning-foreground',
+        ].join(' ')}
+      >
+        {issue.path || '/'}
+      </code>{' '}
+      — {issue.message}
+    </span>
   );
 }
