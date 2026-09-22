@@ -2,6 +2,37 @@ import { create } from 'zustand';
 import type { CmsResume, JsonResume } from '@resume-studio/transformer';
 import { DEFAULT_THEME, type ThemeId } from '@resume-studio/themes';
 
+export const EMPTY_RESUME: JsonResume = {
+  basics: {
+    name: '',
+    label: '',
+    email: '',
+    phone: '',
+    url: '',
+    summary: '',
+    location: {
+      address: '',
+      postalCode: '',
+      city: '',
+      countryCode: '',
+      region: '',
+    },
+    profiles: [],
+  },
+  work: [],
+  education: [],
+  skills: [],
+  interests: [],
+  volunteer: [],
+  projects: [],
+  awards: [],
+  publications: [],
+  certificates: [],
+  languages: [],
+  references: [],
+  meta: { title: 'Untitled Resume' },
+};
+
 /**
  * The set of resume sections that behave as reorderable/CRUD-able lists.
  * `basics` is a single object, so it's not in here.
