@@ -16,7 +16,7 @@ function safePort(fallback: number): number {
 }
 
 const PORT = safePort(8787);
-const HOST = process.env.RENDER_HOST ?? '127.0.0.1';
+const HOST = process.env.RENDER_HOST ?? '0.0.0.0';
 const CORS_ORIGIN = (process.env.RENDER_CORS_ORIGIN ?? 'http://localhost:5173')
   .split(',')
   .map((s) => s.trim())
