@@ -9,6 +9,6 @@ RUN pnpm --filter @resume-studio/render-service build
 
 FROM node:20-alpine
 WORKDIR /app
-COPY --from=build /app /app
+COPY --from=build /app/apps/render-service/dist ./dist
 EXPOSE 8787
-CMD ["sh", "-c", "cd apps/render-service && node --import tsx/esm dist/server.js"]
+CMD ["node", "dist/server.js"]
