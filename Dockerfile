@@ -23,5 +23,5 @@ FROM node:20-alpine
 WORKDIR /app
 COPY --from=render-build /app/apps/render-service/dist ./dist
 COPY --from=web-build /app/apps/web/dist ./web-dist
-EXPOSE 8787
+EXPOSE 5173
 CMD ["node", "dist/server.js"]
