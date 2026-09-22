@@ -6,7 +6,7 @@
   "main": "./dist/server.js",
   "scripts": {
     "dev": "tsx watch --import ./src/preload.ts src/server.ts",
-    "start": "node --import tsx/esm dist/server.js",
+    "start": "node dist/server.js",
     "build": "vite build",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
