@@ -31,7 +31,7 @@ const ALLOWED_IPS = process.env.RENDER_ALLOWED_IPS
 const app = Fastify({ logger: true });
 
 await app.register(cors, {
-  origin: CORS_ORIGIN,
+  origin: CORS_ORIGIN.length > 0 ? CORS_ORIGIN : true,
   credentials: true,
   methods: ['GET', 'POST', 'OPTIONS'],
 });
