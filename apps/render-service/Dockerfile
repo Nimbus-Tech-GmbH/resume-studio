@@ -11,4 +11,4 @@ FROM node:20-alpine
 WORKDIR /app
 COPY --from=build /app /app
 EXPOSE 8787
-CMD ["node", "--import", "./apps/render-service/dist/preload.js", "apps/render-service/dist/server.js"]
+CMD ["sh", "-c", "cd apps/render-service && node --import tsx/esm dist/server.js"]
