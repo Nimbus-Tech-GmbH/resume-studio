@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { FileText, Plus, Upload } from 'lucide-react';
 
-import { useResumeList, useCreateResume } from '@/graphql/useResume';
-import { useEditorStore } from '@/state/editorStore';
+import { useResumeList } from '@/graphql/useResume';
+import { useAuth } from '@/auth/AuthContext';
+import { useEditorStore, EMPTY_RESUME } from '@/state/editorStore';
 import { validateResume } from '@/validation/schema';
 import type { JsonResume } from '@resume-studio/transformer';
 import { Avatar, AvatarImage } from '@/components/ui/avatar';
@@ -22,12 +23,14 @@ interface StartupDialogProps {
 }
 
 type DialogPhase =
+  | { status: 'guest' }
   | { status: 'loading' }
   | { status: 'error' }
   | { status: 'empty'; showFlash: boolean }
   | { status: 'ready'; resumes: NonNullable<ReturnType<typeof useResumeList>['data']> };
 
 function useStartupDialogState(): DialogPhase {
+  const { isAuthenticated } = useAuth();
   const { data: list, isLoading, error } = useResumeList();
   const [showFlash, setShowFlash] = useState(false);
   const wasLoading = useRef(true);
@@ -41,6 +44,7 @@ function useStartupDialogState(): DialogPhase {
     wasLoading.current = isLoading;
   }, [isLoading, list]);
 
+  if (!isAuthenticated) return { status: 'guest' };
   if (isLoading) return { status: 'loading' };
   if (error) return { status: 'error' };
   if (list && list.length === 0) return { status: 'empty', showFlash };
@@ -49,7 +53,8 @@ function useStartupDialogState(): DialogPhase {
 }
 
 const DESCRIPTIONS: Record<DialogPhase['status'], string> = {
-  loading: 'Fetching your resumes…',
+  guest: 'Create a resume to get started. Your work won\u2019t be saved.',
+  loading: 'Fetching your resumes\u2026',
   error: 'Something went wrong loading your resumes.',
   empty: 'Create your first resume to get started.',
   ready: 'Select an existing resume or create a new one to get started.',
@@ -59,7 +64,7 @@ export function StartupDialog({ open, onOpenChange }: StartupDialogProps) {
   const phase = useStartupDialogState();
   const setResumeId = useEditorStore((s) => s.setResumeId);
   const setIsStartup = useEditorStore((s) => s.setIsStartup);
-  const createResume = useCreateResume();
+  const loadFromJson = useEditorStore((s) => s.loadFromJson);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [importErrors, setImportErrors] = useState<string[]>([]);
 
@@ -110,12 +115,11 @@ export function StartupDialog({ open, onOpenChange }: StartupDialogProps) {
     [dismiss, setIsStartup],
   );
 
-  const createNew = useCallback(async () => {
-    const id = await createResume.mutateAsync({});
+  const createNew = useCallback(() => {
+    loadFromJson(EMPTY_RESUME);
     setIsStartup(false);
-    setResumeId(id);
     dismiss();
-  }, [createResume, setIsStartup, setResumeId, dismiss]);
+  }, [loadFromJson, setIsStartup, dismiss]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -135,6 +139,8 @@ export function StartupDialog({ open, onOpenChange }: StartupDialogProps) {
         </DialogHeader>
 
         <div className="space-y-3">
+          {phase.status === 'guest' && <EmptyFlash />}
+
           {phase.status === 'loading' && <LoadingState />}
 
           {phase.status === 'error' && <ErrorState />}
@@ -162,13 +168,8 @@ export function StartupDialog({ open, onOpenChange }: StartupDialogProps) {
           <Button
             className="w-full"
             onClick={createNew}
-            disabled={createResume.isPending}
           >
-            {createResume.isPending ? (
-              <Spinner data-icon="inline-start" />
-            ) : (
-              <Plus data-icon="inline-start" />
-            )}
+            <Plus data-icon="inline-start" />
             Create New Resume
           </Button>
 

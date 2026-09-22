@@ -3,6 +3,7 @@ import { toast } from "sonner"
 import { useQueryClient } from "@tanstack/react-query"
 import { Save } from "lucide-react"
 
+import { useAuth } from "@/auth/AuthContext"
 import { useEditorStore } from "@/state/editorStore"
 import { executeSave } from "@/graphql/executeSave"
 import { fetchResumeUpdatedAt } from "@/graphql/useResume"
@@ -11,6 +12,7 @@ import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
 
 export function SaveButton() {
+  const { isAuthenticated } = useAuth()
   const queryClient = useQueryClient()
   const validation = useValidation()
   const [saving, setSaving] = useState(false)
@@ -92,6 +94,8 @@ export function SaveButton() {
       setSaving(false)
     }
   }
+
+  if (!isAuthenticated) return null
 
   return (
     <Button

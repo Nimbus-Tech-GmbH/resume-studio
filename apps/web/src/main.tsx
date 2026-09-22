@@ -2,6 +2,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider } from 'next-themes';
+import { AuthProvider } from './auth/AuthContext';
 import { App } from './App';
 import { PrintPage } from './PrintPage';
 import './index.css';
@@ -21,7 +22,9 @@ createRoot(container).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
       <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-        {isPrint ? <PrintPage /> : <App />}
+        <AuthProvider>
+          {isPrint ? <PrintPage /> : <App />}
+        </AuthProvider>
       </ThemeProvider>
     </QueryClientProvider>
   </StrictMode>,

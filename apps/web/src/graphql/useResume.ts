@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { GET_RESUME, LIST_RESUMES, CREATE_RESUME } from '@resume-studio/graphql-client';
 import type { CmsResume } from '@resume-studio/transformer';
+import { useAuth } from '@/auth/AuthContext';
 import { gqlClient } from './client';
 
 interface ListResumesResponse {
@@ -18,8 +19,10 @@ interface GetResumeResponse {
 }
 
 export function useResumeList() {
+  const { isAuthenticated } = useAuth();
   return useQuery({
     queryKey: ['resumes'],
+    enabled: isAuthenticated,
     retry: false,
     queryFn: async () => {
       const res = await gqlClient.request<ListResumesResponse>(LIST_RESUMES);
@@ -29,9 +32,10 @@ export function useResumeList() {
 }
 
 export function useResume(id: string | null) {
+  const { isAuthenticated } = useAuth();
   return useQuery({
     queryKey: ['resume', id],
-    enabled: Boolean(id),
+    enabled: Boolean(id) && isAuthenticated,
     retry: false,
     queryFn: async () => {
       if (!id) return null;

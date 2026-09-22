@@ -2,8 +2,9 @@ import { useEffect } from 'react';
 import { ClientError } from 'graphql-request';
 import { CaretDownIcon, Plus } from '@phosphor-icons/react';
 import { fromCms } from '@resume-studio/transformer';
-import { useResume, useResumeList, useCreateResume } from '@/graphql/useResume';
-import { useEditorStore } from '@/state/editorStore';
+import { useResume, useResumeList } from '@/graphql/useResume';
+import { useAuth } from '@/auth/AuthContext';
+import { useEditorStore, EMPTY_RESUME } from '@/state/editorStore';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,12 +18,13 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
 
 export function ResumePicker() {
+  const { isAuthenticated } = useAuth();
   const { data: list, isLoading, error } = useResumeList();
   const resumeId = useEditorStore((s) => s.resumeId);
   const setResumeId = useEditorStore((s) => s.setResumeId);
   const loadFromCms = useEditorStore((s) => s.loadFromCms);
+  const loadFromJson = useEditorStore((s) => s.loadFromJson);
   const isStartup = useEditorStore((s) => s.isStartup);
-  const createResume = useCreateResume();
   const {
     data: resume,
     isLoading: resumeLoading,
@@ -33,21 +35,33 @@ export function ResumePicker() {
   const hasLocalData = useEditorStore((s) => Object.keys(s.resume).length > 0);
 
   useEffect(() => {
-    if (resume) {
+    if (isAuthenticated && resume) {
       loadFromCms({ json: fromCms(resume), cms: resume });
     }
-  }, [resume, loadFromCms]);
+  }, [isAuthenticated, resume, loadFromCms]);
 
   useEffect(() => {
-    if (!isStartup && !resumeId && !hasLocalData && list && list.length > 0) {
+    if (isAuthenticated && !isStartup && !resumeId && !hasLocalData && list && list.length > 0) {
       setResumeId(list[0]!.id);
     }
-  }, [isStartup, list, resumeId, setResumeId, hasLocalData]);
+  }, [isAuthenticated, isStartup, list, resumeId, setResumeId, hasLocalData]);
 
-  const handleCreateResume = async () => {
-    const id = await createResume.mutateAsync({});
-    setResumeId(id);
+  const handleCreateResume = () => {
+    loadFromJson(EMPTY_RESUME);
   };
+
+  if (!isAuthenticated) {
+    return (
+      <Button
+        variant="outline"
+        size="icon-sm"
+        onClick={handleCreateResume}
+        title="Create new resume"
+      >
+        <Plus className="size-4" />
+      </Button>
+    );
+  }
 
   if (isLoading) {
     return <Skeleton className="h-8 w-56" aria-label="Loading resumes" />;
@@ -66,9 +80,8 @@ export function ResumePicker() {
         variant="outline"
         size="sm"
         onClick={handleCreateResume}
-        disabled={createResume.isPending}
       >
-        {createResume.isPending ? <Spinner data-icon="inline-start" /> : <Plus data-icon="inline-start" />}
+        <Plus data-icon="inline-start" />
         New Resume
       </Button>
     );
@@ -124,10 +137,9 @@ export function ResumePicker() {
         variant="outline"
         size="icon-sm"
         onClick={handleCreateResume}
-        disabled={createResume.isPending}
         title="Create new resume"
       >
-        {createResume.isPending ? <Spinner className="size-4" /> : <Plus className="size-4" />}
+        <Plus className="size-4" />
       </Button>
     </div>
   );
