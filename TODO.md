@@ -30,3 +30,8 @@
 6. ~~**Testing** — transformer has tests, but web app and render-service have none (`passWithNoTests`).~~ ✅ Added: render-service `postProcess.test.ts` (3 tests), web `validation/schema.test.ts` (6 tests). Both apps now run vitest for real.
 7. ~~**ESLint/Prettier** — listed in tech stack but not confirmed configured this session.~~ ✅ Root flat `eslint.config.js` (typescript-eslint + react-hooks + react-refresh); `pnpm lint` runs clean (9 pre-existing warnings only). Prettier was already configured.
 8. ~~**Production build of render-service** — dev runs via tsx; `tsc` build + Dockerfile for deploy not exercised.~~ ✅ Migrated to Vite SSR build. All workspace packages + npm deps bundled into self-contained JS. Dockerfile simplified: runtime stage copies only `dist/`, CMD is plain `node dist/server.js` (no tsx, no preload). Verified locally in Docker.
+
+### Next up
+- **Vendor dist → index.js** — `packages/vendor/*/dist` should be replaced by original `index.js` (simplify vendoring).
+- **Cognito auth via Better Auth** — replace auth stub with real Cognito integration using Better Auth library.
+- **Authenticated save to DB** — resume data persists via GraphQL mutations for authenticated users.
