@@ -12,19 +12,16 @@ FROM base AS render-build
 COPY apps/render-service ./apps/render-service
 RUN pnpm --filter @resume-studio/render-service build
 
-FROM node:20-alpine AS render
-WORKDIR /app
-COPY --from=render-build /app/apps/render-service/dist ./dist
-EXPOSE 8787
-CMD ["node", "dist/server.js"]
-
 # ── Web: build SPA ────────────────────────────────────────────────
 FROM base AS web-build
 COPY apps/web ./apps/web
 COPY packages/themes ./packages/themes
 RUN pnpm --filter @resume-studio/web build
 
-FROM nginx:alpine AS web
-COPY --from=web-build /app/apps/web/dist /usr/share/nginx/html
-COPY apps/web/nginx.conf /etc/nginx/conf.d/default.conf
-EXPOSE 80
+# ── Final: render-service + web static files ──────────────────────
+FROM node:20-alpine
+WORKDIR /app
+COPY --from=render-build /app/apps/render-service/dist ./dist
+COPY --from=web-build /app/apps/web/dist ./web-dist
+EXPOSE 8787
+CMD ["node", "dist/server.js"]

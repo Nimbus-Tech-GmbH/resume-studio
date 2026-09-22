@@ -13,13 +13,13 @@
   },
   "dependencies": {
     "@fastify/cors": "^10.0.1",
+    "@fastify/static": "^10.1.4",
     "@jsonresume/core": "^0.3.2",
     "@jsonresume/utils": "^0.2.2",
     "@resume-studio/themes": "workspace:*",
     "@resume-studio/transformer": "workspace:*",
     "fastify": "^5.0.0",
     "handlebars": "^4.7.9",
-
     "jsonresume-theme-claude": "workspace:*",
     "jsonresume-theme-developer-mono": "workspace:*",
     "jsonresume-theme-flat": "workspace:*",
