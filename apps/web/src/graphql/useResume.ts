@@ -4,14 +4,16 @@ import type { CmsResume } from '@resume-studio/transformer';
 import { useAuth } from '@/auth/AuthContext';
 import { gqlClient } from './client';
 
+export interface ResumeListItem {
+  id: string;
+  title?: string;
+  updatedAt?: string;
+  language?: { id: string; label?: string; value?: string } | null;
+  basicInformation?: { id: string; name?: string; label?: string };
+}
+
 interface ListResumesResponse {
-  resumes: Array<{
-    id: string;
-    title?: string;
-    updatedAt?: string;
-    language?: { id: string; label?: string; value?: string } | null;
-    basicInformation?: { id: string; name?: string; label?: string };
-  }>;
+  resumes: ResumeListItem[];
 }
 
 interface GetResumeResponse {
