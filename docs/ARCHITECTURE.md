@@ -9,7 +9,7 @@ see [KNOWN_ISSUES.md](./KNOWN_ISSUES.md).
 
 ## 1. System overview
 
-Three cooperating processes:
+Four cooperating processes:
 
 ```
 ┌────────────────────────────────┐
@@ -19,32 +19,50 @@ Three cooperating processes:
 │  AuthProvider (guest/auth)     │
 │  Zustand store  ←→ form UI     │
 │       │                        │
-│       ├─ GraphQL ──────────┐   │  [gated by isAuthenticated]
-│       └─ POST /render      │   │
-│          (debounced 300ms) │   │
-└────────────────────────────┼───┘
-                             │
-              ┌──────────────┴──────────────┐
-              ▼                             ▼
-┌───────────────────────────┐  ┌────────────────────────────┐
-│ Keystone CMS (external)   │  │ Render Service             │
-│ nt-keystone-cms           │  │ apps/render-service        │
-│ http://localhost:3000     │  │ Fastify, port 8787         │
-│ /api/graphql              │  │                            │
-│                           │  │ POST /render               │
-│ Source of truth for all   │  │  → theme render fn         │
-│ resume data. Own repo;    │  │  → postProcess (head inject)│
-│ schema mirrored in        │  │  → LRU cache (SHA-1 keyed) │
-│ ./schema.ts + .graphql.   │  │ GET /health                │
-└───────────────────────────┘  └────────────────────────────┘
+│       ├─ /api/auth ────────┐   │  [gated by session cookie]
+│       ├─ GraphQL ──────┐   │   │   [gated by isAuthenticated]
+│       └─ POST /render  │   │   │
+│          (debounced 300ms)│   │
+└─────────────────────────┼───┼─┘
+                          │   │
+              ┌───────────┴───────────────┐
+              ▼                           ▼
+┌──────────────────────────┐  ┌───────────────────────────┐
+│ Auth Service             │  │ Render Service            │
+│ apps/auth-service        │  │ apps/render-service       │
+│ Fastify, port 4000       │  │ Fastify, port 8787        │
+│ /api/auth/*              │  │                           │
+│ Better Auth + Cognito    │  │ POST /render              │
+│ Postgres `auth` schema   │  │  → theme render fn        │
+│ (nt-keystone-cms-db-1)   │  │  → postProcess            │
+│                          │  │  → LRU cache              │
+│                          │  │ /api/auth/* (prod proxy)  │
+│                          │  │ /health                   │
+└────────────┬─────────────┘  └────────────┬──────────────┘
+             │                             │
+             └──────────────┬──────────────┘
+                            ▼
+              ┌───────────────────────────┐
+              │ Keystone CMS (external)   │
+              │ nt-keystone-cms           │
+              │ http://localhost:3000     │
+              │ /api/graphql              │
+              │                           │
+              │ Source of truth for all   │
+              │ resume data. Own repo;    │
+              │ schema mirrored in        │
+              │ ./schema.ts + .graphql.   │
+              └───────────────────────────┘
 ```
 
 - **Web** is the only user-facing surface. It never talks to the database.
   In **guest mode** (default), no GraphQL calls are made — create/import/preview/export work locally.
   In **authenticated mode**, full CMS access is available (load/edit/save).
+  Auth requests go to `/api/auth`, proxied by Vite (dev) or render-service (prod) to the auth-service — the browser stays single-origin at 5173.
+- **Auth service** brokers Better Auth + Cognito OAuth and stores users/sessions/accounts in the `auth` schema of the same Postgres instance Keystone uses (`nt-keystone-cms-db-1`). It is stateful by design but only exposed locally / via the render-service proxy.
 - **Render service** is stateless besides an in-memory LRU. Local-only
   (loopback bind + IP allowlist). Must not be exposed publicly until auth
-  exists (KNOWN_ISSUES A6).
+  exists (KNOWN_ISSUES A6). In prod it also proxies `/api/auth` → auth-service.
 - **Keystone CMS** lives in `nt-keystone-cms`. This repo only mirrors its
   schema (`schema.ts`, `schema.graphql`) as reference snapshots.
 
@@ -56,6 +74,7 @@ pnpm workspaces (`pnpm-workspace.yaml`):
 apps/
   web/                    React SPA
   render-service/         Fastify theme renderer
+  auth-service/           Fastify Better Auth + Cognito broker
 
 packages/
   transformer/            CMS ⇄ JSON Resume codecs + diff planner (pure TS)
@@ -265,7 +284,7 @@ localStorage is used because the print tab cannot share Zustand state.
 ## 4. Render service internals (`apps/render-service/src`)
 
 ```
-server.ts      Fastify bootstrap: CORS, IP allowlist hook, routes
+server.ts      Fastify bootstrap: CORS, IP allowlist hook, routes, /api/auth prod proxy
 render.ts      renderResume(resume, theme): cache check → renderTheme → postProcess
 cache.ts       LRU (default 100 entries, 15min TTL), SHA-1(theme + resume JSON)
 auth.ts        ipAllowlist middleware — 403 unless req.ip ∈ RENDER_ALLOWED_IPS
@@ -283,11 +302,40 @@ POST /render {resume, theme}
        on throw → HTML error card (iframe stays functional)
   → postProcess(html)
   → cache set → 200 text/html
+
+GET|POST /api/auth/* (prod only, when AUTH_TARGET set)
+  → proxied to auth-service so the SPA stays single-origin
 ```
 
 Build: Vite SSR bundles all workspace packages (themes, transformer) and npm
 deps into self-contained JS. Docker runtime needs only `node dist/server.js`
 — no `node_modules`, no TS loader. See `apps/render-service/vite.config.ts`.
+
+## 4a. Auth service internals (`apps/auth-service/src`)
+
+```
+auth.ts        betterAuth() — Cognito social provider, Postgres `auth` schema
+server.ts      Fastify bootstrap: CORS, catch-all /api/auth/* → auth.handler()
+```
+
+Request lifecycle:
+
+```
+GET|POST /api/auth/*
+  → CORS preflight (origins from TRUSTED_ORIGINS)
+  → proxy host/headers into a Fetch Request via fromNodeHeaders
+  → auth.handler(req) → Better Auth routes (sign-in/social, callback, session…)
+  → response headers (Set-Cookie, Location) forwarded verbatim
+```
+
+- Postgres pool uses `options=-c search_path=auth`, so the Kysely adapter
+  creates/reads Better Auth tables only in the `auth` schema — never in the
+  Keystone `public` schema. Same container (`nt-keystone-cms-db-1`,
+  `postgres:15-bookworm`, host port 5433) hosts both schemas.
+- Migrations: `npx @better-auth/cli migrate --config apps/auth-service/src/auth.ts`.
+- The OAuth callback (`/api/auth/callback/cognito`) must be registered on the
+  Cognito app client; the SPA hits `/api/auth` on its own origin so the
+  callback URL is `{AUTH_URL}/api/auth/callback/cognito` (dev: 5173).
 
 ## 5. Transformer contract
 
@@ -316,8 +364,9 @@ deletes, so new-row references are safe.
   touching types → fromCms/toCms → form — see FUNCTIONAL_REQUIREMENTS §7.
 - **Auth stub in place.** `AuthProvider` toggles between guest and
   authenticated modes. Guest mode bypasses all GraphQL calls. Real Cognito
-  integration deferred. All requests send `credentials: 'include'` so a
-  future session cookie works without call-site changes.
+  integration via Better Auth (`apps/auth-service`) — session state gates the
+  SPA; see §8. All requests send `credentials: 'include'` so the session
+  cookie flows without call-site changes.
 - **Validation mirrors the CMS**, not the official JSON Resume schema — the
   CMS is what will actually reject a write. Enum mismatches on legacy data are
   warnings, not errors.
@@ -339,5 +388,12 @@ deletes, so new-row references are safe.
 | `RENDER_ALLOWED_IPS` | render-service | `127.0.0.1,::1` |
 | `RENDER_CORS_ORIGIN` | render-service | `http://localhost:5173` |
 | `RENDER_CACHE_MAX` | render-service | `100` |
+| `AUTH_TARGET` | render-service (prod proxy) | unset (proxy off) |
+| `AUTH_PORT` / `AUTH_HOST` | auth-service | `4000` / `127.0.0.1` |
+| `AUTH_URL` | auth-service | `http://localhost:5173` |
+| `TRUSTED_ORIGINS` | auth-service | `http://localhost:5173` |
+| `DATABASE_URL` | auth-service | — (needs `search_path=auth`) |
+| `COGNITO_*` (5 vars) | auth-service | — |
+| `BETTER_AUTH_SECRET` | auth-service | — |
 
 Keystone side must allow CORS from both web origins (5173, 8787).

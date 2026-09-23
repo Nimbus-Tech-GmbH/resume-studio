@@ -35,7 +35,7 @@ cd apps/web
 pnpm dlx shadcn@latest add <component>
 ```
 
-When updating an existing component, preview with `--dry-run` / `--diff` first and merge — don't blind-overwrite local changes. **Tailwind here is v3**, but the registry targets v4: after adding/updating, rewrite v4-only classes (`gap-(--x)`, `rounded-4xl`, `field-sizing-content`, `data-active:`, `ring-3`, `size-4!`) to v3 equivalents, then verify the class actually appears in `dist/assets/*.css` after `pnpm build`. See FUNCTIONAL_REQUIREMENTS FR-12 for the full checklist.
+When updating an existing component, preview with `--dry-run` / `--diff` first and merge — don't blind-overwrite local changes. **Tailwind here is v4** (`apps/web/src/index.css`, `@import "tailwindcss"`), so registry classes apply as-is. Keep design tokens as HSL triplets (never raw oklch). See FUNCTIONAL_REQUIREMENTS FR-12 for the full checklist.
 
 Design tokens in `apps/web/src/index.css` must stay HSL triplets (`tailwind.config.ts` wraps them in `hsl(var(--x))`) — raw oklch values silently break borders/colors.
 
@@ -68,4 +68,4 @@ Post-MVP work happens on GitHub issues.
 - No `console.log` left behind (Fastify uses `req.log`; browser uses TanStack devtools).
 - No secrets in commits (`.env` is gitignored; use `.env.example`).
 - Loading states use shadcn `Skeleton` / `Spinner` — no ad-hoc spinners.
-- New shadcn components audited for Tailwind v3 compatibility (see above).
+- New shadcn components audited against Tailwind v4 (see above).

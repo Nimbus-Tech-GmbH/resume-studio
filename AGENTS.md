@@ -1,230 +1,117 @@
 # AGENTS.md
 
-Instructions for AI agents working on this codebase. Read this first.
+Instructions for agents working on this repository.
 
----
+## Scope
 
-## Architecture (3 processes)
+This is a pnpm monorepo for a resume editor:
 
-```
-Browser (React SPA, port 5173)
-  ├── AuthProvider (guest / authenticated toggle)
-  ├── GraphQL ──→ Keystone CMS (external, port 3000, /api/graphql)  [gated by isAuthenticated]
-  └── POST /render ──→ Render Service (Fastify, port 8787, localhost only)
-```
+- `apps/web`: React/Vite editor.
+- `apps/render-service`: Fastify/Vite SSR renderer.
+- `apps/auth-service`: Fastify Better Auth + Cognito broker (Postgres `auth` schema).
+- `packages/transformer`: pure CMS ⇄ JSON Resume codecs and save planner.
+- `packages/graphql-client`: GraphQL documents.
+- `packages/themes`: theme registry/loaders.
+- `packages/vendor`: vendored JSON Resume themes.
 
-- **Keystone CMS** = source of truth for ALL resume data. Lives in separate repo `nt-keystone-cms`. This repo mirrors its schema (`schema.ts`, `schema.graphql`) as snapshots.
-- **Web** = editor UI. Never talks to DB directly. All persistence goes through GraphQL mutations. Guest mode bypasses all GraphQL calls — create/import/preview/export work locally.
-- **Render service** = stateless theme renderer. Built with Vite SSR (bundles all workspace packages into self-contained JS). No auth yet (A6). Must stay localhost.
+Read the nearest nested `AGENTS.md` before editing files in a subproject.
 
-## Monorepo layout
+## Non-negotiable boundaries
 
-```
-apps/
-  web/                    React SPA (Vite, Zustand, TanStack Query)
-  render-service/         Fastify theme renderer (Vite SSR build)
+- `apps/web` never accesses the database directly.
+- Authenticated persistence uses GraphQL mutations through `packages/graphql-client`.
+- Auth requests go through `/api/auth`, proxied by Vite (dev) or render-service (prod) to the auth-service — the browser must stay single-origin at 5173.
+- Guest mode performs no GraphQL calls; local create/import/preview/export must continue working.
+- `packages/transformer` must remain dependency-free and runnable in browser and Node.
+- The render service is stateless and must remain localhost-only.
+- The auth-service is localhost-only (bound to `127.0.0.1:4000`) and only reachable via the proxies; it must never expose `public` schema DB access.
+- `schema.graphql` is a read-only CMS schema snapshot; verify live drift with codegen when available.
+- Do not change documented behavior or issue codes (`A1`, `A3`, `A7`, `S7`) without updating the related docs/tests.
 
-packages/
-  transformer/            CMS ⇄ JSON Resume codecs + diff planner (PURE TS, no deps)
-  graphql-client/         Hand-written GraphQL operations (queries + mutations)
-  themes/                 Theme registry + lazy loaders
-  vendor/                 Vendored JSON Resume themes
-```
+## Important files
 
-Dependency direction: `web → transformer ← render-service`, `web → graphql-client`.
-
-`transformer` must stay pure — runs identically in browser and Node tests.
-
-## Key files
-
-| File | What it does |
+| Area | Files |
 |---|---|
-| `apps/web/src/auth/AuthContext.tsx` | AuthProvider + useAuth hook (guest/authenticated toggle) |
-| `packages/transformer/src/types.ts` | `JsonResume*` (editor) + `Cms*` (CMS) interfaces |
-| `packages/transformer/src/fromCms.ts` | CMS → JSON Resume (load) |
-| `packages/transformer/src/toCms.ts` | JSON Resume diff → `MutationOp[]` (save planner) |
-| `packages/graphql-client/src/operations.ts` | All GraphQL documents (queries + mutations) |
-| `apps/web/src/graphql/executeSave.ts` | Runs `MutationOp[]` against CMS sequentially |
-| `apps/web/src/state/editorStore.ts` | Zustand store — single source of client truth; `EMPTY_RESUME` template |
-| `apps/web/src/editor/SaveButton.tsx` | Staleness check → plan → execute pipeline; hidden for guests |
-| `apps/web/src/validation/schema.ts` | zod schema mirroring CMS validations |
-| `apps/render-service/vite.config.ts` | Vite SSR build config — bundles all deps into self-contained JS |
-| `schema.graphql` | Keystone schema snapshot (read-only reference) |
+| Auth (web) | `apps/web/src/auth/AuthContext.tsx`, `apps/web/src/auth/authClient.ts` |
+| Auth (service) | `apps/auth-service/src/auth.ts`, `apps/auth-service/src/server.ts` |
+| Auth proxy | `apps/render-service/src/server.ts` (`/api/auth/*`) |
+| Store | `apps/web/src/state/editorStore.ts` |
+| CMS → editor | `packages/transformer/src/fromCms.ts` |
+| Editor → CMS planner | `packages/transformer/src/toCms.ts` |
+| GraphQL documents | `packages/graphql-client/src/operations.ts` |
+| Save executor | `apps/web/src/graphql/executeSave.ts` |
+| Validation | `apps/web/src/validation/schema.ts` |
+| Renderer config | `apps/render-service/vite.config.ts` |
+| CMS snapshot | `schema.graphql` |
 
-## Data flow
+## Save changes
 
-### Load
-```
-ResumePicker → useResume(id) → fromCms(cms) → loadFromCms({ json, cms })
-```
+Treat these files as one pipeline:
 
-### Load (guest mode / local create / import)
-```
-StartupDialog/ResumePicker → loadFromJson(EMPTY_RESUME) or loadFromJson(importedJson)
-  → store populated locally, resumeId = null, originalCms = null
-  → No GraphQL calls. Preview/export/print work. Save button hidden.
-```
+1. `toCms.ts`: detects changes and emits `MutationOp`.
+2. `operations.ts`: maps each operation to a schema-compatible mutation.
+3. `executeSave.ts`: executes operations sequentially.
 
-### Edit
-```
-form onChange → patchResume → store.resume → PreviewFrame (300ms debounce) → POST /render
-```
+For every new operation:
 
-### Save (the critical path)
-```
-SaveButton onClick:
-  1. Staleness: fetchResumeUpdatedAt(id) ≠ loadedUpdatedAt? → BLOCK
-  2. Plan: toCms({current, original, originalCms, cmsIds, originalCmsIds, resumeId})
-     → { ops: MutationOp[], errors: ValidationError[] }
-  3. Errors? → show, stop
-  4. Execute: sort ops (creates → updates → deletes), run sequentially
-  5. All ok → invalidateQueries → refetch re-seeds store
-     Failed → toast; local state untouched (no rollback — A1)
-```
+- Add the discriminated-union variant.
+- Add the GraphQL document with exact schema mutation and variable types.
+- Add the executor switch case.
+- Preserve exhaustive-switch checking.
+- Add planner tests in `packages/transformer/src/toCms.test.ts`.
 
-### Zustand store invariants
-1. `resume` = only thing forms mutate
-2. `cmsIds[section][i] === null` → row added locally → save emits create
-3. ID in `originalCmsIds` but absent from `cmsIds` → emit delete
-4. `loadFromCms` resets everything atomically
-5. `loadFromJson` populates the store for local imports/creates — `resumeId = null`, `originalCms = null`, all `cmsIds` are null
+Save ordering is creates → updates → deletes. Failed saves do not roll back local state.
 
-## The mutation pipeline (how saves work)
+Special mappings:
 
-This is the most important system to understand for debugging save issues.
+- Work highlights are separate rows.
+- Certificates use the resume-certification join relation.
+- Basics location and profiles are separate rows.
+- Basics image uses a relation payload.
 
-### Step 1: `toCms.ts` — the planner
+## Store invariants
 
-Diffs `current` (live editor state) against `original` (load snapshot) using `originalCms` (CMS row data) and `cmsIds`/`originalCmsIds` (row ID tracking).
+- `resume` is the only form-mutated state.
+- `cmsIds[section][i] === null` means create on save.
+- An ID in `originalCmsIds` but not `cmsIds` means delete.
+- `loadFromCms` resets the store atomically.
+- `loadFromJson` creates a local resume with no CMS IDs or resume ID.
 
-Produces `MutationOp[]` — a discriminated union:
-```ts
-type MutationOp =
-  | { kind: 'createResumeWork'; data: Record<string, unknown> }
-  | { kind: 'updateResumeWork'; id: string; data: Record<string, unknown> }
-  | { kind: 'deleteResumeWork'; id: string }
-  // ... one variant per entity × operation
-```
+## Change verification
 
-**How row lifecycle works:**
-- New row (cmsIds[i] === null) → `create*` op with `resume: { connect: { id } }`
-- Existing row with changes → `update*` op with diffed scalars
-- Row removed from list → `delete*` op
+Use the narrowest relevant command first:
 
-**Special cases:**
-- `work.highlights` → separate `ResumeHighlight` row ops (create/update/delete), NOT nested in work update
-- `certificates` → shared global list accessed via `ResumeCertification` join table; create/delete go through `updateResume { resumeCertifications: { create/disconnect } }`; edits via `updateCertification` using `Certification.id`
-- `basics.location` → separate `ResumeLocation` row ops
-- `basics.profiles` → separate `ResumeProfile` row ops
-- `basics.image` → relation payload `{ create: { src } }` or `{ disconnect: true }` (A3 — CMS-side unverified)
+- Transformer change: run transformer typecheck/tests.
+- GraphQL change: validate operations against `schema.graphql`.
+- Web change: run web typecheck and relevant tests.
+- Render change: build the render service.
+- Auth change: run auth-service typecheck, plus web typecheck (client contract).
+- Before finalizing a cross-cutting change: `pnpm typecheck && pnpm lint && pnpm test`.
 
-### Step 2: `operations.ts` — GraphQL documents
+Do not paste full logs into the response. Report the failing command and the relevant error excerpt.
 
-Each `MutationOp.kind` maps to a named GraphQL mutation document. **These names MUST match `schema.graphql` exactly.**
+## Common traps
 
-Schema pattern: `createResumeWork(data: ResumeWorkCreateInput!): ResumeWork`
-Operation: `mutation CreateResumeWork($data: ResumeWorkCreateInput!) { createResumeWork(data: $data) { id } }`
+- Tailwind is v4. Do not introduce Tailwind v3-only syntax or oklch tokens (tokens stay HSL triplets).
+- Theme tokens are HSL triplets because config wraps them in `hsl(var(...))`.
+- Match repeated rows by stable/content identity, not array position.
+- Client validation mirrors CMS validation, not the JSON Resume specification.
+- Legacy select values produce warnings, not save-blocking errors.
+- Keep Keystone-specific types out of `packages/transformer`.
+- Auth env (`DATABASE_URL`, `COGNITO_*`, `BETTER_AUTH_SECRET`) is server-side only — never import into Vite client bundles unless prefixed `VITE_`.
 
-### Step 3: `executeSave.ts` — the executor
+## Task-specific guidance
 
-`runOne(op)` switch on `op.kind` → `gqlClient.request(DOCUMENT, variables)`.
+- Save/persistence: read `docs/SAVE_PIPELINE.md`.
+- Domain relationships: read `docs/DOMAIN_RELATIONSHIP.md`.
+- Full architecture: read `docs/ARCHITECTURE.md`.
+- Auth wiring: read `docs/ARCHITECTURE.md` §4a + `docs/LOCAL_DEV.md`.
+- UI/accessibility review: use the project UI review skill.
+- shadcn changes: use the shadcn skill; this repo runs Tailwind v4 so registry classes apply as-is.
 
-Ops sorted: bucket 0 (creates) → bucket 1 (updates) → bucket 2 (deletes). Within each bucket, order matches planner output.
+## Project-specific skills
 
-## How to debug any issue
-
-### Debugging save/persistence issues
-
-1. **Check `schema.graphql` first.** Find the mutation name, input types, and field types. This is the source of truth.
-2. **Compare with `operations.ts`.** Verify: mutation name matches, variable types match, return fields are sufficient.
-3. **Check `toCms.ts` planner.** Trace the diff function for the affected section. Key questions:
-   - Does the diff detect the change? (scalar comparison, relation matching)
-   - Does it emit the right `kind`? (create vs update vs delete)
-   - Does the data payload match the schema input type?
-4. **Check `executeSave.ts`.** Verify the `runOne` case exists and passes correct variables.
-5. **Check `types.ts`.** Verify `Cms*` interface matches what the GraphQL query actually returns.
-
-### Debugging data loading issues
-
-1. **Check `RESUME_FIELDS` fragment in `operations.ts`.** Missing fields → silently `undefined` in editor.
-2. **Check `fromCms.ts`.** Does the decoder handle null/undefined? Are codecs applied correctly?
-3. **Check `types.ts` Cms* interfaces.** Do they match the actual GraphQL response shape?
-
-### Debugging preview/render issues
-
-1. **Render service is separate.** Check `apps/render-service/src/` — not the web app.
-2. **Theme errors → error card.** Render service catches theme throws and shows inline card.
-3. **Cache issues.** SHA-1 keyed LRU. Same input = same output. Check `apps/render-service/src/cache.ts`.
-4. **Build output is Vite SSR bundle.** `dist/server.js` + `dist/assets/*.js` are self-contained — no `node_modules` needed at runtime. If adding new imports, verify they bundle correctly with `pnpm --filter @resume-studio/render-service build`.
-
-### Debugging UI/styling issues
-
-1. **Tailwind v3, not v4.** shadcn CLI installs v4 classes that silently fail. Check `dist/assets/*.css` for compiled classes.
-2. **Tokens must be HSL triplets.** `tailwind.config.ts` wraps in `hsl(var(--x))`. oklch values break this.
-3. **shadcn components** live in `apps/web/src/components/ui/`. After add/update, rewrite v4 classes (FR-12 rule 6).
-
-### Debugging validation issues
-
-1. **Client validation mirrors CMS** (`apps/web/src/validation/schema.ts`). Not the JSON Resume spec.
-2. **Legacy select values** (A7) → warnings, not errors. Don't block save.
-3. **Regex duplication** (S7) — phone/email patterns exist in both CMS and client. Can diverge.
-
-## Verification checklist
-
-After any change, run:
-```bash
-pnpm typecheck && pnpm lint && pnpm test
-```
-
-For save-related changes, also verify:
-- `schema.graphql` mutation name matches `operations.ts` document name
-- `toCms.ts` data payload shape matches schema input type
-- `executeSave.ts` has a case for every new `MutationOp` kind (exhaustive switch enforces this)
-- Tests in `packages/transformer/src/toCms.test.ts` cover the changed diff function
-
-For fragment/query changes, verify:
-- `RESUME_FIELDS` in `operations.ts` includes all fields the editor needs
-- `CmsResume` in `types.ts` matches the fragment shape
-- `fromCms.ts` decodes every field the editor reads
-
-## Common pitfalls
-
-| Pitfall | Where | Fix |
-|---|---|---|
-| Mutation name typo | `operations.ts` | Compare letter-by-letter with `schema.graphql` |
-| Missing `MutationOp` kind | `toCms.ts` type union | Add variant; exhaustive switch in `executeSave.ts` forces you to add the case |
-| Missing fragment field | `operations.ts` RESUME_FIELDS | Add field; editor silently gets `undefined` without it |
-| Schema drift | `schema.graphql` vs live CMS | Run `pnpm codegen` against live Keystone when available |
-| Tailwind v4 class | shadcn add/update | Rewrite to v3; verify in compiled CSS |
-| Positional matching bug | `diffHighlights` / `diffSection` | Use content-based matching, not index-based |
-| Non-atomic save | `executeSave.ts` | Documented (A1). No fix without Keystone transactions. |
-| `schema.ts` uses Keystone types | `packages/transformer/` | ESLint ignores it; don't import from transformer |
-
-## Available skills
-
-These agent skills are installed globally. Use the `skill` tool to load full instructions when relevant.
-
-| Skill | When to use | Key trigger phrases |
-|---|---|---|
-| `caveman` | Token-efficient communication during long debug sessions. Drops filler, keeps all technical substance. | "caveman mode", "be brief", "less tokens" |
-| `caveman-commit` | Generate Conventional Commits messages from staged diffs. Subject ≤50 chars, body only when why isn't obvious. | "write a commit", "commit message", "/commit" |
-| `caveman-review` | Ultra-compressed code review comments. Each comment: location, problem, fix. | "review this PR", "code review", "/review" |
-| `shadcn` | Add/fix/update shadcn/ui components. Critical for this project — shadcn CLI installs v4 classes that break under Tailwind v3. | "add component", "fix shadcn", "update button" |
-| `vercel-react-best-practices` | React performance patterns (70 rules). Apply when writing/refactoring React components or optimizing renders. | "optimize render", "performance", "re-render" |
-| `vercel-composition-patterns` | React compound components, render props, context providers. Use when refactoring components with boolean prop proliferation. | "refactor component", "composition", "compound" |
-| `web-design-guidelines` | Review UI files against Web Interface Guidelines. Fetches fresh rules from source before each review. | "review UI", "check accessibility", "design audit" |
-
-**Not relevant here:** `compress`, `find-skills`, `migrate-radix-to-base`, `vercel-react-view-transitions`.
-
-## Related docs
-
-- `docs/ARCHITECTURE.md` — full system architecture
-- `docs/FUNCTIONAL_REQUIREMENTS.md` — per-feature requirements with file maps
-- `docs/KNOWN_ISSUES.md` — living list of known issues
-- `docs/DOMAIN_RELATIONSHIP.md` — resume domain model and entity relationships
-- `docs/CONTRIBUTING.md` — workflow, conventions, code review checklist
-- `docs/LOCAL_DEV.md` — setup, running, troubleshooting
-
-## Important considerations
-
-Always delegate test runs or any terminal tasks to a sub-agent if the terminal tool either has a persistent issue or fails
+- Use `shadcn` before adding or updating shadcn components; this repo runs Tailwind v4.
+- Use `web-design-guidelines` for UI/accessibility reviews.
+- Use `vercel-react-best-practices` for React performance work.
+- Use `caveman` for all conversations until specifically requested otherwise.

@@ -5,6 +5,10 @@
 - ~~**PLAN.md §7** still references old stackoverflow/even/elegant themes — stale.~~ ✅ Done (also fixed stale theme refs in LOCAL_DEV + CONTRIBUTING).
 
 ### Recently completed
+- **Cognito auth via Better Auth** — new `apps/auth-service` (Fastify) brokers Better Auth + Cognito OAuth; users/sessions/accounts live in the Postgres `auth` schema. Browser stays single-origin at 5173: Vite (dev) and render-service (prod) proxy `/api/auth` to the auth-service. Web `AuthContext` is session-gated via `createAuthClient` + `useSession`.
+- **Logout resets to startup dialog** — `resetAll()` in `editorStore` clears resume/CMS IDs (theme-preserving) and reopens the startup dialog; guest phase gained a prominent **Sign in** button.
+- **Startup dialog restyle** — shadcn-block-inspired (Phosphor icons, centered branding, `ButtonGroup` vertical create/import actions).
+- **Render dev env-file fix** — render `dev` script loads root `.env` (`--env-file=../../.env`), so `RENDER_PORT=8787` matches the web fallback (`VITE_RENDER_ENDPOINT`).
 - **Guest mode + auth stub** — `AuthProvider` context with guest/authenticated toggle. Guest mode bypasses all GraphQL calls. Save button hidden for guests. ResumePicker shows only `+` button for guests. StartupDialog has guest phase (no resume list). Login/logout toggle button in header. Store resets cleanly on mode transition.
 - **EMPTY_RESUME template** — blank JSON Resume with empty basics, all list sections as `[]`, and `meta.title: "Untitled Resume"`. Used by guest mode and create-new-resume flow.
 - **Create new resume now local-first** — both StartupDialog and ResumePicker use `loadFromJson(EMPTY_RESUME)` instead of `CREATE_RESUME` mutation. No CMS round-trip until explicit Save.
@@ -33,5 +37,5 @@
 
 ### Next up
 - **Vendor dist → index.js** — `packages/vendor/*/dist` should be replaced by original `index.js` (simplify vendoring).
-- **Cognito auth via Better Auth** — replace auth stub with real Cognito integration using Better Auth library.
-- **Authenticated save to DB** — resume data persists via GraphQL mutations for authenticated users.
+- **Verify real login round-trip** — register the Cognito callback URL (`http://localhost:5173/api/auth/callback/cognito`) and test hosted UI → session → save end-to-end.
+- **Authenticated import save** — imported resumes (no CMS backing) can't be persisted directly; wire CREATE_RESUME + section mutations (see KNOWN_ISSUES A11).

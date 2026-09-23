@@ -1,6 +1,6 @@
 # Deployment Guide
 
-How to deploy to **Northflank** as a single container.
+How to deploy to **Northflank** as containers.
 
 ---
 
@@ -9,12 +9,17 @@ How to deploy to **Northflank** as a single container.
 ```
 Browser
   ├── SPA (static files served by render-service)
+  ├── /api/auth ──→ Render Service (proxies to Auth Service)
   └── POST /render ──→ Render Service (Fastify, port 5173)
-                            │
-                            └── Keystone CMS GraphQL (external, nt-keystone-cms)
+                          │
+                          └── Keystone CMS GraphQL (external, nt-keystone-cms)
+Auth Service (port 4000) ──→ Postgres `auth` schema
 ```
 
-One Docker image bundles the render-service (Fastify) and the web SPA (static files). The render-service serves the SPA from `/` and handles `POST /render` for theme rendering.
+One Docker image bundles the render-service (Fastify) + web SPA + auth-service.
+The render-service serves the SPA from `/`, handles `POST /render`, and
+proxies `/api/auth/*` to the in-image auth-service so the browser stays
+single-origin.
 
 ---
 
@@ -23,6 +28,8 @@ One Docker image bundles the render-service (Fastify) and the web SPA (static fi
 | Requirement | Notes |
 |---|---|
 | Keystone CMS deployed | Must be accessible via public URL (e.g. `https://cms.example.com/api/graphql`) |
+| Postgres with `auth` schema | Same instance/credentials as Keystone; `CREATE SCHEMA IF NOT EXISTS auth;` |
+| Cognito app client allowing callback | `https://your-app.northflank.app/api/auth/callback/cognito` |
 | Northflank account | With a project created |
 | Git repo pushed | All apps and packages pushed to the same repo |
 
@@ -69,6 +76,16 @@ Set these in the **Environment** tab:
 RENDER_PORT=5173
 RENDER_HOST=0.0.0.0
 RENDER_CORS_ORIGIN=https://your-app.northflank.app
+AUTH_TARGET=http://127.0.0.1:4000
+AUTH_URL=https://your-app.northflank.app
+TRUSTED_ORIGINS=https://your-app.northflank.app
+DATABASE_URL=postgres://user:password@db-host:5432/nimbus-tech-db?options=-c%20search_path=auth
+COGNITO_CLIENT_ID=...
+COGNITO_CLIENT_SECRET=...
+COGNITO_DOMAIN=...
+COGNITO_REGION=...
+COGNITO_USERPOOL_ID=...
+BETTER_AUTH_SECRET=<openssl rand -base64 32>
 ```
 
 | Variable | Required | Default | Purpose |
@@ -78,6 +95,13 @@ RENDER_CORS_ORIGIN=https://your-app.northflank.app
 | `RENDER_CORS_ORIGIN` | No | `http://localhost:5173` | Comma-separated allowed origins |
 | `RENDER_ALLOWED_IPS` | No | (empty = public) | Comma-separated IPs to restrict access |
 | `RENDER_CACHE_MAX` | No | `100` | LRU cache size for rendered output |
+| `AUTH_TARGET` | No | unset | If set, render-service proxies `/api/auth` here (in-image: `http://127.0.0.1:4000`) |
+| `AUTH_PORT` / `AUTH_HOST` | No | `4000` / `127.0.0.1` | Where the in-image auth-service listens |
+| `AUTH_URL` | Yes | — | Public origin; drives OAuth callback + CORS |
+| `TRUSTED_ORIGINS` | Yes | — | CORS allowlist for auth-service |
+| `DATABASE_URL` | Yes | — | Postgres with `search_path=auth` |
+| `COGNITO_*` | Yes | — | Cognito app client credentials |
+| `BETTER_AUTH_SECRET` | Yes | — | Session signing secret (≥32 chars) |
 
 ---
 
