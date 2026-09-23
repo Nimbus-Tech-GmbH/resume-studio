@@ -1,25 +1,39 @@
 /* eslint-disable react-refresh/only-export-components -- legitimate context provider + hook pattern */
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useContext, useMemo, type ReactNode } from 'react';
+import { signIn, signOut, useSession } from './authClient';
 
 interface AuthState {
   isAuthenticated: boolean;
-  login: () => void;
-  logout: () => void;
+  /** True while the initial session check is in flight. */
+  isLoading: boolean;
+  /** Start the Cognito OAuth flow (redirect to hosted UI). */
+  login: () => Promise<void>;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthState>({
   isAuthenticated: false,
-  login: () => {},
-  logout: () => {},
+  isLoading: true,
+  login: async () => {},
+  logout: async () => {},
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const { data: session, isPending } = useSession();
 
-  const login = useCallback(() => setIsAuthenticated(true), []);
-  const logout = useCallback(() => setIsAuthenticated(false), []);
-
-  const value = useMemo(() => ({ isAuthenticated, login, logout }), [isAuthenticated, login, logout]);
+  const value = useMemo<AuthState>(() => {
+    const isAuthenticated = Boolean(session?.user);
+    return {
+      isAuthenticated,
+      isLoading: isPending,
+      login: async () => {
+        await signIn.social({ provider: 'cognito' });
+      },
+      logout: async () => {
+        await signOut();
+      },
+    };
+  }, [session, isPending]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
