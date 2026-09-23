@@ -4,7 +4,7 @@ import { Code, FormInput, LogOut, Moon, Palette, Sun, User } from "lucide-react"
 import { useTheme } from "next-themes"
 
 import { useAuth } from "@/auth/AuthContext"
-import { useEditorStore, EMPTY_RESUME } from "@/state/editorStore"
+import { useEditorStore } from "@/state/editorStore"
 import { useValidation } from "@/validation/useValidation"
 import { useMediaQuery } from "@/hooks/use-media-query"
 import { PreviewFrame } from "@/preview/PreviewFrame"
@@ -207,11 +207,11 @@ interface HeaderProps {
 function Header({ activeTheme, theme, setTheme, viewMode, setViewMode }: HeaderProps) {
   const { theme: uiTheme, setTheme: setUiTheme } = useTheme()
   const { isAuthenticated, login, logout } = useAuth()
-  const loadFromJson = useEditorStore((s) => s.loadFromJson)
+  const resetAll = useEditorStore((s) => s.resetAll)
 
   const handleAuthToggle = () => {
     if (isAuthenticated) {
-      loadFromJson(EMPTY_RESUME)
+      resetAll()
       logout()
     } else {
       login()
