@@ -27,7 +27,7 @@ export function ValidationBanner() {
         <ValidationGroup
           issues={errors}
           icon={<AlertCircle />}
-          label="Must fix before saving"
+          label="Must fix before export"
           severity="error"
         />
       )}
@@ -36,7 +36,7 @@ export function ValidationBanner() {
         <ValidationGroup
           issues={warnings}
           icon={<AlertTriangle />}
-          label="Legacy values (won't block saving)"
+          label="Legacy values (won't block export)"
           severity="warning"
         />
       )}
