@@ -41,10 +41,10 @@ export function EditorPane() {
 
   return (
     <Tabs value={active} onValueChange={setActive} className="flex h-full min-h-0 flex-col">
-      <div className="relative shrink-0 border-b">
-        <TabsList variant="line" className="w-full justify-start overflow-x-auto px-2 [&>div]:flex-none">
+      <div className="relative shrink-0 overflow-x-auto overflow-y-hidden border-b pb-1.75">
+        <TabsList variant="line" className="w-full justify-start [&>div]:flex-none">
           {TABS.map((tab) => (
-            <TabsTrigger key={tab.id} value={tab.id} className="text-sm">
+            <TabsTrigger key={tab.id} value={tab.id} >
               {tab.label}
             </TabsTrigger>
           ))}
