@@ -4,7 +4,7 @@
 - Guest mode must not invoke GraphQL.
 - Forms mutate only `editorStore.resume`.
 - Preview requests use the 300 ms debounce.
-- Save is hidden for guests.
+- Save is hidden from the UI for all users (persistence to be re-enabled later); the save pipeline stays in place and tested.
 - Auth requests go to `/api/auth` on the SPA origin; Vite proxies to the auth-service (never call `127.0.0.1:4000` directly).
 - Logout resets the store via `resetAll()` and reopens the startup dialog.
 - Never import server-side auth env vars (`DATABASE_URL`, `COGNITO_*`, `BETTER_AUTH_SECRET`) into the client bundle.
@@ -18,7 +18,7 @@
 | `src/auth/AuthContext.tsx` | AuthProvider + useAuth hook (session-gated) |
 | `src/auth/authClient.ts` | Better Auth client (`createAuthClient`), same-origin `/api/auth` |
 | `src/state/editorStore.ts` | Zustand store — single source of client truth; `EMPTY_RESUME` template; `resetAll()` on logout |
-| `src/editor/SaveButton.tsx` | Staleness check → plan → execute pipeline; hidden for guests |
+| `src/editor/SaveButton.tsx` | Staleness check → plan → execute pipeline; not rendered while save is disabled |
 | `src/validation/schema.ts` | zod schema mirroring CMS validations |
 | `src/graphql/executeSave.ts` | Runs `MutationOp[]` against CMS sequentially |
 | `src/components/StartupDialog.tsx` | Launch dialog — guest Sign in, resume list, create/import |
