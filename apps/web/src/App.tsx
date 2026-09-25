@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react"
 import { DEFAULT_THEME, THEMES, type ThemeId } from "@resume-studio/themes"
-import { Code, FormInput, LogOut, Moon, Palette, Sun, User } from "lucide-react"
+import { BadgeInfo, Code, FormInput, LogOut, Moon, Palette, Sun, User } from "lucide-react"
 import { useTheme } from "next-themes"
 
 import { useAuth } from "@/auth/AuthContext"
@@ -217,8 +217,8 @@ function Header({ viewMode, setViewMode }: { viewMode: ViewMode; setViewMode: (m
       <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
         {isAuthenticated && (
           <>
-            <Badge variant="warning" title="Saving is disabled — changes won't persist.">
-              Save disabled
+            <Badge title="Saving is disabled — changes won't persist." variant="outline">
+              <BadgeInfo data-icon="inline-start" />Save disabled
             </Badge>
             <Separator orientation="vertical" />
           </>
