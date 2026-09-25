@@ -30,6 +30,14 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { ButtonGroup } from '@/components/ui/button-group';
+import {
+  Item,
+  ItemContent,
+  ItemDescription,
+  ItemGroup,
+  ItemMedia,
+  ItemTitle,
+} from '@/components/ui/item';
 
 interface StartupDialogProps {
   open: boolean;
@@ -372,34 +380,34 @@ interface ResumeListProps {
 
 function ResumeList({ resumes, onSelect }: ResumeListProps) {
   return (
-    <div className="flex flex-col gap-1.5">
+    <ItemGroup>
       {resumes.map((resume) => (
-        <Button
-          key={resume.id}
-          variant="outline"
-          className="h-auto gap-3 justify-start p-3"
-          onClick={() => onSelect(resume.id)}
-        >
-          <FileTextIcon
-            data-icon="inline-start"
-            className="size-4 shrink-0 text-muted-foreground"
-          />
+        <Item key={resume.id} variant="outline" asChild>
+          <button
+            type="button"
+            className="cursor-pointer text-left"
+            onClick={() => onSelect(resume.id)}
+          >
+            <ItemMedia variant="icon">
+              <FileTextIcon />
+            </ItemMedia>
 
-          <span className="min-w-0 flex-1 text-left">
-            <span className="block truncate font-medium">
-              {resume.title ??
-                resume.basicInformation?.name ??
-                'Untitled'}
-            </span>
+            <ItemContent>
+              <ItemTitle>
+                {resume.title ??
+                  resume.basicInformation?.name ??
+                  'Untitled'}
+              </ItemTitle>
 
-            {resume.language && (
-              <span className="block truncate text-xs text-muted-foreground">
-                {resume.language.value ?? resume.language.label}
-              </span>
-            )}
-          </span>
-        </Button>
+              {resume.language && (
+                <ItemDescription>
+                  {resume.language.value ?? resume.language.label}
+                </ItemDescription>
+              )}
+            </ItemContent>
+          </button>
+        </Item>
       ))}
-    </div>
+    </ItemGroup>
   );
 }
