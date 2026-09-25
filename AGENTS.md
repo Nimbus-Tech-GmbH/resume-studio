@@ -115,3 +115,6 @@ Do not paste full logs into the response. Report the failing command and the rel
 - Use `web-design-guidelines` for UI/accessibility reviews.
 - Use `vercel-react-best-practices` for React performance work.
 - Use `caveman` for all conversations until specifically requested otherwise.
+
+## Non-negotiables
+- ALWAYS use `caveman` skill for all conversations until specifically requested otherwise.
