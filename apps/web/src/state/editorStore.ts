@@ -99,6 +99,8 @@ interface EditorState {
   loadFromCms: (payload: { json: JsonResume; cms: CmsResume }) => void;
   /** Initialise the store for a locally-imported JSON Resume (no CMS backing). */
   loadFromJson: (json: JsonResume) => void;
+  /** Reset to a blank state and reopen the startup dialog (used on logout). */
+  resetAll: () => void;
   setResumeId: (id: string | null) => void;
   setIsStartup: (v: boolean) => void;
   addItem: <K extends ListSection>(section: K, item: NonNullable<JsonResume[K]>[number]) => void;
@@ -209,6 +211,18 @@ export const useEditorStore = create<EditorState>()((set) => ({
       resumeId: null,
     });
   },
+  resetAll: () =>
+    set((prev) => ({
+      resume: {},
+      original: {},
+      originalCms: null,
+      cmsIds: emptyIdMap(),
+      originalCmsIds: emptyIdMap(),
+      resumeId: null,
+      loadedUpdatedAt: null,
+      isStartup: true,
+      theme: prev.theme,
+    })),
   setResumeId: (resumeId) => set({ resumeId }),
   setIsStartup: (isStartup) => set({ isStartup }),
 

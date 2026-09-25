@@ -5,6 +5,7 @@
 - Node ≥ 20.11 (`.nvmrc` pins 20.11.0). `nvm use` if you use nvm.
 - pnpm ≥ 9 (`corepack enable` will set it up automatically).
 - The Keystone CMS from `nt-keystone-cms` running locally (only needed for authenticated mode).
+- The `nt-keystone-cms-db-1` Postgres container running (image `postgres:15-bookworm`, host port `5433`). The auth-service writes to the `auth` schema.
 
 ## First-time setup
 
@@ -13,7 +14,14 @@ pnpm install
 cp .env.example .env
 ```
 
-Edit `.env` if your Keystone or render endpoints differ from defaults.
+Edit `.env` if your Keystone/render/auth endpoints or credentials differ.
+
+Create the Better Auth schema if it's missing (migration creates tables):
+
+```sh
+psql -h 127.0.0.1 -p 5433 -U admin -d nimbus-tech-db
+# CREATE SCHEMA IF NOT EXISTS auth; \q
+```
 
 ### Guest mode (no Keystone needed)
 
@@ -27,8 +35,13 @@ To use guest mode, just start the dev server and click the `+` button or
 ### Authenticated mode (requires Keystone)
 
 For full CMS access (load/edit/save existing resumes), you need Keystone
-running. Click the login button (user icon) in the header to switch to
-authenticated mode.
+running. Click the login button (user icon) in the header. This redirects to
+the Cognito hosted UI; on success the SPA is authenticated and can use the
+CMS. The auth-service (`apps/auth-service`, port 4000) brokers the OAuth flow;
+Vite proxies `/api/auth` to it so the browser stays single-origin at 5173.
+
+> **Cognito app client (`eu-central-1_BwgQjMok8`) must allow the callback URL**
+> `http://localhost:5173/api/auth/callback/cognito` for local sign-in to work.
 
 ### Keystone CORS
 
@@ -47,13 +60,14 @@ Milestone 0-9 wire the load flow but do not seed. Use Keystone's admin UI (`http
 pnpm dev
 ```
 
-This runs `apps/web` and `apps/render-service` in parallel. Log lines are prefixed with the workspace name.
+This runs `apps/web`, `apps/render-service`, and `apps/auth-service` in parallel. Log lines are prefixed with the workspace name.
 
 Or one at a time:
 
 ```sh
 pnpm dev:web
 pnpm dev:render
+pnpm dev:auth
 ```
 
 ## Ports
@@ -61,6 +75,7 @@ pnpm dev:render
 | Service         | URL                        | Bound     |
 |-----------------|----------------------------|-----------|
 | Web (Vite)      | http://localhost:5173      | 0.0.0.0   |
+| Auth service    | http://localhost:4000      | 127.0.0.1 |
 | Render service  | http://localhost:8787      | 127.0.0.1 |
 | Keystone CMS    | http://localhost:3000      | (external)|
 
@@ -74,6 +89,12 @@ See `.env.example`:
 - `RENDER_ALLOWED_IPS` — comma-separated allowlist (default `127.0.0.1,::1`).
 - `RENDER_CORS_ORIGIN` — comma-separated allowlist (default `http://localhost:5173`).
 - `RENDER_CACHE_MAX` — LRU size (default 100).
+- `AUTH_PORT`, `AUTH_HOST` — where the auth service listens (default `4000`/`127.0.0.1`).
+- `AUTH_URL` — externally visible app origin; callback is `{AUTH_URL}/api/auth/callback/cognito` (default `http://localhost:5173`).
+- `TRUSTED_ORIGINS` — comma-separated CORS allowlist for the auth service (default `http://localhost:5173`).
+- `DATABASE_URL` — Postgres connection. Must target `nimbus-tech-db` with `options=-c search_path=auth` so Better Auth tables land in the `auth` schema.
+- `COGNITO_CLIENT_ID`, `COGNITO_CLIENT_SECRET`, `COGNITO_DOMAIN`, `COGNITO_REGION`, `COGNITO_USERPOOL_ID` — Cognito app client (server-side only).
+- `BETTER_AUTH_SECRET` — session secret; use `openssl rand -base64 32`.
 
 ## Regenerating GraphQL types
 

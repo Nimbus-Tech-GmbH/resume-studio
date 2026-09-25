@@ -80,12 +80,12 @@ export function JsonEditor() {
       <div className="flex shrink-0 items-center justify-between border-b px-4 py-1.5">
         <span className="text-xs font-medium text-muted-foreground">JSON</span>
         <Button
-          variant="ghost"
-          size="xs"
+          variant="outline"
+          size="lg"
+          className="cursor-pointer"
           onClick={() => fileInputRef.current?.click()}
         >
           <Upload className="size-3" />
-          Upload
         </Button>
         <input
           ref={fileInputRef}

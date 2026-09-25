@@ -447,18 +447,11 @@ pnpm build       # web: tsc -b && vite build; render: vite build (SSR bundle)
    `Spinner` (inline pending indicators). No raw `animate-pulse` divs, no
    ad-hoc `Loader2 animate-spin` markup. Buttons: compose Spinner +
    `disabled`, no `isPending` prop.
-6. **Tailwind v3 constraint (important).** This project runs Tailwind v3.4,
-   but current shadcn registry targets v4. After adding/updating a component,
-   audit its classes and rewrite v4-only syntax:
-   - Arbitrary CSS vars: `gap-(--x)` → `gap-[var(--x)]` or plain `gap-4`
-   - `rounded-4xl` → `rounded-full`
-   - `field-sizing-content` → not supported; set explicit min-h/rows
-   - Important suffix `size-4!` → `size-4 !size-4` (or restructure)
-   - Custom variants (`data-active:`, `data-horizontal:`) → explicit
-     `data-[state=active]:`, `data-[orientation=horizontal]:`
-   - `ring-3` → `ring-[3px]`
-   Verify with `pnpm build`, then grep `dist/assets/*.css` for the class —
-   if absent, it silently didn't compile.
+6. **Tailwind v4.** This project runs Tailwind v4 (`@import "tailwindcss"`),
+   so current shadcn registry classes apply as-is. Never introduce Tailwind
+   v3-only syntax or raw oklch tokens (tokens stay HSL triplets). Verify
+   component classes compile with `pnpm build`, then grep
+   `dist/assets/*.css` for the class — if absent, it silently didn't compile.
 7. **Design tokens must be HSL triplets.** `index.css` variables are wrapped
    by `tailwind.config.ts` as `hsl(var(--x))`. Never paste raw oklch values
    into the token blocks — `hsl(oklch(...))` is invalid and colors/borders

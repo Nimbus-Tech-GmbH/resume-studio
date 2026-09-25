@@ -73,7 +73,10 @@ or discovered. Cross-reference `TODO.md` for completed work.
 - **Where:** `apps/render-service/src/auth.ts`
 - **What:** Only protection is an IP allowlist + CORS. No auth. Public
   deployment would let anyone render arbitrary payloads.
-- **Status:** Blocked on auth phase (see TODO #1).
+- **Status:** Auth now lives in the separate `apps/auth-service`; in prod the
+  render-service proxies `/api/auth` to it but `/render` itself remains
+  unauthenticated. Render stays localhost-bound + IP allowlisted
+  (see ARCHITECTURE.md §4a).
 
 ### A7. Legacy select values surface as warnings
 

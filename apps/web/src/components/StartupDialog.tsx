@@ -5,7 +5,12 @@ import {
   useState,
   type ChangeEvent,
 } from 'react';
-import { FileText, Plus, Upload } from 'lucide-react';
+import {
+  FileTextIcon,
+  PlusIcon,
+  SignInIcon,
+  UploadSimpleIcon,
+} from '@phosphor-icons/react';
 
 import { useAuth } from '@/auth/AuthContext';
 import { useResumeList, type ResumeListItem } from '@/graphql/useResume';
@@ -13,8 +18,9 @@ import { useEditorStore, EMPTY_RESUME } from '@/state/editorStore';
 import { validateResume } from '@/validation/schema';
 import type { JsonResume } from '@resume-studio/transformer';
 
-import { Avatar, AvatarImage } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
+import { Separator } from '@/components/ui/separator';
 import { Spinner } from '@/components/ui/spinner';
 import {
   Dialog,
@@ -23,6 +29,15 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { ButtonGroup } from '@/components/ui/button-group';
+import {
+  Item,
+  ItemContent,
+  ItemDescription,
+  ItemGroup,
+  ItemMedia,
+  ItemTitle,
+} from '@/components/ui/item';
 
 interface StartupDialogProps {
   open: boolean;
@@ -42,11 +57,11 @@ type DialogPhase =
   | { status: 'ready'; resumes: ResumeListItem[] };
 
 const DESCRIPTIONS: Record<DialogPhase['status'], string> = {
-  guest: 'Create a resume to get started. Your work won\u2019t be saved.',
+  guest: 'Sign in to manage your resumes, or create one locally. Guest work won\u2019t be saved.',
   loading: 'Fetching your resumes\u2026',
   error: 'Something went wrong loading your resumes.',
   empty: 'Create your first resume to get started.',
-  ready: 'Select an existing resume or create a new one to get started.',
+  ready: 'Select an existing resume or create/upload a new one to get started.',
 };
 
 const FLASH_DURATION_MS = 2_000;
@@ -104,7 +119,7 @@ function useStartupDialogPhase(): DialogPhase {
   return { status: 'ready', resumes };
 }
 
-function parseResumeFile(file: File): Promise<JsonResume> {
+async function parseResumeFile(file: File): Promise<JsonResume> {
   return file.text().then((text) => {
     const json: unknown = JSON.parse(text);
     return json as JsonResume;
@@ -125,6 +140,7 @@ export function StartupDialog({
   onOpenChange,
 }: StartupDialogProps) {
   const phase = useStartupDialogPhase();
+  const { login } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const setResumeId = useEditorStore((state) => state.setResumeId);
@@ -191,22 +207,30 @@ export function StartupDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md" showCloseButton={false}>
-        <DialogHeader>
-          <div className="flex items-center gap-3">
-            <Avatar size="lg">
-              <AvatarImage src="./logo.png" alt="Resume Studio" />
-            </Avatar>
+        <DialogHeader className="items-center gap-1 text-center">
+          <Avatar size="lg">
+            <AvatarImage src="./logo.png" alt="Resume Studio" />
+            <AvatarFallback>
+              <FileTextIcon />
+            </AvatarFallback>
+          </Avatar>
 
-            <div>
-              <DialogTitle>Welcome to Resume Studio</DialogTitle>
-              <DialogDescription>
-                {DESCRIPTIONS[phase.status]}
-              </DialogDescription>
-            </div>
-          </div>
+          <DialogTitle>Welcome to Resume Studio</DialogTitle>
+          <DialogDescription>
+            {DESCRIPTIONS[phase.status]}
+          </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-3">
+        <div className="flex flex-col gap-2">
+          {phase.status === 'guest' && (
+            <div className="mx-auto">
+              <Button size="lg" onClick={login} className="cursor-pointer">
+                <SignInIcon data-icon="inline-start" />
+                Sign in
+              </Button>
+            </div>
+          )}
+
           <DialogPhaseContent
             phase={phase}
             onSelectResume={selectResume}
@@ -215,18 +239,33 @@ export function StartupDialog({
           {importErrors.length > 0 && (
             <ImportErrors errors={importErrors} />
           )}
+        </div>
 
-          <Button className="w-full" onClick={createNew}>
-            <Plus data-icon="inline-start" />
+        {phase.status === 'guest' && (
+          <div className="flex items-center gap-3">
+            <Separator className="flex-1" />
+            <span className="text-xs/relaxed text-muted-foreground">
+              or start locally
+            </span>
+            <Separator className="flex-1" />
+          </div>
+        )}
+        <ButtonGroup orientation="vertical" className="w-full">
+          <Button
+            variant="outline"
+            className="w-full cursor-pointer"
+            onClick={createNew}
+          >
+            <PlusIcon data-icon="inline-start" />
             Create New Resume
           </Button>
 
           <Button
             variant="outline"
-            className="w-full"
+            className="w-full cursor-pointer"
             onClick={() => fileInputRef.current?.click()}
           >
-            <Upload data-icon="inline-start" />
+            <UploadSimpleIcon data-icon="inline-start" />
             Import JSON Resume
           </Button>
 
@@ -237,7 +276,7 @@ export function StartupDialog({
             className="hidden"
             onChange={handleFileChange}
           />
-        </div>
+        </ButtonGroup>
       </DialogContent>
     </Dialog>
   );
@@ -280,7 +319,7 @@ function LoadingState() {
     <div className="flex items-center justify-center gap-2 py-3">
       <Spinner className="size-4 text-muted-foreground" />
       <span className="text-sm text-muted-foreground">
-        Fetching your resumes\u2026
+        Fetching your resumes…
       </span>
     </div>
   );
@@ -292,7 +331,7 @@ function ErrorState() {
       role="alert"
       className="rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive"
     >
-      We couldn\u2019t load your resumes. You can still create or import one.
+      We couldn’t load your resumes. You can still create or import one.
     </div>
   );
 }
@@ -341,31 +380,34 @@ interface ResumeListProps {
 
 function ResumeList({ resumes, onSelect }: ResumeListProps) {
   return (
-    <div className="space-y-2">
+    <ItemGroup>
       {resumes.map((resume) => (
-        <Button
-          key={resume.id}
-          variant="outline"
-          className="h-auto w-full justify-start gap-3 p-3"
-          onClick={() => onSelect(resume.id)}
-        >
-          <FileText className="size-4 shrink-0 text-muted-foreground" />
+        <Item key={resume.id} variant="outline" asChild>
+          <button
+            type="button"
+            className="cursor-pointer text-left"
+            onClick={() => onSelect(resume.id)}
+          >
+            <ItemMedia variant="icon">
+              <FileTextIcon />
+            </ItemMedia>
 
-          <div className="min-w-0 flex-1 text-left">
-            <div className="truncate font-medium">
-              {resume.title ??
-                resume.basicInformation?.name ??
-                'Untitled'}
-            </div>
+            <ItemContent>
+              <ItemTitle>
+                {resume.title ??
+                  resume.basicInformation?.name ??
+                  'Untitled'}
+              </ItemTitle>
 
-            {resume.language && (
-              <div className="truncate text-xs text-muted-foreground">
-                {resume.language.value ?? resume.language.label}
-              </div>
-            )}
-          </div>
-        </Button>
+              {resume.language && (
+                <ItemDescription>
+                  {resume.language.value ?? resume.language.label}
+                </ItemDescription>
+              )}
+            </ItemContent>
+          </button>
+        </Item>
       ))}
-    </div>
+    </ItemGroup>
   );
 }
