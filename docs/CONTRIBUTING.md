@@ -28,16 +28,16 @@ Commit style: [Conventional Commits](https://www.conventionalcommits.org/). Exam
 
 ## UI components (shadcn/ui)
 
-Components live in `apps/web/src/components/ui/` and are managed via the shadcn CLI (config: `apps/web/components.json`, radix base):
+Components live in `apps/web/src/components/ui/` and are managed via the shadcn CLI (config: `apps/web/components.json`, style `radix-mira`):
 
 ```sh
 cd apps/web
 pnpm dlx shadcn@latest add <component>
 ```
 
-When updating an existing component, preview with `--dry-run` / `--diff` first and merge — don't blind-overwrite local changes. **Tailwind here is v4** (`apps/web/src/index.css`, `@import "tailwindcss"`), so registry classes apply as-is. Keep design tokens as HSL triplets (never raw oklch). See FUNCTIONAL_REQUIREMENTS FR-12 for the full checklist.
+When updating an existing component, preview with `--dry-run` / `--diff` first and merge — don't blind-overwrite local changes. **Tailwind here is v4** (`apps/web/src/index.css`, `@import "tailwindcss"`), so registry classes apply as-is. Design tokens are the CSS variables in `index.css`, mapped to utilities via `@theme` — extend the `@theme` block, don't add hacks to components. See FUNCTIONAL_REQUIREMENTS FR-12 for the full checklist.
 
-Design tokens in `apps/web/src/index.css` must stay HSL triplets (`tailwind.config.ts` wraps them in `hsl(var(--x))`) — raw oklch values silently break borders/colors.
+Design tokens in `apps/web/src/index.css` are CSS variables consumed by the Tailwind v4 `@theme` block (`--color-*` referencing `--background` etc.). Keep values as oklch there — do not introduce a `tailwind.config.ts` or `hsl(var())` wrapping.
 
 ## Adding a new resume section
 
@@ -51,7 +51,8 @@ Full step-by-step recipes (including CMS-select dropdown fields and validation) 
 
 ## Adding a new theme
 
-1. Install the theme package under `packages/themes` and `apps/render-service`.
+1. Vendor the theme under `packages/vendor` (themes are committed in-repo, not
+   npm-installed, so preview output is pinned).
 2. Add it to `THEMES` in `packages/themes/src/registry.ts`.
 3. Add a lazy `import()` loader for it in the `loaders` map in `packages/themes/src/themes.ts`.
 4. Verify preview against a known resume — some themes are picky about optional fields.

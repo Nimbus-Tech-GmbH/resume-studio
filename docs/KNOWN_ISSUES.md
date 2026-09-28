@@ -76,7 +76,7 @@ or discovered. Cross-reference `TODO.md` for completed work.
 - **Status:** Auth now lives in the separate `apps/auth-service`; in prod the
   render-service proxies `/api/auth` to it but `/render` itself remains
   unauthenticated. Render stays localhost-bound + IP allowlisted
-  (see ARCHITECTURE.md §4a).
+  (see ARCHITECTURE.md §4).
 
 ### A7. Legacy select values surface as warnings
 
@@ -112,7 +112,7 @@ or discovered. Cross-reference `TODO.md` for completed work.
 ### A10. Pre-existing lint warnings
 
 - **Where:** shadcn ui components (`react-refresh/only-export-components`) and
-  one `console.error` in `PrintButton.tsx`.
+  one `console.error` in `ExportMenu.tsx`.
 - **Impact:** Cosmetic; 0 errors.
 
 ### A11. Local-only resumes (guest mode) cannot be saved to CMS
@@ -120,17 +120,13 @@ or discovered. Cross-reference `TODO.md` for completed work.
 - **Where:** `apps/web/src/state/editorStore.ts` (`loadFromJson`)
 - **What:** Guest mode and JSON import populate the editor via `loadFromJson`,
   which sets `resumeId = null` and `originalCms = null` because there is no
-  backing CMS resume. The `SaveButton` is hidden entirely for guests
-  (`useAuth().isAuthenticated === false`). In authenticated mode, imported
-  resumes can be edited but not saved because `originalCms` is null.
-- **Impact:** Guest resumes are session-only — closing the tab loses all
+  backing CMS resume. The `SaveButton` is hidden for all modes while
+  persistence is disabled, so imported resumes cannot be persisted.
+- **Impact:** Local resumes are session-only — closing the tab loses all
   changes. This is by design.
-- **Save path for authenticated users:** After import, create a new CMS resume
-  via the `+` button, then manually transfer content. Alternatively, the
-  `CREATE_RESUME` mutation + section mutations could be wired (not yet
-  implemented).
-- **Status:** Intentional behavior for guest mode. Authenticated import save
-  is a follow-up.
+- **Status:** Intentional. When persistence is re-enabled, the Save button
+  gates on `originalCms` being non-null; a follow-up can wire `CREATE_RESUME`
+  + section mutations for imported resumes.
 
 ---
 

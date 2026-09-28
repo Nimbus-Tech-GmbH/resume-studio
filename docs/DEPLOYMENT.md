@@ -28,7 +28,7 @@ single-origin.
 | Requirement | Notes |
 |---|---|
 | Keystone CMS deployed | Must be accessible via public URL (e.g. `https://cms.example.com/api/graphql`) |
-| Postgres with `auth` schema | Same instance/credentials as Keystone; `CREATE SCHEMA IF NOT EXISTS auth;` |
+| Northflank-managed Postgres | Own database for auth (auth-service never touches Keystone's DB); `auth` schema applied via `apps/auth-service/migrations/auth-schema.sql` |
 | Cognito app client allowing callback | `https://your-app.northflank.app/api/auth/callback/cognito` |
 | Northflank account | With a project created |
 | Git repo pushed | All apps and packages pushed to the same repo |
@@ -79,7 +79,7 @@ RENDER_CORS_ORIGIN=https://your-app.northflank.app
 AUTH_TARGET=http://127.0.0.1:4000
 AUTH_URL=https://your-app.northflank.app
 TRUSTED_ORIGINS=https://your-app.northflank.app
-DATABASE_URL=postgres://user:password@db-host:5432/nimbus-tech-db?options=-c%20search_path=auth
+DATABASE_URL=postgres://user:password@db-host:5432/resume-auth
 COGNITO_CLIENT_ID=...
 COGNITO_CLIENT_SECRET=...
 COGNITO_DOMAIN=...
@@ -99,7 +99,7 @@ BETTER_AUTH_SECRET=<openssl rand -base64 32>
 | `AUTH_PORT` / `AUTH_HOST` | No | `4000` / `127.0.0.1` | Where the in-image auth-service listens |
 | `AUTH_URL` | Yes | — | Public origin; drives OAuth callback + CORS |
 | `TRUSTED_ORIGINS` | Yes | — | CORS allowlist for auth-service |
-| `DATABASE_URL` | Yes | — | Postgres with `search_path=auth` |
+| `DATABASE_URL` | Yes | — | Postgres URL (no `options=` needed — the pool sets `search_path=auth`) |
 | `COGNITO_*` | Yes | — | Cognito app client credentials |
 | `BETTER_AUTH_SECRET` | Yes | — | Session signing secret (≥32 chars) |
 
@@ -144,29 +144,8 @@ Your Keystone CMS must allow requests from your Northflank app domain. Add the a
 | Editor loads | Resume data fetched from CMS via GraphQL |
 | Form edits work | Changes reflected in local state |
 | Preview renders | iframe shows styled resume from render service |
-| Save works | Changes persist to CMS (check after reload) |
+| Save disabled | App loads (sign-in works); no Save button — persistence is intentionally disabled (badge shows when signed in) |
 | No console errors | CORS, network, or auth errors |
-
----
-
-## Environment variable reference
-
-### Build-time (Vite)
-
-| Variable | Required | Example |
-|---|---|---|
-| `VITE_GRAPHQL_ENDPOINT` | Yes | `https://cms.example.com/api/graphql` |
-| `VITE_RENDER_ENDPOINT` | Yes | `https://app.northflank.app` |
-
-### Runtime (Node.js)
-
-| Variable | Required | Default | Example |
-|---|---|---|---|
-| `RENDER_PORT` | No | `5173` | `5173` |
-| `RENDER_HOST` | No | `0.0.0.0` | `0.0.0.0` |
-| `RENDER_ALLOWED_IPS` | No | (empty) | `0.0.0.0,::,::1` |
-| `RENDER_CORS_ORIGIN` | No | `http://localhost:5173` | `https://app.northflank.app` |
-| `RENDER_CACHE_MAX` | No | `100` | `200` |
 
 ---
 

@@ -5,7 +5,7 @@
 - Node ≥ 20.11 (`.nvmrc` pins 20.11.0). `nvm use` if you use nvm.
 - pnpm ≥ 9 (`corepack enable` will set it up automatically).
 - The Keystone CMS from `nt-keystone-cms` running locally (only needed for authenticated mode).
-- The `nt-keystone-cms-db-1` Postgres container running (image `postgres:15-bookworm`, host port `5433`). The auth-service writes to the `auth` schema.
+- The `resume-auth-db` Postgres container running (image `postgres:15-bookworm`, host port `5434`). The auth-service writes to the `auth` schema in this DB — separate from Keystone's database.
 
 ## First-time setup
 
@@ -14,13 +14,28 @@ pnpm install
 cp .env.example .env
 ```
 
-Edit `.env` if your Keystone/render/auth endpoints or credentials differ.
-
-Create the Better Auth schema if it's missing (migration creates tables):
+If the auth Postgres container doesn't exist yet, create it:
 
 ```sh
-psql -h 127.0.0.1 -p 5433 -U admin -d nimbus-tech-db
+docker run -d --name resume-auth-db \
+  -e POSTGRES_USER=admin -e POSTGRES_PASSWORD=dev-auth-pass \
+  -e POSTGRES_DB=resume-auth -p 127.0.0.1:5434:5432 \
+  postgres:15-bookworm
+```
+
+Edit `.env` if your Keystone/render/auth endpoints or credentials differ.
+
+Create the Better Auth schema if it's missing:
+
+```sh
+docker exec -i resume-auth-db psql -U admin -d resume-auth
 # CREATE SCHEMA IF NOT EXISTS auth; \q
+```
+
+Or apply the tracked migration directly:
+
+```sh
+psql "postgres://admin:dev-auth-pass@127.0.0.1:5434/resume-auth" -f apps/auth-service/migrations/auth-schema.sql
 ```
 
 ### Guest mode (no Keystone needed)
@@ -34,7 +49,7 @@ To use guest mode, just start the dev server and click the `+` button or
 
 ### Authenticated mode (requires Keystone)
 
-For full CMS access (load/edit/save existing resumes), you need Keystone
+For CMS read access (load/edit existing resumes), you need Keystone
 running. Click the login button (user icon) in the header. This redirects to
 the Cognito hosted UI; on success the SPA is authenticated and can use the
 CMS. The auth-service (`apps/auth-service`, port 4000) brokers the OAuth flow;
@@ -85,14 +100,14 @@ See `.env.example`:
 
 - `VITE_GRAPHQL_ENDPOINT` — Keystone endpoint the SPA calls.
 - `VITE_RENDER_ENDPOINT` — render service endpoint the SPA calls.
-- `RENDER_PORT`, `RENDER_HOST` — where the render service listens.
-- `RENDER_ALLOWED_IPS` — comma-separated allowlist (default `127.0.0.1,::1`).
+- `RENDER_PORT`, `RENDER_HOST` — where the render service listens (dev `.env` sets `8787`/`127.0.0.1`; code default is `5173`/`0.0.0.0`).
+- `RENDER_ALLOWED_IPS` — comma-separated allowlist (dev sets `127.0.0.1,::1`; unset = open to all IPs).
 - `RENDER_CORS_ORIGIN` — comma-separated allowlist (default `http://localhost:5173`).
 - `RENDER_CACHE_MAX` — LRU size (default 100).
 - `AUTH_PORT`, `AUTH_HOST` — where the auth service listens (default `4000`/`127.0.0.1`).
 - `AUTH_URL` — externally visible app origin; callback is `{AUTH_URL}/api/auth/callback/cognito` (default `http://localhost:5173`).
 - `TRUSTED_ORIGINS` — comma-separated CORS allowlist for the auth service (default `http://localhost:5173`).
-- `DATABASE_URL` — Postgres connection. Must target `nimbus-tech-db` with `options=-c search_path=auth` so Better Auth tables land in the `auth` schema.
+- `DATABASE_URL` — Postgres connection for the auth DB. The pool already sets `search_path=auth`, so no `?options=` query param is needed. Target the `resume-auth` DB (port `5434`).
 - `COGNITO_CLIENT_ID`, `COGNITO_CLIENT_SECRET`, `COGNITO_DOMAIN`, `COGNITO_REGION`, `COGNITO_USERPOOL_ID` — Cognito app client (server-side only).
 - `BETTER_AUTH_SECRET` — session secret; use `openssl rand -base64 32`.
 
@@ -112,8 +127,6 @@ Until then, hand-written operations in `packages/graphql-client/src/operations.t
 
 **"Keystone unreachable" in the header.** Check that Keystone is running and that `VITE_GRAPHQL_ENDPOINT` matches. Also confirm CORS on the Keystone side.
 
-**Save button is disabled.** The validation banner lists issues (top of editor). Fix the highlighted errors, then Save re-enables. Amber "legacy values" warnings do not block saving.
+**Save button is not shown.** Persistence is intentionally disabled — no Save button renders for any user. The typed save pipeline is retained and tested (see `docs/SAVE_PIPELINE.md`); it will be re-exposed when persistence is re-enabled.
 
-**Save blocked with "changed on the server".** The resume was modified elsewhere since you loaded it (staleness check). Reload the resume in the picker and re-apply your edits.
-
-**Component styles look broken (no borders, wrong colors).** Likely a Tailwind v4-only class from a shadcn update, or oklch tokens pasted into `index.css`. See CONTRIBUTING.md → UI components and FUNCTIONAL_REQUIREMENTS FR-12.
+**Component styles look broken (no borders, wrong colors).** Likely a Tailwind v4-only class from a shadcn update, or stale HSL/oklch token claims. Tokens are the CSS variables in `apps/web/src/index.css`, mapped via Tailwind v4 `@theme`. See CONTRIBUTING.md → UI components and FUNCTIONAL_REQUIREMENTS FR-12.

@@ -23,7 +23,7 @@
 - **Cache issues**: Same input = same output via SHA-1; check `cache.ts` for LRU eviction
 - **Build issues**: Run `pnpm --filter @resume-studio/render-service build`; verify `dist/server.js` + `dist/assets/*.js` are self-contained
 - **Import issues**: All workspace deps bundled; new imports must work in SSR bundle
-- **Auth proxy issues**: `AUTH_TARGET` must be set; check auth-service logs and that `localhost:8787` matches the SPA fallback (`VITE_RENDER_ENDPOINT`)
+- **Auth proxy issues**: `AUTH_TARGET` must be set in env; check auth-service logs. The proxy is independent of the render port — verify the SPA hits `/api/auth` on its own origin (5173).
 
 ## Project-specific skills
 

@@ -3,7 +3,7 @@
 - Runs Better Auth + Cognito OAuth broker for the SPA (Fastify).
 - Bound to `127.0.0.1` only — never reachable directly from the browser.
 - Only reachable via `/api/auth` proxies: Vite (dev, `apps/web/vite.config.ts`) or render-service (prod, `apps/render-service/src/server.ts`).
-- Uses Postgres `auth` schema (via `search_path`) — never touch the Keystone `public` schema.
+- Uses Postgres `auth` schema — the pool sets `search_path=auth` in code, so `DATABASE_URL` needs no `?options=` param. Never touch the Keystone `public` schema.
 - Server-side env only: `DATABASE_URL`, `COGNITO_*`, `BETTER_AUTH_SECRET`. Never expose to Vite client bundles.
 - Runs from source via `tsx` (do not bundle with Vite — better-auth uses OTel `withSpan` and a bundled build crashes). `build` is `tsc --noEmit`.
 - Migration: apply `migrations/auth-schema.sql` with psql. Do NOT install `@better-auth/cli` here — it hoists a `better-call` that breaks the runtime import. Quote camelCase column names (Postgres folds bare identifiers to lowercase → Better Auth `SCHEMA_MISMATCH`).
@@ -19,7 +19,7 @@
 ## Debugging tips
 
 - **Sign-in fails / OAuth redirect loop**: Check the Cognito callback URL is registered; compare `AUTH_URL` vs the browser origin; check `TRUSTED_ORIGINS` includes the SPA origin.
-- **Migrations**: Confirm the `auth` schema exists in the target DB and `DATABASE_URL` sets `search_path=auth`.
+- **Migrations**: Confirm the `auth` schema exists in the target DB (apply `migrations/auth-schema.sql` once). The pool sets `search_path=auth` itself — no URL query param needed.
 - **Secret**: `BETTER_AUTH_SECRET` must be stable across restarts or sessions invalidate.
 
 ## Project-specific skills

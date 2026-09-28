@@ -92,8 +92,7 @@ Do not paste full logs into the response. Report the failing command and the rel
 
 ## Common traps
 
-- Tailwind is v4. Do not introduce Tailwind v3-only syntax or oklch tokens (tokens stay HSL triplets).
-- Theme tokens are HSL triplets because config wraps them in `hsl(var(...))`.
+- Tailwind is v4. Do not introduce Tailwind v3-only syntax (`tailwind.config.ts`, `@layer utilities` from v3). Tokens are the CSS variables in `apps/web/src/index.css`; Tailwind v4 maps them via the `@theme` block.
 - Match repeated rows by stable/content identity, not array position.
 - Client validation mirrors CMS validation, not the JSON Resume specification.
 - Legacy select values produce warnings, not save-blocking errors.

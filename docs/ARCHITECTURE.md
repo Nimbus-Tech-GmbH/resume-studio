@@ -34,7 +34,7 @@ Four cooperating processes:
 │ /api/auth/*              │  │                           │
 │ Better Auth + Cognito    │  │ POST /render              │
 │ Postgres `auth` schema   │  │  → theme render fn        │
-│ (nt-keystone-cms-db-1)   │  │  → postProcess            │
+│ (separate DB)            │  │  → postProcess            │
 │                          │  │  → LRU cache              │
 │                          │  │ /api/auth/* (prod proxy)  │
 │                          │  │ /health                   │
@@ -57,9 +57,11 @@ Four cooperating processes:
 
 - **Web** is the only user-facing surface. It never talks to the database.
   In **guest mode** (default), no GraphQL calls are made — create/import/preview/export work locally.
-  In **authenticated mode**, full CMS access is available (load/edit/save).
+  In **authenticated mode**, CMS read access is available (load/edit).
+  Persistence is currently disabled: the typed save pipeline is retained and
+  tested but the Save button is not rendered.
   Auth requests go to `/api/auth`, proxied by Vite (dev) or render-service (prod) to the auth-service — the browser stays single-origin at 5173.
-- **Auth service** brokers Better Auth + Cognito OAuth and stores users/sessions/accounts in the `auth` schema of the same Postgres instance Keystone uses (`nt-keystone-cms-db-1`). It is stateful by design but only exposed locally / via the render-service proxy.
+- **Auth service** brokers Better Auth + Cognito OAuth and stores users/sessions/accounts in the `auth` schema of its own Postgres database (dev: `resume-auth-db`, prod: the configured `DATABASE_URL`). It is stateful by design but only exposed locally / via the render-service proxy.
 - **Render service** is stateless besides an in-memory LRU. Local-only
   (loopback bind + IP allowlist). Must not be exposed publicly until auth
   exists (KNOWN_ISSUES A6). In prod it also proxies `/api/auth` → auth-service.
@@ -115,7 +117,7 @@ runs identically in browser and Node tests.
 ```
 src/
 ├── main.tsx                  Entry; routes '/' (App) vs '/print' (PrintPage)
-├── App.tsx                   Shell: header (picker/theme/print/save/login), editor+preview grid, startup dialog
+├── App.tsx                   Shell: header (picker/theme/export/login), editor+preview grid, startup dialog
 ├── PrintPage.tsx             Standalone print view; reads payload key from localStorage
 │
 ├── auth/
@@ -129,11 +131,11 @@ src/
 │   ├── EditorPane.tsx        Responsive tab layout (horizontal scroll); registers section forms
 │   ├── sections/             One component per resume section
 │   ├── fields/               Reusable field primitives (text/select/tags)
-│   ├── SaveButton.tsx        Staleness check → plan → execute pipeline trigger; saving state (spinner + disabled)
+│   ├── SaveButton.tsx        Staleness check → plan → execute pipeline trigger; saving state (spinner + disabled); not rendered while save is disabled
 │   ├── ValidationBanner.tsx  Error/warning display from useValidation
 │   ├── SortableList.tsx      Generic dnd-kit reorder wrapper
 │   ├── ResumePicker.tsx      Loads list + selected resume into store; "New Resume" button
-│   └── PrintButton.tsx       Opens /print with a localStorage payload key
+│   └── ExportMenu.tsx        Opens /print with a localStorage payload key
 │
 ├── preview/
 │   ├── PreviewFrame.tsx      Debounced iframe preview
@@ -143,15 +145,13 @@ src/
 │   ├── schema.ts             zod schema mirroring CMS validations
 │   └── useValidation.ts      Hook: store resume → ValidationIssue[]
 │
-│   ├── graphql/
-│   │   ├── client.ts             graphql-request client (credentials: include)
-│   │   ├── useResume.ts          TanStack Query hooks (gated by isAuthenticated), fetchResumeUpdatedAt
-│   │   └── executeSave.ts        Executes MutationOp[] against the CMS
+├── graphql/
+│   ├── client.ts             graphql-request client (credentials: include)
+│   ├── useResume.ts          TanStack Query hooks (gated by isAuthenticated), fetchResumeUpdatedAt
+│   └── executeSave.ts        Executes MutationOp[] against the CMS
 │
-├── components/
-│   └── components/ui/            shadcn-style primitives (button, card, input…)
-│   └── components/StartupDialog.tsx  Launch dialog
-│   └── StartupDialog.tsx    Launch dialog: list resumes, create new, or fetch
+└── components/
+    └── StartupDialog.tsx     Launch dialog: list resumes, create new, or import (guest)
 ```
 
 ### State model (`state/editorStore.ts`)
@@ -204,7 +204,6 @@ is null. The `isEmpty` check in `App.tsx` uses `!resumeId && Object.keys(resume)
 to show the editor/preview for imported data. Saving is blocked because
 `originalCms` is null (see KNOWN_ISSUES A11).
 
-**Edit → preview**
 ### Edit → preview
 
 ```
@@ -242,7 +241,9 @@ form onChange → patchResume → store.resume updates
 
 ### Save button pending state (FR-5)
 
-- Hidden entirely for guests (no CMS to save to).
+- Hidden for all modes while persistence is disabled (a "Save disabled" badge
+  shows for authenticated users). The pipeline below is retained and tested;
+  it resumes once persistence is re-enabled.
 - While saving: `Spinner` (shadcn) with `data-icon="inline-start"`, button
   disabled. Entire save flow (including early-exit paths) wrapped in
   `try/finally` to guarantee the saving state is always cleared.
@@ -273,7 +274,7 @@ SaveButton onClick:
 ### Print flow
 
 ```
-PrintButton → localStorage['print-<ts>'] = JSON{resume, theme}
+ExportMenu → localStorage['print-<ts>'] = JSON{resume, theme}
   → window.open('/print?k=<key>')
 PrintPage → reads key → requestRender → full-height iframe → window.print()
   → removes payload key
@@ -330,9 +331,10 @@ GET|POST /api/auth/*
 
 - Postgres pool uses `options=-c search_path=auth`, so the Kysely adapter
   creates/reads Better Auth tables only in the `auth` schema — never in the
-  Keystone `public` schema. Same container (`nt-keystone-cms-db-1`,
-  `postgres:15-bookworm`, host port 5433) hosts both schemas.
-- Migrations: `npx @better-auth/cli migrate --config apps/auth-service/src/auth.ts`.
+  Keystone `public` schema. The auth Postgres is its own database (dev:
+  `resume-auth-db`, `postgres:15-bookworm`, host port 5434) — not Keystone's.
+- Migrations: apply `apps/auth-service/migrations/auth-schema.sql` with psql
+  (`psql "$DATABASE_URL" -f ...`). Do NOT use the Better Auth CLI.
 - The OAuth callback (`/api/auth/callback/cognito`) must be registered on the
   Cognito app client; the SPA hits `/api/auth` on its own origin so the
   callback URL is `{AUTH_URL}/api/auth/callback/cognito` (dev: 5173).
@@ -373,7 +375,8 @@ deletes, so new-row references are safe.
 - **Themes are vendored**, not npm-installed, so preview output is pinned.
   Registry pattern keeps imports lazy (fast boot, pay-per-use).
 - **Tailwind v4 + shadcn/ui.** Project migrated to Tailwind v4. shadcn
-  components use v4-compatible classes. Token values stay HSL triplets.
+  components use v4-compatible classes. Token values are oklch (direct CSS
+  vars in `index.css`), mapped to Tailwind utilities via `@theme`.
 - **Testing**: Vitest everywhere. Transformer has unit + property tests;
   web tests pure logic only (validation); render-service tests postProcess.
   No component/E2E tests yet.
@@ -384,16 +387,21 @@ deletes, so new-row references are safe.
 |---|---|---|
 | `VITE_GRAPHQL_ENDPOINT` | web | `http://localhost:3000/api/graphql` |
 | `VITE_RENDER_ENDPOINT` | web | `http://localhost:8787` |
-| `RENDER_PORT` / `RENDER_HOST` | render-service | `8787` / `127.0.0.1` |
-| `RENDER_ALLOWED_IPS` | render-service | `127.0.0.1,::1` |
+| `RENDER_PORT` / `RENDER_HOST` | render-service | `5173` / `0.0.0.0` |
+| `RENDER_ALLOWED_IPS` | render-service | unset (open) |
 | `RENDER_CORS_ORIGIN` | render-service | `http://localhost:5173` |
 | `RENDER_CACHE_MAX` | render-service | `100` |
 | `AUTH_TARGET` | render-service (prod proxy) | unset (proxy off) |
 | `AUTH_PORT` / `AUTH_HOST` | auth-service | `4000` / `127.0.0.1` |
 | `AUTH_URL` | auth-service | `http://localhost:5173` |
 | `TRUSTED_ORIGINS` | auth-service | `http://localhost:5173` |
-| `DATABASE_URL` | auth-service | — (needs `search_path=auth`) |
+| `DATABASE_URL` | auth-service | — (must point at a DB with an `auth` schema) |
 | `COGNITO_*` (5 vars) | auth-service | — |
 | `BETTER_AUTH_SECRET` | auth-service | — |
+
+Table shows code defaults. Local dev overrides these via the root `.env`
+(`RENDER_PORT=8787`, `RENDER_HOST=127.0.0.1`, `RENDER_ALLOWED_IPS=127.0.0.1,::1`,
+`AUTH_PORT=4000`, etc.). With `RENDER_ALLOWED_IPS` unset the render service is
+open to all IPs — keep it localhost-only via the `.env`.
 
 Keystone side must allow CORS from both web origins (5173, 8787).

@@ -7,28 +7,26 @@
 
 Edit your resume. See it live. Ship it.
 
-Real-time resume editor web app. Loads resume data from the Keystone CMS GraphQL API, renders live previews via multiple [JSON Resume](https://jsonresume.org/) themes, and persists changes on explicit **Save**.
+Real-time resume editor web app. Loads resume data from the Keystone CMS GraphQL API and renders live previews via multiple [JSON Resume](https://jsonresume.org/) themes. Persistence is currently disabled (save pipeline retained, see below).
 
 > **Status:** Guest mode available (no auth required). Authenticated mode implemented via Better Auth + Cognito.
 
 ## Features
 
 - **Guest mode** — try the editor immediately without signing in. Create and import resumes locally, preview and export freely. No data is saved to the CMS.
-- **Authenticated mode** — sign in via Cognito (Better Auth broker) to load existing resumes from the CMS, edit, and save. Create new resumes locally first, then persist on Save.
+- **Authenticated mode** — sign in via Cognito (Better Auth broker) to load existing resumes from the CMS and edit them. Create new resumes locally first; persistence is currently disabled (see below).
 - Startup dialog — on launch, shows existing resumes as selectable cards (authenticated) or prompts to create/import (guest). Fetching/empty/error/guest states handled gracefully.
-- Create new resumes from the header `+` button or the startup dialog — populates the editor locally with a blank template. No CMS round-trip until you Save.
+- Create new resumes from the header `+` button or the startup dialog — populates the editor locally with a blank template. No CMS round-trip (persistence currently disabled).
 - Edit any JSON Resume section: basics, work (with highlights), education, skills, interests, volunteer, projects, certificates, languages, awards, publications.
 - Live preview updates 300 ms after last keystroke, in a sandboxed iframe — with skeleton/overlay loading states so edits never flash blank.
-- Loading states throughout via shadcn `Skeleton` / `Spinner`: resume picker, preview first paint + refresh overlay, save pending, print page.
-- Save button shows a saving state (spinner + disabled) during the entire save flow, including early-exit paths (`try/finally`). Hidden in guest mode.
+- Loading states throughout via shadcn `Skeleton` / `Spinner`: resume picker, preview first paint + refresh overlay, print page.
+- Save button is hidden for all users while persistence is disabled (a "Save disabled" badge shows when signed in). The typed mutation-plan save pipeline remains in place and tested (see `docs/SAVE_PIPELINE.md`).
 - Import JSON Resume files from the startup dialog.
 - Schema-aligned validation: email/phone regexes and required-field rules mirror the Keystone CMS; legacy select values surface as non-blocking warnings. Powered by Zod.
 - CMS `select` fields render as dropdowns (skill level, language fluency) with options mirrored from the schema.
-- Save-time staleness check blocks writes when the resume changed on the server since load.
 - Theme switcher — 9 vendored in-repo themes: `developer-mono`, `flat`, `modern-classic`, `writers-portfolio`, `nordic-minimal`, `graph-paper-grid`, `monochrome-noir`, `new-york-editorial`, `claude`.
 - Preview / print flow — opens a dedicated `/print` page with the rendered resume in a full-height iframe; use the browser's **Print → Save as PDF** to export.
 - Drag-and-drop reorder for work, education, and skills.
-- Explicit save → typed mutation plan → batched execute against Keystone.
 - Empty states — both editor and preview panes show "No resume selected" when no resume is loaded.
 
 ## Architecture
@@ -38,7 +36,7 @@ Browser (React 19 SPA)
   ├─ AuthProvider (Better Auth session gating)
   ├─ editor state (Zustand)
   ├─ TanStack Query cache (gated by isAuthenticated)
-  ├─ shadcn/ui primitives (radix base) + Tailwind CSS v4
+  ├─ shadcn/ui primitives (radix-mira style) + Tailwind CSS v4
   ├─ @dnd-kit sortable lists
   └─ iframe preview (JSON Resume themes)
         │
@@ -86,10 +84,12 @@ resume-studio/
 └── docs/
     ├── ARCHITECTURE.md
     ├── DEPLOYMENT.md
+    ├── DOMAIN_RELATIONSHIP.md
     ├── FUNCTIONAL_REQUIREMENTS.md
     ├── KNOWN_ISSUES.md
     ├── CONTRIBUTING.md
-    └── LOCAL_DEV.md
+    ├── LOCAL_DEV.md
+    └── SAVE_PIPELINE.md
 ```
 
 ## Getting Started

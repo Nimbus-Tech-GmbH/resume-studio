@@ -28,7 +28,8 @@ on auth mode:
   language). Selecting one loads it into the editor. On first load, the first
   resume in the list is selected automatically. The startup dialog shows the
   resume list with selectable cards, plus "Create New Resume" and "Import JSON
-  Resume" buttons. Saving is available.
+  Resume" buttons. Persistence is currently disabled: the save pipeline is
+  retained (FR-5) but the Save button is not rendered.
 
 **Files**
 | File | Change |
@@ -59,7 +60,8 @@ on auth mode:
    `resumeId` remains null; saving is blocked (see KNOWN_ISSUES A11).
    The `ResumePicker` auto-select is suppressed when local data exists.
 5. Guest mode bypasses all GraphQL — `useResumeList` and `useResume` have
-   `enabled: isAuthenticated`. Save button is hidden.
+   `enabled: isAuthenticated`. Save button is hidden for all modes until
+   persistence is re-enabled.
 
 **AC**
 - [ ] With N resumes, dropdown lists N entries labeled `<title> (<lang>)`.
@@ -67,7 +69,6 @@ on auth mode:
 - [ ] Keystone down → picker shows error text; app does not crash.
 - [ ] Importing a valid JSON Resume file populates editor and preview.
 - [ ] Importing a file with validation errors shows error messages in the dialog.
-- [ ] Imported resume (no CMS backing) shows "No resume loaded" on save attempt.
 - [ ] Guest mode → `+` button only, no GraphQL calls, save button hidden.
 - [ ] Guest create/import → preview, export, print all work locally.
 
@@ -215,6 +216,9 @@ writes). Current rules:
 
 **Behavior.** Explicit Save button. Diffs live state vs load snapshot,
 produces a typed mutation plan, executes sequentially against the CMS.
+Currently disabled: the pipeline below is retained and tested (toCms planner
+tests), but the Save button is not rendered (ARCHITECTURE §3 "Save button
+pending state").
 
 **Files**
 | File | Change |
@@ -305,7 +309,7 @@ path (A4).
 **Files**
 | File | Change |
 |---|---|
-| `apps/web/src/editor/PrintButton.tsx` | Payload handoff |
+| `apps/web/src/editor/ExportMenu.tsx` | Payload handoff |
 | `apps/web/src/PrintPage.tsx` | Print view |
 | `apps/web/src/main.tsx` | Route split (`/print`) |
 
@@ -439,7 +443,7 @@ pnpm build       # web: tsc -b && vite build; render: vite build (SSR bundle)
    typecheck them here; never import from app code.
 4. **shadcn/ui components:** managed via CLI (`pnpm dlx shadcn@latest add …`)
    from `apps/web/`. `components.json` at `apps/web/components.json`
-   (radix base, nova preset). Import alias `@/*` → `apps/web/src/*`
+   (style `radix-mira`, icons `phosphor`). Import alias `@/*` → `apps/web/src/*`
    (tsconfig paths + vite alias). Never hand-edit primitives except to apply
    a deliberate local change; when updating upstream use
    `--dry-run` + `--diff` and merge, don't blind-overwrite.
@@ -449,13 +453,14 @@ pnpm build       # web: tsc -b && vite build; render: vite build (SSR bundle)
    `disabled`, no `isPending` prop.
 6. **Tailwind v4.** This project runs Tailwind v4 (`@import "tailwindcss"`),
    so current shadcn registry classes apply as-is. Never introduce Tailwind
-   v3-only syntax or raw oklch tokens (tokens stay HSL triplets). Verify
-   component classes compile with `pnpm build`, then grep
+   v3-only syntax or a `tailwind.config.ts`; tokens are the CSS variables in
+   `apps/web/src/index.css`, mapped via the `@theme` block. If a new class
+   "does nothing", verify it compiled: `pnpm build`, then grep
    `dist/assets/*.css` for the class — if absent, it silently didn't compile.
-7. **Design tokens must be HSL triplets.** `index.css` variables are wrapped
-   by `tailwind.config.ts` as `hsl(var(--x))`. Never paste raw oklch values
-   into the token blocks — `hsl(oklch(...))` is invalid and colors/borders
-   silently disappear (this caused invisible card/dropdown borders once).
+7. **Design tokens live in `index.css`** as variables (`.theme` / `:root` /
+   `.dark` blocks, oklch values), referenced by `@theme inline` as
+   `--color-*`. Don't paste a second copy into a component; edit the token
+   blocks (this once hid card/dropdown borders).
 8. **Consistency rules:** inputs, selects, buttons share `rounded-lg`; form
    labels are `text-xs` AND control text (inputs, selects, dropdown lists) are `text-sm` —
    pass `className="text-sm"` on `SelectContent` so trigger and list match;
@@ -501,9 +506,7 @@ Example: awards (CMS list exists: `ResumeAward`).
 
 ## Appendix C — Out of scope (do not build without explicit ask)
 
-- Auth / public deploy (blocked phase).
 - In-app PDF generation (Puppeteer decision pending).
 - Undo/redo (deliberately removed).
 - Persisting reorder (needs CMS `order` field).
 - Editing profiles and references (read-only today).
-- Import JSON Resume files from the startup dialog (validates against the zod schema, populates editor locally).
