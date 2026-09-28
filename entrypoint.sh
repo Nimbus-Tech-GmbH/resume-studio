@@ -14,6 +14,14 @@ if [ -n "${AUTH_DATABASE_URL:-}" ]; then
 else
   echo "[entrypoint] booting internal Postgres (${PGHOSTPORT})"
 
+  # The data dir must not be the mount root itself: Northflank volumes are
+  # ext4 and their root contains a `lost+found`, which initdb refuses to
+  # run into ("exists but is not empty"). Drop one level below any mount root.
+  if [ -d "$PGDATA/lost+found" ]; then
+    echo "[entrypoint] $PGDATA looks like a mount root (lost+found found) — using $PGDATA/pgdata instead"
+    PGDATA="$PGDATA/pgdata"
+  fi
+
   if [ -n "${POSTGRES_PASSWORD:-}" ]; then
     PG_SECRET="$POSTGRES_PASSWORD"
   else
@@ -22,9 +30,9 @@ else
   fi
 
   # First boot: initialise the cluster as the postgres OS user.
+  install -d -o postgres -g postgres "$PGDATA"
   if [ ! -s "$PGDATA/PG_VERSION" ]; then
     echo "[entrypoint] initialising cluster in $PGDATA"
-    install -d -o postgres -g postgres "$PGDATA"
     printf '%s\n' "$PG_SECRET" >/tmp/pwfile
     su-exec postgres initdb \
       -D "$PGDATA" \
