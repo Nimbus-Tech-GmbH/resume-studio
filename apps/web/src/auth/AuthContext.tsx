@@ -27,7 +27,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAuthenticated,
       isLoading: isPending,
       login: async () => {
-        await signIn.social({ provider: 'cognito' });
+        // eslint-disable-next-line no-console -- sign-in diagnostics for deployed auth
+        console.info('[auth] sign-in started', {
+          origin: window.location.origin,
+        });
+        try {
+          const result = await signIn.social({ provider: 'cognito' });
+          // eslint-disable-next-line no-console -- sign-in diagnostics for deployed auth
+          console.info('[auth] sign-in response', result);
+        } catch (error) {
+          // eslint-disable-next-line no-console -- sign-in diagnostics for deployed auth
+          console.error('[auth] sign-in failed', error);
+          throw error;
+        }
       },
       logout: async () => {
         await signOut();

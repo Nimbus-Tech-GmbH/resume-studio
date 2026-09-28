@@ -20,7 +20,16 @@ const CORS_ORIGIN = (process.env.TRUSTED_ORIGINS ?? 'http://localhost:5173')
   .map((s) => s.trim())
   .filter(Boolean);
 
+const boot = {
+  port: PORT,
+  host: HOST,
+  baseURL: process.env.AUTH_URL ?? 'http://localhost:5173',
+  trustedOrigins: CORS_ORIGIN,
+} as const;
+
 const app = Fastify({ logger: true });
+
+app.log.info({ ...boot }, 'auth boot');
 
 await app.register(cors, {
   origin: CORS_ORIGIN.length > 0 ? CORS_ORIGIN : true,
@@ -49,7 +58,22 @@ app.route({
         ...(body ? { body } : {}),
       });
 
+      request.log.info(
+        { url: url.pathname, method: request.method, origin: request.headers.origin },
+        'auth request',
+      );
+
       const response = await auth.handler(req);
+
+      request.log.info(
+        {
+          url: url.pathname,
+          status: response.status,
+          location: response.headers.get('location'),
+          origin: request.headers.origin,
+        },
+        'auth response',
+      );
 
       reply.status(response.status);
       response.headers.forEach((value, key) => reply.header(key, value));

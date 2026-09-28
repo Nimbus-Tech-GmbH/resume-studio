@@ -47,11 +47,14 @@ if (AUTH_TARGET) {
     'connection', 'keep-alive', 'proxy-authenticate', 'proxy-authorization',
     'te', 'trailer', 'transfer-encoding', 'upgrade',
   ]);
+  const authTarget = new URL(AUTH_TARGET);
+  const PROXY_REMOTE = `${authTarget.protocol}//${authTarget.host}`;
 
   app.route({
     method: ['GET', 'POST'],
     url: '/api/auth/*',
     async handler(req, reply) {
+      req.log.info({ method: req.method, url: req.url, target: PROXY_REMOTE }, 'auth proxy request');
       reply.hijack();
       const target = new URL(AUTH_TARGET);
       const body = req.body === undefined ? null : JSON.stringify(req.body);
@@ -79,6 +82,7 @@ if (AUTH_TARGET) {
             if (HOP_BY_HOP.has(key.toLowerCase()) || value === undefined) continue;
             resHeaders[key] = Array.isArray(value) ? value.join(', ') : value;
           }
+          req.log.info({ status, location: resHeaders.location }, 'auth proxy response');
           reply.raw.writeHead(status, resHeaders);
           res.on('data', (chunk) => reply.raw.write(chunk));
           res.on('end', () => reply.raw.end());
@@ -97,6 +101,10 @@ if (AUTH_TARGET) {
     },
   });
   app.log.info(`proxying /api/auth → ${AUTH_TARGET}`);
+} else {
+  app.log.warn(
+    'AUTH_TARGET is unset — /api/auth/* will NOT be proxied to the auth-service. Sign-in will fail.',
+  );
 }
 
 const webDist = resolve(import.meta.dirname, '../web-dist');
