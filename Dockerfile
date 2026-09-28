@@ -26,11 +26,17 @@ FROM base AS auth-build
 COPY apps/auth-service ./apps/auth-service
 RUN pnpm --filter @resume-studio/auth-service deploy --legacy /app/auth-service
 
-# ── Final: render-service + web static files + auth-service ───────
+# ── Final: render-service + web static files + auth-service + Postgres ─────
 FROM node:20-alpine
 WORKDIR /app
+RUN apk add --no-cache postgresql su-exec \
+  && mkdir -p /var/lib/postgresql/data /run/postgresql \
+  && chown postgres:postgres /var/lib/postgresql/data /run/postgresql
 COPY --from=render-build /app/apps/render-service/dist ./dist
 COPY --from=web-build /app/apps/web/dist ./web-dist
 COPY --from=auth-build /app/auth-service ./auth-service
+COPY entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
 EXPOSE 5173
-CMD ["sh", "-c", "node dist/server.js & /app/auth-service/node_modules/.bin/tsx auth-service/src/server.ts; wait"]
+ENV PGDATA=/var/lib/postgresql/data
+CMD ["sh", "/app/entrypoint.sh"]

@@ -79,7 +79,7 @@ RENDER_CORS_ORIGIN=https://your-app.northflank.app
 AUTH_TARGET=http://127.0.0.1:4000
 AUTH_URL=https://your-app.northflank.app
 TRUSTED_ORIGINS=https://your-app.northflank.app
-DATABASE_URL=postgres://user:password@db-host:5432/nimbus-tech-db?options=-c%20search_path=auth
+POSTGRES_PASSWORD=<strong random password>
 COGNITO_CLIENT_ID=...
 COGNITO_CLIENT_SECRET=...
 COGNITO_DOMAIN=...
@@ -99,27 +99,41 @@ BETTER_AUTH_SECRET=<openssl rand -base64 32>
 | `AUTH_PORT` / `AUTH_HOST` | No | `4000` / `127.0.0.1` | Where the in-image auth-service listens |
 | `AUTH_URL` | Yes | — | Public origin; drives OAuth callback + CORS |
 | `TRUSTED_ORIGINS` | Yes | — | CORS allowlist for auth-service |
-| `DATABASE_URL` | Yes | — | Postgres with `search_path=auth` |
+| `POSTGRES_PASSWORD` | Yes | — | Password for the **in-image** Postgres (user `POSTGRES_USER`, db `POSTGRES_DB`) |
+| `POSTGRES_USER` | No | `resume` | Superuser for the in-image Postgres |
+| `POSTGRES_DB` | No | `resume-auth` | Database created for auth |
+| `AUTH_DATABASE_URL` | No | — | Optional: bypass in-image Postgres and use an external DB instead |
 | `COGNITO_*` | Yes | — | Cognito app client credentials |
 | `BETTER_AUTH_SECRET` | Yes | — | Session signing secret (≥32 chars) |
+
+> The image bundles Postgres 18 and boots it on `127.0.0.1:5432` (not exposed).
+> The entrypoint initialises the cluster on first boot, creates the `auth` schema
+> from `apps/auth-service/migrations/auth-schema.sql`, then exports
+> `DATABASE_URL` for the two Node services. Set `AUTH_DATABASE_URL` to point at
+> a managed Postgres instead (the embedded one is skipped).
+
+### Volume (required for persistence)
+
+The embedded Postgres stores data in `/var/lib/postgresql/data`, which is
+**ephemeral** unless you attach a volume. Without it, the DB resets on every
+redeploy/restart.
+
+1. Northflank service → **Volumes** → **New volume**
+2. Name: `postgres-data`, Mount path: `/var/lib/postgresql/data`
+3. Set a size (e.g. 5 GB)
+
+### Replica count
+
+Keep the service at **1 replica**. The embedded Postgres is a single writer;
+scaling out would give split-brain databases behind the same public origin.
 
 ---
 
 ## Step 3: Deploy
 
 Click **Deploy**. Northflank builds the Docker image and starts the service.
-
-### 3.0 One-time: create the auth schema
-
-The container never runs migrations. Before first sign-in, apply the schema
-to the auth Postgres:
-
-```bash
-psql "$DATABASE_URL" -f apps/auth-service/migrations/auth-schema.sql
-```
-
-`DATABASE_URL` must target the DB (schema `auth` is created by the script).
-Without this every `/api/auth/*` call returns HTTP 500.
+The entrypoint brings up Postgres, applies the auth schema, then starts the
+render + auth services — no manual DB setup required.
 
 ### 3.1 Verify
 
