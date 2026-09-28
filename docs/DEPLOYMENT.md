@@ -109,6 +109,18 @@ BETTER_AUTH_SECRET=<openssl rand -base64 32>
 
 Click **Deploy**. Northflank builds the Docker image and starts the service.
 
+### 3.0 One-time: create the auth schema
+
+The container never runs migrations. Before first sign-in, apply the schema
+to the auth Postgres:
+
+```bash
+psql "$DATABASE_URL" -f apps/auth-service/migrations/auth-schema.sql
+```
+
+`DATABASE_URL` must target the DB (schema `auth` is created by the script).
+Without this every `/api/auth/*` call returns HTTP 500.
+
 ### 3.1 Verify
 
 ```bash

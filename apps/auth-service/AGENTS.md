@@ -6,7 +6,7 @@
 - Uses Postgres `auth` schema (via `search_path`) — never touch the Keystone `public` schema.
 - Server-side env only: `DATABASE_URL`, `COGNITO_*`, `BETTER_AUTH_SECRET`. Never expose to Vite client bundles.
 - Runs from source via `tsx` (do not bundle with Vite — better-auth uses OTel `withSpan` and a bundled build crashes). `build` is `tsc --noEmit`.
-- Migration: `npx @better-auth/cli migrate --config apps/auth-service/src/auth.ts` (tables live in `auth` schema).
+- Migration: apply `migrations/auth-schema.sql` with psql. Do NOT install `@better-auth/cli` here — it hoists a `better-call` that breaks the runtime import. Quote camelCase column names (Postgres folds bare identifiers to lowercase → Better Auth `SCHEMA_MISMATCH`).
 - The OAuth callback URL `{AUTH_URL}/api/auth/callback/cognito` must be registered on the Cognito app client.
 
 ## Key files
