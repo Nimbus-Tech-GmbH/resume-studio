@@ -32,5 +32,9 @@ WORKDIR /app
 COPY --from=render-build /app/apps/render-service/dist ./dist
 COPY --from=web-build /app/apps/web/dist ./web-dist
 COPY --from=auth-build /app/auth-service ./auth-service
+COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
 EXPOSE 5173
-CMD ["sh", "-c", "node dist/server.js & /app/auth-service/node_modules/.bin/tsx auth-service/src/server.ts; wait"]
+# NOTE: the auth-service runs from source via tsx, so `pnpm deploy` must keep
+# installing devDependencies. Adding --prod to the deploy above breaks startup.
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

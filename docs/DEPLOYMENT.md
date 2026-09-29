@@ -165,3 +165,13 @@ Your Keystone CMS must allow requests from your Northflank app domain. Add the a
 - Verify `VITE_GRAPHQL_ENDPOINT` points to a running Keystone instance
 - Check Keystone CORS allows your Northflank app domain
 - Redeploy after changing `VITE_` env vars (they're baked in at build time)
+
+### `[Better Auth]: Could not validate the database schema`
+- Confirm the migration was applied: `psql "$DATABASE_URL" -c '\dn auth' -c '\dt auth.*'`
+- The container never runs migrations — re-apply `apps/auth-service/migrations/auth-schema.sql` if the `auth` schema is missing
+- If `DATABASE_URL` uses `sslmode=require`, note that `pg-connection-string` treats it as `verify-full`. Use the Northflank CA cert with `sslmode=verify-full&sslrootcert=...` instead of disabling verification
+
+### Container restarts repeatedly
+- `docker/entrypoint.sh` supervises both processes and exits non-zero with a `FATAL <name> exited` line naming whichever process died. Check for that line in the logs.
+- `/health` only covers the render-service. A 200 from `/health` does not mean sign-in works, because the auth-service is reachable only through the in-image proxy.
+- Check the container's exit reason in the Northflank dashboard. A clean exit 0 after a termination signal is a platform event (rollout, scale, resource limit), not an app crash.
