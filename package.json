@@ -4,7 +4,7 @@
   "private": true,
   "description": "Real-time resume editor. Edit JSON Resume data from Keystone CMS, live preview across themes, save on demand.",
   "engines": {
-    "node": ">=20.11.0"
+    "node": ">=20.19.0"
   },
   "scripts": {
     "dev": "pnpm -r --parallel --filter \"./apps/*\" dev",
@@ -17,7 +17,12 @@
     "typecheck": "pnpm -r typecheck",
     "codegen": "pnpm --filter @resume-studio/graphql-client codegen",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "db:migrate:dev": "pnpm --filter @resume-studio/auth-service db:migrate:dev",
+    "db:migrate:deploy": "pnpm --filter @resume-studio/auth-service db:migrate:deploy",
+    "db:migrate:status": "pnpm --filter @resume-studio/auth-service db:migrate:status",
+    "db:generate": "pnpm --filter @resume-studio/auth-service db:generate",
+    "db:validate": "pnpm --filter @resume-studio/auth-service db:validate"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
