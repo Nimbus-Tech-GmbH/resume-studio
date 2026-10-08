@@ -3,4 +3,6 @@ packages:
   - "packages/*"
   - "packages/vendor/*"
 allowBuilds:
+  '@prisma/engines': false
   esbuild: false
+  prisma: false

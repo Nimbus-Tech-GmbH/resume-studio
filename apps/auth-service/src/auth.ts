@@ -1,13 +1,6 @@
 import { betterAuth } from 'better-auth';
-import { Pool } from 'pg';
-
-function requiredEnv(name: string): string {
-  const value = process.env[name];
-  if (!value) throw new Error(`Missing required env var: ${name}`);
-  return value;
-}
-
-const databaseUrl = requiredEnv('DATABASE_URL');
+import { prismaAdapter } from '@better-auth/prisma-adapter';
+import { prisma } from './db.js';
 
 /**
  * Better Auth instance. Loaded by the Fastify server in `server.ts` and by
@@ -16,14 +9,17 @@ const databaseUrl = requiredEnv('DATABASE_URL');
  * The Postgres adapter targets the `auth` schema via `search_path` so Better
  * Auth tables never touch the Keystone `public` schema.
  */
+function requiredEnv(name: string): string {
+  const value = process.env[name];
+  if (!value) throw new Error(`Missing required env var: ${name}`);
+  return value;
+}
+
 export const auth = betterAuth({
   appName: 'Resume Studio',
   baseURL: process.env.AUTH_URL ?? 'http://localhost:5173',
   secret: requiredEnv('BETTER_AUTH_SECRET'),
-  database: new Pool({
-    connectionString: databaseUrl,
-    options: '-c search_path=auth',
-  }),
+  database: prismaAdapter(prisma, { provider: 'postgresql' }),
   socialProviders: {
     cognito: {
       clientId: requiredEnv('COGNITO_CLIENT_ID'),
