@@ -24,6 +24,7 @@ RUN pnpm --filter @resume-studio/web build
 # ── Auth: deploy auth-service + deps ─────────────────────────────
 FROM base AS auth-build
 COPY apps/auth-service ./apps/auth-service
+RUN pnpm --filter @resume-studio/auth-service db:generate
 RUN pnpm --filter @resume-studio/auth-service deploy --legacy /app/auth-service
 
 # ── Final: render-service + web static files + auth-service ───────
@@ -37,4 +38,5 @@ RUN chmod +x /usr/local/bin/entrypoint.sh
 EXPOSE 5173
 # NOTE: the auth-service runs from source via tsx, so `pnpm deploy` must keep
 # installing devDependencies. Adding --prod to the deploy above breaks startup.
+# Prisma 7 contract files must be present for db.ts to import them at runtime.
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
