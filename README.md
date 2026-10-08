@@ -82,14 +82,18 @@ resume-studio/
 │   ├── themes/          # pinned JSON Resume theme registry
 │   └── vendor/          # vendored upstream JSON Resume themes (9)
 └── docs/
-    ├── ARCHITECTURE.md
-    ├── DEPLOYMENT.md
-    ├── DOMAIN_RELATIONSHIP.md
-    ├── FUNCTIONAL_REQUIREMENTS.md
-    ├── KNOWN_ISSUES.md
-    ├── CONTRIBUTING.md
-    ├── LOCAL_DEV.md
-    └── SAVE_PIPELINE.md
+    ├── README.md                     # Documentation index
+    ├── NORTHFLANK_DEPLOYMENT.md      # Production deployment
+    ├── MIGRATIONS.md                 # Database migrations
+    ├── LOCAL_DEV.md                  # Local setup
+    ├── ARCHITECTURE.md               # System design
+    ├── QUICK_REFERENCE.md            # Command cheatsheet
+    ├── SAVE_PIPELINE.md              # Data flow
+    ├── CONTRIBUTING.md               # Code style & guidelines
+    ├── CONNECTION_DIAGRAMS.md        # Architecture diagrams
+    ├── DOMAIN_RELATIONSHIP.md        # CMS schema
+    ├── FUNCTIONAL_REQUIREMENTS.md    # Features
+    └── KNOWN_ISSUES.md               # Limitations
 ```
 
 ## Getting Started
@@ -124,7 +128,53 @@ pnpm build          # tsc + vite production build
 pnpm codegen        # regenerate GraphQL types (needs Keystone reachable)
 ```
 
-See [docs/LOCAL_DEV.md](./docs/LOCAL_DEV.md) for full local setup, [docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md) for Northflank deployment, [docs/CONTRIBUTING.md](./docs/CONTRIBUTING.md) for the contribution flow, [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) and [docs/FUNCTIONAL_REQUIREMENTS.md](./docs/FUNCTIONAL_REQUIREMENTS.md) for design + feature specs, [docs/KNOWN_ISSUES.md](./docs/KNOWN_ISSUES.md) for known issues, and `AGENTS.md` for AI agent onboarding.
+## Documentation
+
+See the [docs/](./docs/) folder for complete guides:
+
+| Guide | Purpose |
+|---|---|
+| **[NORTHFLANK_DEPLOYMENT.md](./docs/NORTHFLANK_DEPLOYMENT.md)** | Production deployment: setup, env vars, troubleshooting |
+| **[MIGRATIONS.md](./docs/MIGRATIONS.md)** | Database migrations (Prisma 7): create, apply, rollback |
+| **[LOCAL_DEV.md](./docs/LOCAL_DEV.md)** | Local development setup: dependencies, services, debugging |
+| **[ARCHITECTURE.md](./docs/ARCHITECTURE.md)** | System design: services, data flow, auth pipeline |
+| **[QUICK_REFERENCE.md](./docs/QUICK_REFERENCE.md)** | Command cheatsheet: migrations, build, deployment |
+| **[CONTRIBUTING.md](./docs/CONTRIBUTING.md)** | Code style, component patterns, PR guidelines |
+
+For all documentation links and workflows, see [docs/README.md](./docs/README.md).
+
+## Database & Migrations
+
+**Schema:** PostgreSQL with `auth` schema (isolated from Keystone)
+
+**ORM:** Prisma 7 with `prisma.config.ts` at `apps/auth-service/`
+
+**Initial migration:** `apps/auth-service/prisma/migrations/000_init/migration.sql`
+
+Apply migrations locally or in production:
+
+```bash
+cd apps/auth-service
+pnpm exec prisma migrate deploy
+```
+
+Or via psql (recommended for containers):
+
+```bash
+DIRECT_URL="postgres://..." psql "$DIRECT_URL" -f apps/auth-service/prisma/migrations/000_init/migration.sql
+```
+
+See [MIGRATIONS.md](./docs/MIGRATIONS.md) for creating and managing schema changes.
+
+## Deploying
+
+**To Northflank:**
+
+1. Create Prisma Postgres database (grab pooled + direct URLs)
+2. Apply initial migration (Step 1.2 in [NORTHFLANK_DEPLOYMENT.md](./docs/NORTHFLANK_DEPLOYMENT.md))
+3. Follow steps 2-6 to create service, set env vars, and deploy
+
+See [NORTHFLANK_DEPLOYMENT.md](./docs/NORTHFLANK_DEPLOYMENT.md) for complete walkthrough.
 
 ## License
 
