@@ -10,11 +10,14 @@ export default tseslint.config(
       '**/dist/**',
       '**/node_modules/**',
       '**/generated.ts',
+      '**/generated/**',
       '**/*.config.*',
       'packages/vendor/**',
       // Keystone CMS schema — lives in the external repo; linted there, not here.
       'schema.ts',
       'schema.graphql',
+      // Prisma generated files (runtime types, wasm loaders)
+      'apps/auth-service/src/generated/**',
     ],
   },
   eslint.configs.recommended,
