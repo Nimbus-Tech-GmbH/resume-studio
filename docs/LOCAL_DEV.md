@@ -2,7 +2,7 @@
 
 ## Prereqs
 
-- Node ≥ 20.11 (`.nvmrc` pins 20.11.0). `nvm use` if you use nvm.
+- Node ≥ 20.19 (`.nvmrc` pins 20.19.0). `nvm use` if you use nvm.
 - pnpm ≥ 9 (`corepack enable` will set it up automatically).
 - The Keystone CMS from `nt-keystone-cms` running locally (only needed for authenticated mode).
 - The `resume-auth-db` Postgres container running (image `postgres:15-bookworm`, host port `5434`). The auth-service writes to the `auth` schema in this DB — separate from Keystone's database.
@@ -12,7 +12,10 @@
 ```sh
 pnpm install
 cp .env.example .env
+pnpm generate
 ```
+
+`pnpm generate` runs Prisma's code generator (`prisma generate`) to emit the Prisma Client in each workspace.
 
 If the auth Postgres container doesn't exist yet, create it:
 
@@ -32,10 +35,10 @@ docker exec -i resume-auth-db psql -U admin -d resume-auth
 # CREATE SCHEMA IF NOT EXISTS auth; \q
 ```
 
-Or apply the tracked migration directly:
+Or apply Prisma migrations:
 
 ```sh
-psql "postgres://admin:dev-auth-pass@127.0.0.1:5434/resume-auth" -f apps/auth-service/migrations/auth-schema.sql
+pnpm --filter @resume-studio/auth-service exec prisma migrate deploy
 ```
 
 ### Guest mode (no Keystone needed)
@@ -107,7 +110,8 @@ See `.env.example`:
 - `AUTH_PORT`, `AUTH_HOST` — where the auth service listens (default `4000`/`127.0.0.1`).
 - `AUTH_URL` — externally visible app origin; callback is `{AUTH_URL}/api/auth/callback/cognito` (default `http://localhost:5173`).
 - `TRUSTED_ORIGINS` — comma-separated CORS allowlist for the auth service (default `http://localhost:5173`).
-- `DATABASE_URL` — Postgres connection for the auth DB. The pool already sets `search_path=auth`, so no `?options=` query param is needed. Target the `resume-auth` DB (port `5434`).
+- `DATABASE_URL` — Postgres **pooled** connection for the auth DB (runtime). PrismaPg adapter handles `search_path=auth` isolation — no `?options=` query param needed. Target the `resume-auth` DB (port `5434`). Use a connection pooler (e.g., PgBouncer) for local dev. If using unpooled direct connection locally, omit `DIRECT_URL` and Prisma CLI will use `DATABASE_URL` for both runtime and migrations.
+- `DIRECT_URL` — (Optional, only if `DATABASE_URL` is pooled) Postgres **direct** connection for migrations. Needed when running `prisma migrate` or `prisma db push` if your `DATABASE_URL` uses PgBouncer or similar. For local dev without a pooler, omit this — Prisma falls back to `DATABASE_URL`.
 - `COGNITO_CLIENT_ID`, `COGNITO_CLIENT_SECRET`, `COGNITO_DOMAIN`, `COGNITO_REGION`, `COGNITO_USERPOOL_ID` — Cognito app client (server-side only).
 - `BETTER_AUTH_SECRET` — session secret; use `openssl rand -base64 32`.
 

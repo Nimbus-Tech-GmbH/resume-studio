@@ -329,12 +329,16 @@ GET|POST /api/auth/*
   → response headers (Set-Cookie, Location) forwarded verbatim
 ```
 
-- Postgres pool uses `options=-c search_path=auth`, so the Kysely adapter
-  creates/reads Better Auth tables only in the `auth` schema — never in the
-  Keystone `public` schema. The auth Postgres is its own database (dev:
-  `resume-auth-db`, `postgres:15-bookworm`, host port 5434) — not Keystone's.
-- Migrations: apply `apps/auth-service/migrations/auth-schema.sql` with psql
-  (`psql "$DATABASE_URL" -f ...`). Do NOT use the Better Auth CLI.
+- **Database layer:** Prisma Client + `@better-auth/prisma-adapter`. PrismaPg
+  adapter (configured in `prisma/schema.prisma`) automatically sets
+  `search_path=auth` at connection time, so Prisma queries read/write only the
+  `auth` schema — never Keystone's `public` schema. The auth Postgres is its
+  own database (dev: `resume-auth-db`, `postgres:15-bookworm`, host port
+  5434) — not Keystone's.
+- **Migrations:** Prisma handles schema creation and migrations. Run `prisma
+  migrate deploy` (or `prisma db push` for local dev) to apply migrations from
+  `apps/auth-service/prisma/migrations/`. Use `DIRECT_URL` if `DATABASE_URL`
+  is pooled. Do NOT use the Better Auth CLI.
 - The OAuth callback (`/api/auth/callback/cognito`) must be registered on the
   Cognito app client; the SPA hits `/api/auth` on its own origin so the
   callback URL is `{AUTH_URL}/api/auth/callback/cognito` (dev: 5173).
