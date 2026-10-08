@@ -79,8 +79,9 @@ app.route({
       response.headers.forEach((value, key) => reply.header(key, value));
       return reply.send(response.body ? await response.text() : null);
     } catch (err) {
-      request.log.error({ err }, 'better-auth handler failed');
-      return reply.code(500).send({ error: 'Internal authentication error' });
+      const msg = err instanceof Error ? err.message : String(err);
+      request.log.error({ err, message: msg }, 'auth handler error');
+      return reply.code(500).send({ error: 'Authentication failed', message: msg });
     }
   },
 });

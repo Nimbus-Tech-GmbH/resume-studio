@@ -19,8 +19,22 @@ const pool = new Pool({
   options: '-c search_path=auth',
 });
 
+pool.on('error', (err) => {
+  console.error('[db] Pool error:', err.message);
+});
+
 const adapter = new PrismaPg(pool);
 
 export const prisma = new PrismaClient({
   adapter,
 });
+
+// Test connection on startup
+try {
+  await prisma.$queryRaw`SELECT 1`;
+  console.log('[db] Connection test passed');
+} catch (err) {
+  const msg = err instanceof Error ? err.message : String(err);
+  console.error('[db] Connection test failed:', msg);
+  throw err;
+}
