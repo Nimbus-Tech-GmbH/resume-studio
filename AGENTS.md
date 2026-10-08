@@ -33,7 +33,7 @@ Read the nearest nested `AGENTS.md` before editing files in a subproject.
 | Area | Files |
 |---|---|
 | Auth (web) | `apps/web/src/auth/AuthContext.tsx`, `apps/web/src/auth/authClient.ts` |
-| Auth (service) | `apps/auth-service/src/auth.ts`, `apps/auth-service/src/server.ts` |
+| Auth (service) | `apps/auth-service/src/auth.ts`, `apps/auth-service/src/server.ts`, `apps/auth-service/src/db.ts` |
 | Auth proxy | `apps/render-service/src/server.ts` (`/api/auth/*`) |
 | Store | `apps/web/src/state/editorStore.ts` |
 | CMS → editor | `packages/transformer/src/fromCms.ts` |
@@ -43,6 +43,8 @@ Read the nearest nested `AGENTS.md` before editing files in a subproject.
 | Validation | `apps/web/src/validation/schema.ts` |
 | Renderer config | `apps/render-service/vite.config.ts` |
 | CMS snapshot | `schema.graphql` |
+| Prisma (v7) config | `apps/auth-service/prisma.config.ts`, `apps/auth-service/prisma/schema.prisma` |
+| Prisma migrations | `apps/auth-service/prisma/migrations/` |
 
 ## Save changes
 
@@ -105,6 +107,10 @@ Do not paste full logs into the response. Report the failing command and the rel
 - Domain relationships: read `docs/DOMAIN_RELATIONSHIP.md`.
 - Full architecture: read `docs/ARCHITECTURE.md`.
 - Auth wiring: read `docs/ARCHITECTURE.md` §4a + `docs/LOCAL_DEV.md`.
+- Database setup: read `docs/MIGRATIONS.md` (Prisma 7 workflow).
+- Database connections: read `docs/CONNECTION_DIAGRAMS.md` (pooled vs direct URLs).
+- Production deployment: read `docs/NORTHFLANK_DEPLOYMENT.md`.
+- Why psql migrations: read root `WHY_PSQL_MIGRATIONS.md`.
 - UI/accessibility review: use the project UI review skill.
 - shadcn changes: use the shadcn skill; this repo runs Tailwind v4 so registry classes apply as-is.
 
@@ -117,3 +123,4 @@ Do not paste full logs into the response. Report the failing command and the rel
 
 ## Non-negotiables
 - ALWAYS use `caveman` skill for all conversations until specifically requested otherwise.
+- Never create docs unless specifically asked.
