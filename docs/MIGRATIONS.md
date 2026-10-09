@@ -1,4 +1,4 @@
-# Migrations Guide — Prisma Migrations for Better Auth Schema
+# Migrations Guide — Prisma 7 Migrations for Better Auth Schema
 
 How to create, apply, and manage database schema changes.
 
@@ -19,6 +19,7 @@ Benefits:
 - Migration history (git tracks every change)
 - Works across local dev → staging → prod
 - Automatic handling of pooled vs direct connections
+- Config loads `.env` from root directory automatically
 - Decoupled schema application from ORM (safer for CI/CD)
 
 ---
@@ -71,23 +72,26 @@ DIRECT_URL="postgres://USER:PASSWORD@db.prisma.io:5432/postgres?sslmode=require"
 
 ### Using Prisma CLI (alternative)
 
-Prisma 7 now supports migrations via config file. This requires `prisma.config.ts` at the app root (new in Prisma 7).
+Prisma 7 supports migrations via config file in `prisma.config.ts`. Config automatically loads `DATABASE_URL` and `DIRECT_URL` from root `.env`.
 
-**Local development:**
-
-```bash
-cd apps/auth-service
-pnpm exec prisma migrate deploy
-```
-
-**Production:**
+**Local development (from root, no env var needed):**
 
 ```bash
-cd apps/auth-service
-DIRECT_URL="postgres://..." pnpm exec prisma migrate deploy
+pnpm db:migrate:deploy
 ```
 
-> Use `DIRECT_URL` (direct connection), not `DATABASE_URL` (pooled). Prisma CLI needs direct access for introspection.
+Reads `DATABASE_URL` from root `.env` automatically via `prisma.config.ts`.
+
+**Production (from root):**
+
+```bash
+DIRECT_URL="postgres://..." pnpm --filter @resume-studio/auth-service db:migrate:deploy
+```
+
+**Connection string notes:**
+- **Local dev:** `DATABASE_URL` (direct Docker connection, no pooler needed)
+- **Production:** Use `DIRECT_URL` if connecting through a pooler. Prisma CLI needs direct access for schema introspection; pooled connections may timeout.
+- **Why:** Prisma checks current schema state; poolers have idle timeouts that can interrupt long-running queries.
 
 ---
 
@@ -110,17 +114,13 @@ model NewTable {
 ### Step 2: Create migration via Prisma
 
 ```bash
-cd apps/auth-service
-# DATABASE_URL must point to local dev database
-pnpm exec prisma migrate dev --name add_new_table
+pnpm --filter @resume-studio/auth-service db:migrate:plan --name add_new_table
 ```
 
 Prisma will:
 1. Detect schema changes
 2. Generate a migration file in `prisma/migrations/<timestamp>_add_new_table/migration.sql`
-3. Ask if you want to reset the local database (for dev: usually yes)
-4. Apply the migration
-5. Regenerate Prisma Client
+3. Show a preview of the SQL
 
 ### Step 3: Review the generated SQL
 
@@ -136,6 +136,7 @@ Edit if needed (but usually auto-generated SQL is correct).
 ### Step 4: Test locally
 
 ```bash
+pnpm db:migrate:deploy
 pnpm dev
 
 # Your app should work with the new schema
@@ -164,11 +165,11 @@ DIRECT_URL="<direct-url>" \
 **Via Prisma CLI:**
 
 ```bash
-cd apps/auth-service
-DIRECT_URL="<direct-url>" pnpm exec prisma migrate deploy
+DIRECT_URL="<direct-url>" \
+  pnpm --filter @resume-studio/auth-service db:migrate:deploy
 
 # Verify
-pnpm exec prisma migrate status
+pnpm --filter @resume-studio/auth-service db:migrate:status
 ```
 
 ---
@@ -208,8 +209,7 @@ CREATE UNIQUE INDEX "user_email_key" ON "auth"."user"("email");
 ## Checking migration status
 
 ```bash
-cd apps/auth-service
-pnpm exec prisma migrate status
+pnpm --filter @resume-studio/auth-service db:migrate:status
 ```
 
 Output:
@@ -240,8 +240,8 @@ prisma/migrations/
 1. **Rename one migration** to have a later timestamp:
 
 ```bash
-cd apps/auth-service
-mv prisma/migrations/1698767890123_feature_a prisma/migrations/1698767890125_feature_a
+mv apps/auth-service/prisma/migrations/1698767890123_feature_a \
+   apps/auth-service/prisma/migrations/1698767890125_feature_a
 ```
 
 2. **Manually merge the SQL** if tables overlap, or keep separate if they don't
@@ -249,14 +249,14 @@ mv prisma/migrations/1698767890123_feature_a prisma/migrations/1698767890125_fea
 3. **Test locally:**
 
 ```bash
-pnpm exec prisma migrate reset  # Wipes local DB and reapplies all
-pnpm dev  # Verify app works
+pnpm --filter @resume-studio/auth-service db:migrate:reset
+pnpm dev
 ```
 
 4. **Commit both with correct order:**
 
 ```bash
-git add prisma/migrations/
+git add apps/auth-service/prisma/migrations/
 git commit -m "merge: resolve migration conflicts"
 ```
 
@@ -267,8 +267,7 @@ git commit -m "merge: resolve migration conflicts"
 **Caution: This deletes all local data.**
 
 ```bash
-cd apps/auth-service
-pnpm exec prisma migrate reset
+pnpm --filter @resume-studio/auth-service db:migrate:reset
 
 # Follow prompts; Prisma will:
 # 1. Drop schema
@@ -290,11 +289,10 @@ Prisma doesn't have built-in rollback. Instead:
 ### Option 1: Add a new migration to undo changes
 
 ```bash
-cd apps/auth-service
-pnpm exec prisma migrate dev --name undo_bad_column
+pnpm --filter @resume-studio/auth-service db:migrate:plan --name undo_bad_column
 
 # Manually edit migration.sql to drop the column instead of adding it
-# Apply: prisma migrate deploy
+pnpm db:migrate:deploy
 ```
 
 ### Option 2: Manual SQL (if emergency)
@@ -304,8 +302,7 @@ pnpm exec prisma migrate dev --name undo_bad_column
 psql "$DIRECT_URL" -c 'DROP COLUMN IF EXISTS "bad_column" FROM auth.user;'
 
 # Regenerate Prisma Client
-cd apps/auth-service
-pnpm exec prisma generate
+pnpm --filter @resume-studio/auth-service db:generate
 ```
 
 ### Option 3: Restore from backup
@@ -342,9 +339,7 @@ jobs:
       - name: Apply database migrations
         env:
           DIRECT_URL: ${{ secrets.DIRECT_URL }}
-        run: |
-          cd apps/auth-service
-          pnpm exec prisma migrate deploy
+        run: pnpm db:migrate:deploy
 
       - name: Build and deploy
         run: |
@@ -366,9 +361,20 @@ jobs:
 **Fix:**
 
 ```bash
-cd apps/auth-service
-DIRECT_URL="postgres://..." pnpm exec prisma migrate deploy
+DIRECT_URL="postgres://..." pnpm --filter @resume-studio/auth-service db:migrate:deploy
 ```
+
+### "Connection url is empty"
+
+**Cause:** `.env` not loaded. `prisma.config.ts` didn't find `DATABASE_URL`.
+
+**Fix:** Run from root (not `apps/auth-service/`):
+
+```bash
+pnpm db:migrate:deploy
+```
+
+The command automatically loads root `.env`.
 
 ### "Migration failed: syntax error"
 
@@ -382,9 +388,8 @@ DIRECT_URL="postgres://..." pnpm exec prisma migrate deploy
 4. Delete migration and retry:
 
 ```bash
-cd apps/auth-service
-rm -rf prisma/migrations/<timestamp>_<name>
-pnpm exec prisma migrate dev --name <name>
+rm -rf apps/auth-service/prisma/migrations/<timestamp>_<name>
+pnpm --filter @resume-studio/auth-service db:migrate:plan --name <name>
 ```
 
 ### "Cannot find module '@prisma/client' after migration"
@@ -394,23 +399,19 @@ pnpm exec prisma migrate dev --name <name>
 **Fix:**
 
 ```bash
-cd apps/auth-service
-pnpm exec prisma generate
-pnpm typecheck  # Verify types are correct
+pnpm --filter @resume-studio/auth-service db:generate
+pnpm typecheck
 ```
 
 ### "Schema does not exist: auth"
 
-**Cause:** Migrations were never applied.
+**Cause:** Migrations were never applied to this database.
 
 **Fix:**
 
 ```bash
-cd apps/auth-service
-pnpm exec prisma migrate deploy
-
-# Verify
-pnpm exec prisma migrate status
+pnpm db:migrate:deploy
+pnpm --filter @resume-studio/auth-service db:migrate:status
 ```
 
 ---
@@ -420,17 +421,17 @@ pnpm exec prisma migrate status
 ### For developers
 
 1. **Edit schema** → `apps/auth-service/prisma/schema.prisma`
-2. **Create migration** → `cd apps/auth-service && pnpm exec prisma migrate dev --name my_change`
-3. **Test locally** → `pnpm dev`
+2. **Create migration** → `pnpm --filter @resume-studio/auth-service db:migrate:plan --name my_change`
+3. **Test locally** → `pnpm db:migrate:deploy && pnpm dev`
 4. **Commit** → push migration files
-5. **Deploy** → migration applied via psql or prisma CLI
+5. **Deploy** → migration applied via psql or Northflank redeploy
 
 ### For ops/deployment
 
-1. **Before first deploy:** Apply migrations via psql or `prisma migrate deploy`
-2. **Before each redeploy:** verify migrations are up-to-date
-3. **If migration fails:** check logs, fix SQL, retry
-4. **Backup before major migrations:** export DB snapshot
+1. **Before first deploy:** Apply migrations via `pnpm db:migrate:deploy` or psql
+2. **Before each redeploy:** Verify migrations are up-to-date
+3. **If migration fails:** Check logs, fix SQL, retry
+4. **Backup before major migrations:** Export DB snapshot
 
 ---
 
@@ -438,22 +439,21 @@ pnpm exec prisma migrate status
 
 | Command | Purpose |
 |---|---|
-| `prisma migrate dev --name <name>` | Create new migration + apply locally + regenerate client |
-| `prisma migrate deploy` | Apply all pending migrations to target DB |
-| `prisma migrate status` | Show migration status (applied, pending, failed) |
-| `prisma migrate resolve --applied <name>` | Mark migration as applied without running SQL (for existing DBs) |
-| `prisma migrate reset` | Drop all schema + reapply migrations (local dev only) |
-| `prisma generate` | Regenerate Prisma Client after manual SQL changes |
+| `pnpm db:migrate:plan --name <name>` | Plan new migration (generates SQL, doesn't apply) |
+| `pnpm db:migrate:deploy` | Apply all pending migrations to target DB |
+| `pnpm db:migrate:status` | Show migration status (applied, pending, failed) |
+| `pnpm db:generate` | Regenerate Prisma Client after manual SQL changes |
+| `pnpm db:migrate:reset` | Drop all schema + reapply migrations (local dev only) |
 
 ---
 
 ## Files
 
 - **`apps/auth-service/prisma/schema.prisma`** — Schema definition (source of truth)
-- **`apps/auth-service/prisma.config.ts`** — Prisma config (Prisma 7+)
+- **`apps/auth-service/prisma.config.ts`** — Prisma config, loads `.env` from root (Prisma 7+)
 - **`apps/auth-service/prisma/migrations/`** — Migration history (git-tracked)
 - **`apps/auth-service/src/db.ts`** — Prisma Client singleton
-- **`.env`, `.env.local`** — `DATABASE_URL` + `DIRECT_URL`
+- **`.env`** — `DATABASE_URL` + `DIRECT_URL` (root level)
 
 ---
 

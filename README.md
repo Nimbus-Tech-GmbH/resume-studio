@@ -121,7 +121,7 @@ pnpm dev:auth       # http://127.0.0.1:4000 (proxied via /api/auth)
 Other scripts:
 
 ```sh
-pnpm test           # vitest across workspace (91 tests)
+pnpm test           # vitest across workspace (96 tests)
 pnpm typecheck
 pnpm lint           # eslint (root flat config)
 pnpm build          # tsc + vite production build
@@ -147,24 +147,25 @@ For all documentation links and workflows, see [docs/README.md](./docs/README.md
 
 **Schema:** PostgreSQL with `auth` schema (isolated from Keystone)
 
-**ORM:** Prisma 7 with `prisma.config.ts` at `apps/auth-service/`
+**ORM:** Prisma 7 with PrismaPg driver adapter (direct, type-safe queries)
 
-**Initial migration:** `apps/auth-service/prisma/migrations/000_init/migration.sql`
+**Config:** `prisma.config.ts` at `apps/auth-service/` loads `DATABASE_URL` from root `.env` automatically
 
-Apply migrations locally or in production:
-
-```bash
-cd apps/auth-service
-pnpm exec prisma migrate deploy
-```
-
-Or via psql (recommended for containers):
+**Apply migrations:**
 
 ```bash
-DIRECT_URL="postgres://..." psql "$DIRECT_URL" -f apps/auth-service/prisma/migrations/000_init/migration.sql
+# From root (loads DATABASE_URL automatically)
+pnpm db:migrate:deploy
 ```
 
-See [MIGRATIONS.md](./docs/MIGRATIONS.md) for creating and managing schema changes.
+Or plan and review before applying:
+
+```bash
+pnpm --filter @resume-studio/auth-service db:migrate:plan --name my_change
+pnpm db:migrate:deploy
+```
+
+See [docs/MIGRATIONS.md](./docs/MIGRATIONS.md) for creating schema changes, troubleshooting, and production deployment.
 
 ## Deploying
 
