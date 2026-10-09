@@ -1,17 +1,17 @@
 /**
  * Migrate existing Keystone users to the auth-service Prisma DB.
  *
- * For each Keystone user with a blank authId:
+ * For each Keystone user WITHOUT an authId:
  * 1. Create a matching user in the auth-service DB
  * 2. Update the Keystone user's authId to point to the new auth-service user ID
  *
- * This bridges the two databases so authenticated users can access their resumes via GraphQL.
+ * This bridges the two databases so existing Keystone users can sign in via Cognito.
  *
  * Usage:
  *   pnpm migrate:keystone-users
  *
  * Requires env vars:
- *   - DATABASE_URL (auth-service DB)
+ *   - DATABASE_URL (auth-service DB in Prisma.io)
  *   - KEYSTONE_GRAPHQL_ENDPOINT or VITE_GRAPHQL_ENDPOINT (Keystone GraphQL)
  */
 
@@ -53,6 +53,7 @@ async function main() {
   }
 
   console.log(`[migrate] Keystone endpoint: ${keystoneEndpoint}`);
+  console.log(`[migrate] Auth-service DB: ${DATABASE_URL?.split('@')[1] || 'unknown'}\n`);
 
   // Fetch all Keystone users
   const query = `
@@ -99,14 +100,20 @@ async function main() {
     return;
   }
 
+  if (keystoneUsers.length === 0) {
+    console.log('[migrate] No users to migrate.');
+    return;
+  }
+
   // Process each Keystone user
   let created = 0;
+  let linked = 0;
   let skipped = 0;
 
   for (const keystoneUser of keystoneUsers) {
     if (keystoneUser.authId) {
       console.log(
-        `[migrate] SKIP ${keystoneUser.email} (already has authId: ${keystoneUser.authId})`,
+        `[migrate] SKIP ${keystoneUser.email} (already linked to authId: ${keystoneUser.authId})`,
       );
       skipped++;
       continue;
@@ -155,6 +162,7 @@ async function main() {
           `[migrate]   ERROR updating Keystone user ${keystoneUser.id}:`,
           updateData.errors,
         );
+        // Note: auth-service user was created but Keystone not updated — inconsistent state
         continue;
       }
 
@@ -162,12 +170,15 @@ async function main() {
         `[migrate]   LINKED Keystone user ${keystoneUser.id} → authId ${authUser.id}\n`,
       );
       created++;
+      linked++;
     } catch (error) {
       console.error(`[migrate] ERROR processing ${keystoneUser.email}:`, error);
     }
   }
 
-  console.log(`\n[migrate] Complete: ${created} created, ${skipped} skipped`);
+  console.log(
+    `\n[migrate] Complete: ${created} auth-service users created, ${linked} Keystone users linked, ${skipped} already linked`,
+  );
   await prisma.$disconnect();
   await pool.end();
 }

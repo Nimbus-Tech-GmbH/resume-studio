@@ -9,8 +9,8 @@ import { prisma } from './db.js';
  * The Postgres adapter targets the `auth` schema via `search_path` so Better
  * Auth tables never touch the Keystone `public` schema.
  *
- * After a user signs in via Cognito, we sync them to the Keystone CMS user table
- * (with authId = resume-studio user ID) so GraphQL queries can access their resumes.
+ * After a user signs in via Cognito, we update their Keystone CMS user record
+ * with authId = resume-studio user ID so GraphQL queries can authorize access.
  */
 function requiredEnv(name: string): string {
   const value = process.env[name];
@@ -38,24 +38,28 @@ export const auth = betterAuth({
     .filter(Boolean),
   callbacks: {
     async signUpUser(user: any) {
-      // After Cognito sign-up, sync to Keystone so GraphQL can access user's resumes
-      await syncUserToKeystone(user.id, user.email, user.name ?? '');
+      // After Cognito sign-up, link to Keystone user by email
+      await linkKeystoneUser(user.id, user.email, user.name ?? '');
       return user;
     },
     async signInUser(user: any) {
-      // After Cognito sign-in, ensure user exists in Keystone (handles new users)
-      await syncUserToKeystone(user.id, user.email, user.name ?? '');
+      // After Cognito sign-in, ensure Keystone user is linked by authId
+      await linkKeystoneUser(user.id, user.email, user.name ?? '');
       return user;
     },
   },
 });
 
 /**
- * Sync an authenticated user from resume-studio auth DB to Keystone CMS.
- * Creates a User record with authId = resume-studio user ID if not present.
- * This allows GraphQL queries to access resumes owned by the authenticated user.
+ * Link an authenticated user to their Keystone CMS record by updating authId.
+ *
+ * Expected flow:
+ * 1. Cognito user signs in → auth-service creates auth.user record
+ * 2. This callback fires → finds Keystone user by email
+ * 3. If found, update authId = resume-studio user ID
+ * 4. GraphQL queries can now authorize against authId
  */
-async function syncUserToKeystone(
+async function linkKeystoneUser(
   authId: string,
   email: string,
   name: string,
@@ -70,11 +74,14 @@ async function syncUserToKeystone(
   }
 
   try {
-    // Check if user already exists by authId
+    // Find Keystone user by email
     const checkQuery = `
       query {
-        users(where: { authId: { equals: "${authId}" } }) {
+        users(where: { email: { equals: "${email}" } }) {
           id
+          authId
+          email
+          name
         }
       }
     `;
@@ -86,59 +93,68 @@ async function syncUserToKeystone(
     });
 
     const checkData = (await checkRes.json()) as {
-      data?: { users?: Array<{ id: string }> };
+      data?: { users?: Array<{ id: string; authId: string; email: string; name: string }> };
+      errors?: Array<{ message: string }>;
     };
-    const existingUsers = checkData.data?.users ?? [];
 
-    if (existingUsers.length > 0) {
-      // User already in Keystone
-      console.debug('[auth] User already in Keystone', { authId, email });
+    if (checkData.errors?.length) {
+      console.error('[auth] GraphQL error finding user', { email, errors: checkData.errors });
       return;
     }
 
-    // Create user in Keystone
-    const nameEscaped = name.replace(/"/g, '\\"');
-    const emailEscaped = email.replace(/"/g, '\\"');
+    const keystoneUser = checkData.data?.users?.[0];
 
-    const createQuery = `
+    if (!keystoneUser) {
+      console.warn('[auth] Keystone user not found by email', { email });
+      return;
+    }
+
+    if (keystoneUser.authId === authId) {
+      // Already linked correctly
+      console.debug('[auth] User already linked', { email, authId });
+      return;
+    }
+
+    // Update Keystone user with authId
+    const updateMutation = `
       mutation {
-        createUser(data: {
-          authId: "${authId}"
-          email: "${emailEscaped}"
-          name: "${nameEscaped}"
-        }) {
+        updateUser(
+          where: { id: "${keystoneUser.id}" }
+          data: { authId: "${authId}" }
+        ) {
           id
+          authId
           email
         }
       }
     `;
 
-    const createRes = await fetch(endpoint, {
+    const updateRes = await fetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query: createQuery }),
+      body: JSON.stringify({ query: updateMutation }),
     });
 
-    const createData = (await createRes.json()) as {
-      data?: { createUser?: { id: string } };
+    const updateData = (await updateRes.json()) as {
+      data?: { updateUser?: { id: string; authId: string } };
       errors?: Array<{ message: string }>;
     };
 
-    if (createData.errors?.length) {
-      console.error('[auth] Failed to create Keystone user', {
-        authId,
+    if (updateData.errors?.length) {
+      console.error('[auth] Failed to update Keystone user', {
+        keystoneId: keystoneUser.id,
         email,
-        errors: createData.errors,
+        errors: updateData.errors,
       });
       return;
     }
 
-    console.info('[auth] User synced to Keystone', {
-      authId,
+    console.info('[auth] User linked to Keystone', {
       email,
-      keystoneId: createData.data?.createUser?.id,
+      keystoneId: keystoneUser.id,
+      authId,
     });
   } catch (error) {
-    console.error('[auth] Error syncing user to Keystone', { authId, email, error });
+    console.error('[auth] Error linking Keystone user', { email, authId, error });
   }
 }
