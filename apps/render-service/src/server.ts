@@ -8,55 +8,35 @@ import { isThemeId } from '@resume-studio/themes';
 import type { JsonResume } from '@resume-studio/transformer';
 import { renderResume } from './render.js';
 import { ipAllowlist } from './auth.js';
-
-function safePort(fallback: number): number {
-  const raw = process.env.RENDER_PORT;
-  if (raw === undefined) return fallback;
-  const n = Number(raw);
-  if (!Number.isFinite(n) || n < 0 || n > 65535) {
-    throw new Error(`Invalid RENDER_PORT: ${raw}`);
-  }
-  return n;
-}
-
-const PORT = safePort(5173);
-const HOST = process.env.RENDER_HOST ?? '0.0.0.0';
-const CORS_ORIGIN = (process.env.RENDER_CORS_ORIGIN ?? 'http://localhost:5173')
-  .split(',')
-  .map((s) => s.trim())
-  .filter(Boolean);
-const ALLOWED_IPS = process.env.RENDER_ALLOWED_IPS
-  ? process.env.RENDER_ALLOWED_IPS.split(',').map((s) => s.trim()).filter(Boolean)
-  : [];
+import { env } from './env.js';
 
 const app = Fastify({ logger: true });
 
 await app.register(cors, {
-  origin: CORS_ORIGIN.length > 0 ? CORS_ORIGIN : true,
+  origin: env.RENDER_CORS_ORIGIN.length > 0 ? env.RENDER_CORS_ORIGIN : true,
   credentials: true,
   methods: ['GET', 'POST', 'OPTIONS'],
 });
 
-app.addHook('onRequest', ipAllowlist(ALLOWED_IPS));
+app.addHook('onRequest', ipAllowlist(env.RENDER_ALLOWED_IPS));
 
-const AUTH_TARGET = process.env.AUTH_TARGET ?? 'http://127.0.0.1:4000';
-if (AUTH_TARGET) {
+if (env.AUTH_TARGET) {
   // Forward only /api/auth/* to the auth-service so the SPA stays single-origin.
   // Plain node http pass-through keeps the self-contained SSR bundle side-effect free.
   const HOP_BY_HOP = new Set([
     'connection', 'keep-alive', 'proxy-authenticate', 'proxy-authorization',
     'te', 'trailer', 'transfer-encoding', 'upgrade',
   ]);
-  const authTarget = new URL(AUTH_TARGET);
+  const authTarget = new URL(env.AUTH_TARGET);
   const PROXY_REMOTE = `${authTarget.protocol}//${authTarget.host}`;
 
   app.route({
     method: ['GET', 'POST'],
     url: '/api/auth/*',
     async handler(req, reply) {
-      req.log.info({ method: req.method, url: req.url, target: PROXY_REMOTE }, 'auth proxy request');
+      req.log.debug({ method: req.method, url: req.url, target: PROXY_REMOTE }, 'auth proxy request');
       reply.hijack();
-      const target = new URL(AUTH_TARGET);
+      const target = new URL(env.AUTH_TARGET);
       const body = req.body === undefined ? null : JSON.stringify(req.body);
 
       const headers: Record<string, string> = {};
@@ -87,25 +67,25 @@ if (AUTH_TARGET) {
               resHeaders[key] = Array.isArray(value) ? value.join(', ') : value;
             }
           }
-          req.log.info({ status, location: resHeaders.location }, 'auth proxy response');
+          req.log.debug({ status, location: resHeaders.location }, 'auth proxy response');
           reply.raw.writeHead(status, resHeaders);
           res.on('data', (chunk) => reply.raw.write(chunk));
           res.on('end', () => reply.raw.end());
           res.on('error', (err) => {
-            req.log.error({ err }, 'auth proxy downstream error');
+            req.log.error({ message: err.message }, 'auth proxy downstream error');
             reply.raw.destroy(err as Error);
           });
         },
       );
       out.on('error', (err) => {
-        req.log.error({ err }, 'auth proxy error');
-        if (!reply.raw.headersSent) reply.code(502).send({ error: 'auth-service unreachable' });
+        req.log.error({ message: err.message }, 'auth proxy error');
+        if (!reply.raw.headersSent) reply.code(502).send({ error: 'Gateway error' });
       });
       if (body !== null) out.write(body);
       out.end();
     },
   });
-  app.log.info(`proxying /api/auth → ${AUTH_TARGET}`);
+  app.log.info(`proxying /api/auth → ${env.AUTH_TARGET}`);
 } else {
   app.log.warn(
     'AUTH_TARGET is unset — /api/auth/* will NOT be proxied to the auth-service. Sign-in will fail.',
@@ -126,7 +106,9 @@ if (existsSync(webDist)) {
   });
 }
 
-app.get('/health', async () => ({ ok: true }));
+app.get('/health', async (): Promise<{ ok: boolean }> => {
+  return { ok: true };
+});
 
 interface RenderBody {
   resume: JsonResume;
@@ -136,24 +118,27 @@ interface RenderBody {
 app.post<{ Body: RenderBody }>('/render', async (req, reply) => {
   const { resume, theme } = req.body ?? ({} as RenderBody);
   if (!resume || typeof resume !== 'object') {
-    return reply.code(400).send({ error: 'Missing resume body' });
+    return reply.code(400).send({ error: 'Invalid request' });
   }
   if (!isThemeId(theme)) {
-    return reply.code(400).send({ error: `Unknown theme: ${theme}` });
+    return reply.code(400).send({ error: 'Invalid request' });
   }
   try {
     const html = await renderResume(resume, theme);
     reply.type('text/html').send(html);
   } catch (err) {
-    req.log.error({ err }, 'render failed');
-    reply.code(500).send({ error: 'Render failed' });
+    req.log.error(
+      { message: err instanceof Error ? err.message : String(err) },
+      'render failed'
+    );
+    reply.code(500).send({ error: 'Server error' });
   }
 });
 
-app
-  .listen({ port: PORT, host: HOST })
-  .then(() => app.log.info(`render-service on http://${HOST}:${PORT}`))
-  .catch((err) => {
+await app
+  .listen({ port: env.RENDER_PORT, host: env.RENDER_HOST })
+  .then(() => app.log.info(`render-service on http://${env.RENDER_HOST}:${env.RENDER_PORT}`))
+  .catch((err: Error) => {
     app.log.error(err);
     process.exit(1);
   });
@@ -165,7 +150,7 @@ for (const signal of shutdownSignals) {
     app.log.info({ signal }, 'shutting down');
     app.close().then(
       () => process.exit(0),
-      (err) => {
+      (err: Error) => {
         app.log.error(err, 'shutdown error');
         process.exit(1);
       },

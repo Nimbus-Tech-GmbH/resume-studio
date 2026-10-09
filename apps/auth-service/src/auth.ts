@@ -1,6 +1,19 @@
 import { betterAuth } from 'better-auth';
 import { prismaAdapter } from '@better-auth/prisma-adapter';
 import { prisma } from './db.js';
+import { env } from './env.js';
+
+interface KeystoneUser {
+  id: string;
+  authId: string;
+  email: string;
+  name: string;
+}
+
+interface GraphQLResponse<T> {
+  data?: T;
+  errors?: Array<{ message: string }>;
+}
 
 /**
  * Better Auth instance. Loaded by the Fastify server in `server.ts` and by
@@ -12,38 +25,27 @@ import { prisma } from './db.js';
  * After a user signs in via Cognito, we update their Keystone CMS user record
  * with authId = resume-studio user ID so GraphQL queries can authorize access.
  */
-function requiredEnv(name: string): string {
-  const value = process.env[name];
-  if (!value) throw new Error(`Missing required env var: ${name}`);
-  return value;
-}
-
 export const auth = betterAuth({
   appName: 'Resume Studio',
-  baseURL: process.env.AUTH_URL ?? 'http://localhost:5173',
-  secret: requiredEnv('BETTER_AUTH_SECRET'),
+  baseURL: env.AUTH_URL,
+  secret: env.BETTER_AUTH_SECRET,
   database: prismaAdapter(prisma, { provider: 'postgresql' }),
   socialProviders: {
     cognito: {
-      clientId: requiredEnv('COGNITO_CLIENT_ID'),
-      clientSecret: requiredEnv('COGNITO_CLIENT_SECRET'),
-      domain: requiredEnv('COGNITO_DOMAIN'),
-      region: requiredEnv('COGNITO_REGION'),
-      userPoolId: requiredEnv('COGNITO_USERPOOL_ID'),
+      clientId: env.COGNITO_CLIENT_ID,
+      clientSecret: env.COGNITO_CLIENT_SECRET,
+      domain: env.COGNITO_DOMAIN,
+      region: env.COGNITO_REGION,
+      userPoolId: env.COGNITO_USERPOOL_ID,
     },
   },
-  trustedOrigins: (process.env.TRUSTED_ORIGINS ?? 'http://localhost:5173')
-    .split(',')
-    .map((s) => s.trim())
-    .filter(Boolean),
+  trustedOrigins: env.TRUSTED_ORIGINS,
   callbacks: {
-    async signUpUser(user: any) {
-      // After Cognito sign-up, link to Keystone user by email
+    async signUpUser(user: any): Promise<any> {
       await linkKeystoneUser(user.id, user.email, user.name ?? '');
       return user;
     },
-    async signInUser(user: any) {
-      // After Cognito sign-in, ensure Keystone user is linked by authId
+    async signInUser(user: any): Promise<any> {
       await linkKeystoneUser(user.id, user.email, user.name ?? '');
       return user;
     },
@@ -51,34 +53,47 @@ export const auth = betterAuth({
 });
 
 /**
+ * Validate email for safe GraphQL transmission.
+ * Block emails containing GraphQL syntax to prevent injection.
+ */
+function validateEmailFormat(email: string): boolean {
+  // Standard email + GraphQL injection prevention
+  const emailRegex = /^[^\s"'`{}<>\\]+@[^\s"'`{}<>\\]+\.[^\s"'`{}<>\\]+$/;
+  return emailRegex.test(email);
+}
+
+/**
  * Link an authenticated user to their Keystone CMS record by updating authId.
  *
- * Expected flow:
+ * Flow:
  * 1. Cognito user signs in → auth-service creates auth.user record
- * 2. This callback fires → finds Keystone user by email
+ * 2. This callback fires → fetches Keystone user by email
  * 3. If found, update authId = resume-studio user ID
  * 4. GraphQL queries can now authorize against authId
+ *
+ * Note: Errors logged via console.error (executed during auth.handler call).
  */
 async function linkKeystoneUser(
   authId: string,
   email: string,
-  name: string,
+  name: string
 ): Promise<void> {
-  console.info('[auth] linkKeystoneUser called', { authId, email });
-  // Determine Keystone GraphQL endpoint
-  let endpoint = process.env.KEYSTONE_GRAPHQL_ENDPOINT;
-  if (!endpoint && process.env.VITE_GRAPHQL_ENDPOINT) {
-    endpoint = process.env.VITE_GRAPHQL_ENDPOINT;
+  // Validate inputs
+  if (!authId || !email) {
+    console.error('[auth] Invalid user data: missing authId or email');
+    return;
   }
-  if (!endpoint) {
-    endpoint = 'http://localhost:3000/api/graphql';
+
+  if (!validateEmailFormat(email)) {
+    console.error('[auth] Invalid email format');
+    return;
   }
 
   try {
-    // Find Keystone user by email
+    // Query Keystone for existing user — uses GraphQL variables (safe)
     const checkQuery = `
-      query {
-        users(where: { email: { equals: "${email}" } }) {
+      query GetUser($email: String!) {
+        users(where: { email: { equals: $email } }) {
           id
           authId
           email
@@ -87,75 +102,82 @@ async function linkKeystoneUser(
       }
     `;
 
-    const checkRes = await fetch(endpoint, {
+    const checkRes = await fetch(env.KEYSTONE_GRAPHQL_ENDPOINT, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query: checkQuery }),
+      body: JSON.stringify({
+        query: checkQuery,
+        variables: { email }, // Safe: passed as variable, not interpolated
+      }),
     });
 
-    const checkData = (await checkRes.json()) as {
-      data?: { users?: Array<{ id: string; authId: string; email: string; name: string }> };
-      errors?: Array<{ message: string }>;
-    };
+    if (!checkRes.ok) {
+      console.error('[auth] GraphQL endpoint returned non-2xx status:', checkRes.status);
+      return;
+    }
+
+    const checkData = (await checkRes.json()) as GraphQLResponse<{
+      users: KeystoneUser[];
+    }>;
 
     if (checkData.errors?.length) {
-      console.error('[auth] GraphQL error finding user', { email, errors: checkData.errors });
+      console.error('[auth] GraphQL error finding user');
       return;
     }
 
     const keystoneUser = checkData.data?.users?.[0];
 
     if (!keystoneUser) {
-      console.warn('[auth] Keystone user not found by email', { email });
+      console.warn('[auth] Keystone user not found by email');
       return;
     }
 
     if (keystoneUser.authId === authId) {
-      // Already linked correctly
-      console.debug('[auth] User already linked', { email, authId });
+      // Already linked — no update needed
       return;
     }
 
-    // Update Keystone user with authId
+    // Update user — uses GraphQL variables (safe)
     const updateMutation = `
-      mutation {
+      mutation UpdateUserAuthId($id: ID!, $authId: String!) {
         updateUser(
-          where: { id: "${keystoneUser.id}" }
-          data: { authId: "${authId}" }
+          where: { id: $id }
+          data: { authId: $authId }
         ) {
           id
           authId
-          email
         }
       }
     `;
 
-    const updateRes = await fetch(endpoint, {
+    const updateRes = await fetch(env.KEYSTONE_GRAPHQL_ENDPOINT, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query: updateMutation }),
+      body: JSON.stringify({
+        query: updateMutation,
+        variables: {
+          id: keystoneUser.id,
+          authId, // Safe: passed as variable
+        },
+      }),
     });
 
-    const updateData = (await updateRes.json()) as {
-      data?: { updateUser?: { id: string; authId: string } };
-      errors?: Array<{ message: string }>;
-    };
-
-    if (updateData.errors?.length) {
-      console.error('[auth] Failed to update Keystone user', {
-        keystoneId: keystoneUser.id,
-        email,
-        errors: updateData.errors,
-      });
+    if (!updateRes.ok) {
+      console.error('[auth] GraphQL endpoint returned non-2xx status on update:', updateRes.status);
       return;
     }
 
-    console.info('[auth] User linked to Keystone', {
-      email,
-      keystoneId: keystoneUser.id,
-      authId,
-    });
+    const updateData = (await updateRes.json()) as GraphQLResponse<{
+      updateUser: { id: string; authId: string };
+    }>;
+
+    if (updateData.errors?.length) {
+      console.error('[auth] Failed to update Keystone user authId');
+      return;
+    }
+
+    // Successfully linked
   } catch (error) {
-    console.error('[auth] Error linking Keystone user', { email, authId, error });
+    console.error('[auth] Error linking Keystone user', error instanceof Error ? error.message : String(error));
   }
 }

@@ -1,12 +1,7 @@
 import { PrismaClient } from '../prisma/generated/index.js';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { Pool } from 'pg';
-
-function requiredEnv(name: string): string {
-  const value = process.env[name];
-  if (!value) throw new Error(`Missing required env var: ${name}`);
-  return value;
-}
+import { env } from './env.js';
 
 /**
  * Prisma Client singleton with PrismaPg driver adapter for PostgreSQL.
@@ -15,11 +10,13 @@ function requiredEnv(name: string): string {
  * Search path set to `auth` schema to isolate Better Auth from Keystone `public` schema.
  */
 const pool = new Pool({
-  connectionString: requiredEnv('DATABASE_URL'),
+  connectionString: env.DATABASE_URL,
+  // Use search_path to isolate auth schema
   options: '-c search_path=auth',
 });
 
-pool.on('error', (err) => {
+pool.on('error', (err: Error) => {
+  // Log to stderr; Fastify will capture via its logger
   console.error('[db] Pool error:', err.message);
 });
 
@@ -28,14 +25,3 @@ const adapter = new PrismaPg(pool);
 export const prisma = new PrismaClient({
   adapter,
 });
-
-// Connection test disabled — will fail on first query if DB unreachable
-// This gives better error context in Fastify logs
-// try {
-//   await prisma.$queryRaw`SELECT 1`;
-//   console.log('[db] Connection test passed');
-// } catch (err) {
-//   const msg = err instanceof Error ? err.message : String(err);
-//   console.error('[db] Connection test failed:', msg);
-//   throw err;
-// }
