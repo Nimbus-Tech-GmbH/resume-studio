@@ -3,9 +3,8 @@ import cors from '@fastify/cors';
 import { fromNodeHeaders } from 'better-auth/node';
 import { auth } from './auth.js';
 import { env } from './env.js';
-import { getLoggerConfig } from './logger.js';
 
-const app = Fastify({ logger: getLoggerConfig() });
+const app = Fastify({ logger: true });
 
 const bootInfo = {
   port: env.AUTH_PORT,
@@ -52,27 +51,7 @@ app.route({
         ...(body ? { body } : {}),
       });
 
-      // Log request (no sensitive data)
-      request.log.debug(
-        {
-          url: url.pathname,
-          method: request.method,
-          origin: request.headers.origin,
-        },
-        'auth request'
-      );
-
       const response = await auth.handler(req);
-
-      // Log response (no sensitive data)
-      request.log.debug(
-        {
-          url: url.pathname,
-          status: response.status,
-          location: response.headers.get('location'),
-        },
-        'auth response'
-      );
 
       reply.status(response.status);
       response.headers.forEach((value, key) => reply.header(key, value));
