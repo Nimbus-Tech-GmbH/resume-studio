@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react"
+import React, { useState, type ReactNode } from "react"
 import { DEFAULT_THEME, THEMES, type ThemeId } from "@resume-studio/themes"
 import { BadgeInfo, Code, FormInput, LogOut, Moon, Palette, Sun, User } from "lucide-react"
 import { useTheme } from "next-themes"
@@ -169,12 +169,12 @@ function Header({ viewMode, setViewMode }: { viewMode: ViewMode; setViewMode: (m
   const { isAuthenticated, login, logout } = useAuth()
   const resetAll = useEditorStore((s) => s.resetAll)
 
-  const handleAuthToggle = () => {
+  const handleAuthToggle = async () => {
     if (isAuthenticated) {
       resetAll()
-      logout()
+      await logout()
     } else {
-      login()
+      await login()
     }
   }
 
@@ -215,10 +215,10 @@ function Header({ viewMode, setViewMode }: { viewMode: ViewMode; setViewMode: (m
       </div>
 
       <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
-        {isAuthenticated && (
+        {!isAuthenticated && (
           <>
-            <Badge title="Saving is disabled — changes won't persist." variant="outline">
-              <BadgeInfo data-icon="inline-start" />Save disabled
+            <Badge title="Guest mode — changes won't persist. Sign in to save resumes." variant="outline">
+              <BadgeInfo data-icon="inline-start" />Guest mode
             </Badge>
             <Separator orientation="vertical" />
           </>
@@ -324,13 +324,51 @@ function useAppModel() {
 
 // ─── App ────────────────────────────────────────────────────────────────────
 
-const noop = () => {}
+function ErrorBoundary({ children }: { children: ReactNode }) {
+  const [error, setError] = React.useState<Error | null>(null);
+
+  if (error) {
+    return (
+      <div className="flex h-dvh flex-col items-center justify-center gap-4 p-4">
+        <div className="text-center">
+          <h1 className="text-lg font-semibold text-destructive">Oops, something went wrong</h1>
+          <p className="mt-2 text-sm text-muted-foreground">{error.message}</p>
+        </div>
+        <Button onClick={() => window.location.reload()}>Reload</Button>
+      </div>
+    );
+  }
+
+  return (
+    <React.Suspense fallback={null}>
+      <ErrorBoundaryInner setError={setError}>{children}</ErrorBoundaryInner>
+    </React.Suspense>
+  );
+}
+
+function ErrorBoundaryInner({
+  children,
+  setError,
+}: {
+  children: ReactNode;
+  setError: (error: Error) => void;
+}) {
+  React.useEffect(() => {
+    const handler = (event: ErrorEvent) => {
+      event.preventDefault();
+      setError(event.error || new Error('Unknown error'));
+    };
+    window.addEventListener('error', handler);
+    return () => window.removeEventListener('error', handler);
+  }, [setError]);
+
+  return <>{children}</>;
+}
 
 export function App() {
   const {
     resume,
     theme,
-    isStartup,
     isDesktop,
     mobileTab,
     setMobileTab,
@@ -342,30 +380,38 @@ export function App() {
     isEmpty,
   } = useAppModel()
 
+  const isStartup = useEditorStore((s) => s.isStartup)
+  const setIsStartup = useEditorStore((s) => s.setIsStartup)
+  const handleStartupDialogChange = (open: boolean) => {
+    setIsStartup(open)
+  }
+
   const editor = <EditorPanel name={name} empty={isEmpty} viewMode={viewMode} />
   const preview = (
     <PreviewPanel pdfName={pdfName} resume={resume} theme={theme} status={previewStatus} empty={isEmpty} />
   )
 
   return (
-    <TooltipProvider>
-      <div className="flex h-dvh flex-col overflow-hidden">
-        <Header viewMode={viewMode} setViewMode={setViewMode} />
+    <ErrorBoundary>
+      <TooltipProvider>
+        <div className="flex h-dvh flex-col overflow-hidden">
+          <Header viewMode={viewMode} setViewMode={setViewMode} />
 
-        <ValidationBanner />
+          <ValidationBanner />
 
-        <main className="min-h-0 flex-1 overflow-hidden px-3 pb-3 sm:px-4 sm:pb-4">
-          <div className="border-border bg-background h-full overflow-hidden rounded-xl border shadow-sm">
-            {isDesktop ? (
-              <DesktopLayout editor={editor} preview={preview} />
-            ) : (
-              <MobileLayout tab={mobileTab} onTabChange={setMobileTab} editor={editor} preview={preview} />
-            )}
-          </div>
-        </main>
-      </div>
-      <StartupDialog open={isStartup} onOpenChange={noop} />
-      <Toaster />
-    </TooltipProvider>
+          <main className="min-h-0 flex-1 overflow-hidden px-3 pb-3 sm:px-4 sm:pb-4">
+            <div className="border-border bg-background h-full overflow-hidden rounded-xl border shadow-sm">
+              {isDesktop ? (
+                <DesktopLayout editor={editor} preview={preview} />
+              ) : (
+                <MobileLayout tab={mobileTab} onTabChange={setMobileTab} editor={editor} preview={preview} />
+              )}
+            </div>
+          </main>
+        </div>
+        <StartupDialog open={isStartup} onOpenChange={handleStartupDialogChange} />
+        <Toaster />
+      </TooltipProvider>
+    </ErrorBoundary>
   )
 }
