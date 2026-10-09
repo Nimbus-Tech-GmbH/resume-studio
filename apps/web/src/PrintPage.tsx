@@ -1,11 +1,31 @@
 import { useEffect, useRef, useState } from 'react';
+import { z } from 'zod';
 import type { JsonResume } from '@resume-studio/transformer';
 import type { ThemeId } from '@resume-studio/themes';
+import { THEMES } from '@resume-studio/themes';
 import { requestRender } from '@/preview/renderClient';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
 import { Printer, ArrowLeft } from 'lucide-react';
+
+// Validate print key format: must be print-<hex> to prevent guessing attacks
+const PRINT_KEY_PATTERN = /^print-[a-f0-9]{24,}$/;
+
+// Schema to validate print payload structure
+const printPayloadSchema = z.object({
+  resume: z.object({
+    basics: z
+      .object({
+        name: z.string().optional(),
+      })
+      .passthrough()
+      .optional(),
+  }).passthrough(),
+  theme: z.enum(THEMES.map((t) => t.id) as [string, ...string[]]),
+});
+
+type PrintPayload = z.infer<typeof printPayloadSchema>;
 
 export function PrintPage() {
   const [html, setHtml] = useState<string | null>(null);
@@ -16,37 +36,53 @@ export function PrintPage() {
     const run = async (): Promise<void> => {
       const params = new URLSearchParams(window.location.search);
       const key = params.get('k');
-      if (!key) {
-        setError('Missing print key.');
+
+      // 1. Validate key format
+      if (!key || !PRINT_KEY_PATTERN.test(key)) {
+        setError('Invalid print key format.');
         return;
       }
+
+      // 2. Retrieve from sessionStorage (cleared on tab close, safer than localStorage)
       let payload: string;
       try {
-        payload = localStorage.getItem(key) ?? '';
+        payload = sessionStorage.getItem(key) ?? '';
       } catch {
-        setError('Failed to read print payload from localStorage.');
+        setError('Failed to read print payload from storage.');
         return;
       }
+
       if (!payload) {
         setError('Print payload not found or expired.');
         return;
       }
-      let data: { resume: JsonResume; theme: ThemeId };
+
+      // 3. Parse and validate against schema
+      let data: PrintPayload;
       try {
-        data = JSON.parse(payload);
-      } catch {
+        const parsed = JSON.parse(payload);
+        data = printPayloadSchema.parse(parsed);
+      } catch (err) {
+        // Don't expose schema details to user
         setError('Invalid print payload.');
         return;
       }
+
+      // 4. Render the resume
       try {
-        const res = await requestRender({ resume: data.resume, theme: data.theme });
+        const res = await requestRender({
+          resume: data.resume as JsonResume,
+          theme: data.theme as typeof THEMES[number]['id'],
+        });
         setHtml(res);
         setError(null);
       } catch (err: unknown) {
-        setError(err instanceof Error ? err.message : String(err));
+        // Generic error message to user; log details server-side
+        setError('Failed to render resume. Please try again.');
       } finally {
+        // 5. Clean up payload (best-effort)
         try {
-          localStorage.removeItem(key);
+          sessionStorage.removeItem(key);
         } catch {
           // Payload cleanup is best-effort; ignore storage failures.
         }
@@ -117,7 +153,7 @@ export function PrintPage() {
           <iframe
             ref={iframeRef}
             title="Print preview"
-            sandbox="allow-same-origin allow-scripts allow-modals"
+            sandbox="allow-same-origin"
             srcDoc={html}
             className="h-full w-full border-0 bg-white"
           />

@@ -26,13 +26,19 @@ export function ExportMenu() {
   };
 
   const exportPdf = () => {
-    const key = `print-${Date.now()}`;
+    // Use sessionStorage for print payload (cleared on tab close).
+    // Generate cryptographically secure random key instead of predictable timestamp.
+    const randomBytes = crypto.getRandomValues(new Uint8Array(12));
+    const hexKey = Array.from(randomBytes, (b) =>
+      b.toString(16).padStart(2, '0'),
+    ).join('');
+    const key = `print-${hexKey}`;
     const payload = JSON.stringify({ resume, theme });
     try {
-      localStorage.setItem(key, payload);
+      sessionStorage.setItem(key, payload);
     } catch {
       // eslint-disable-next-line no-console -- intentional error before early return
-      console.error('Failed to write print payload to localStorage');
+      console.error('Failed to write print payload to sessionStorage');
       return;
     }
     const url = new URL('/print', window.location.origin);

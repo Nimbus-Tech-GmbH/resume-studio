@@ -13,7 +13,7 @@ const DEBOUNCE_MS = 300;
 
 export function PreviewFrame({ resume, theme }: PreviewFrameProps) {
   const [html, setHtml] = useState<string>('');
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<boolean>(false);
   const [loading, setLoading] = useState(false);
   const timer = useRef<number | undefined>(undefined);
 
@@ -36,11 +36,12 @@ export function PreviewFrame({ resume, theme }: PreviewFrameProps) {
       requestRender({ resume: debouncedResume, theme }, controller.signal)
         .then((res: string) => {
           setHtml(res);
-          setError(null);
+          setError(false);
         })
         .catch((err: unknown) => {
           if ((err as { name?: string })?.name === 'AbortError') return;
-          setError(err instanceof Error ? err.message : String(err));
+          // Don't expose error details to user; log server-side if needed
+          setError(true);
         })
         .finally(() => setLoading(false));
     }, DEBOUNCE_MS);
@@ -53,7 +54,9 @@ export function PreviewFrame({ resume, theme }: PreviewFrameProps) {
       <div className="flex h-full items-center justify-center">
         <div className="max-w-md space-y-2 text-center">
           <p className="text-sm font-medium text-destructive">Preview error</p>
-          <pre className="whitespace-pre-wrap text-sm text-muted-foreground">{error}</pre>
+          <p className="text-sm text-muted-foreground">
+            Failed to render preview. Please check your resume and try again.
+          </p>
         </div>
       </div>
     );
@@ -85,7 +88,7 @@ export function PreviewFrame({ resume, theme }: PreviewFrameProps) {
       )}
       <iframe
         title="Resume preview"
-        sandbox="allow-same-origin allow-scripts"
+        sandbox="allow-same-origin"
         srcDoc={html}
         className="h-full w-full border-0 bg-white"
       />

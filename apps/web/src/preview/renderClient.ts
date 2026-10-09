@@ -20,9 +20,16 @@ export async function requestRender(
     body: JSON.stringify(req),
     signal,
   });
+  
   if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    throw new Error(`Render failed (${res.status}): ${text}`);
+    throw new Error(`Render failed with status ${res.status}`);
   }
+
+  // Validate Content-Type to prevent MITM attacks
+  const contentType = res.headers.get('content-type');
+  if (!contentType?.includes('text/html')) {
+    throw new Error('Invalid response type from render service');
+  }
+
   return res.text();
 }
