@@ -39,7 +39,7 @@ await app.register(cors, {
 
 app.addHook('onRequest', ipAllowlist(ALLOWED_IPS));
 
-const AUTH_TARGET = process.env.AUTH_TARGET;
+const AUTH_TARGET = process.env.AUTH_TARGET ?? 'http://127.0.0.1:4000';
 if (AUTH_TARGET) {
   // Forward only /api/auth/* to the auth-service so the SPA stays single-origin.
   // Plain node http pass-through keeps the self-contained SSR bundle side-effect free.
