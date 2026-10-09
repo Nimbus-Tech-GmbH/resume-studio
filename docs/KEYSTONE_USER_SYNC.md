@@ -1,135 +1,192 @@
-# Keystone User Migration to Auth-Service DB
+# Keystone User Sync: Linking Auth Databases
 
 ## Problem
 
-After Cognito sign-in, authenticated users' sessions exist in the **resume-studio auth DB** (`auth` schema), but they may not have corresponding records in the **Keystone CMS DB**. This breaks GraphQL queries because Keystone can't find the user to authorize resume access.
+Resume-studio and Keystone CMS use **two separate databases**:
+
+| Database | Provider | Schema | Users |
+|----------|----------|--------|-------|
+| **Keystone CMS** | Neon | `public."User"` | ✓ Existing users |
+| **Resume-studio** | Prisma.io | `auth` schema | ✓ Created on Cognito sign-in |
+
+When a Keystone user signs in via Cognito, a new session is created in resume-studio's auth DB. But **Keystone has no way to know this user is authenticated** because the two user records are disconnected. GraphQL queries fail because Keystone can't authorize access to the user's resumes.
 
 ## Solution
 
-Two-part sync strategy:
+**Link the two databases via `authId`:**
 
-### 1. **Automatic Sync (New Users)**
+```
+Keystone User (Neon)
+├── id: 1
+├── email: "user@example.com"
+├── name: "John Doe"
+└── authId: "xyz-123"  ← Points to resume-studio user
 
-When a user signs in via Cognito, the auth-service's `signInUser` callback fires automatically and:
-1. Checks if the user exists in Keystone by `authId`
-2. If not, creates a new Keystone user with `authId = resume-studio user ID`
-3. Logs the sync result
+Auth User (Prisma.io)
+├── id: "xyz-123"  ← Referenced by Keystone
+├── email: "user@example.com"
+├── name: "John Doe"
+└── ... (Better Auth session data)
+```
 
-**No action needed** — this happens for all Cognito sign-ups going forward.
+### How It Works
 
-### 2. **Bulk Migration (Existing Users)**
+1. **Cognito sign-in** → Auth-service creates user in `auth.user` table
+2. **Sync callback fires** → Finds Keystone user by email
+3. **Updates Keystone** → Sets `authId = resume-studio user ID`
+4. **GraphQL queries** → Can now authorize against `authId`
 
-For users who existed in Keystone before Cognito integration:
+### Two Approaches
+
+#### **A. Automatic (New Sign-ups)**
+
+When a Cognito user signs in, the auth-service's `signInUser` callback automatically:
+1. Checks if they have an existing Keystone record by email
+2. If yes, updates Keystone `authId` to point to the new auth-service user
+3. If no, logs a warning (user doesn't exist in Keystone yet)
+
+**No action needed** — happens for all Cognito sign-ins.
+
+#### **B. Bulk Migration (Existing Users)**
+
+For Keystone users created before Cognito integration, run:
 
 ```bash
 pnpm --filter @resume-studio/auth-service migrate:keystone-users
 ```
 
-This script:
-- Fetches all Keystone users
-- For each user **without** an `authId`:
-  - Creates a matching user in the auth-service DB
-  - Updates the Keystone record with `authId` pointing to the new user ID
-- Skips users who already have an `authId`
+The script:
+1. Fetches all Keystone users
+2. For each user **without** an `authId`:
+   - Creates a new user in the auth-service DB
+   - Updates the Keystone record with `authId = new auth-service user ID`
+3. Skips users who already have an `authId`
 
 ## Requirements
 
 ### Environment Variables
 
-- `DATABASE_URL` — resume-studio auth DB connection string (required)
-- `KEYSTONE_GRAPHQL_ENDPOINT` **or** `VITE_GRAPHQL_ENDPOINT` — Keystone GraphQL endpoint
+- `DATABASE_URL` — Resume-studio auth-service DB (Prisma.io, required)
+- `KEYSTONE_GRAPHQL_ENDPOINT` **or** `VITE_GRAPHQL_ENDPOINT` — Keystone GraphQL
   - Local: `http://localhost:3000/api/graphql`
   - Prod: `https://your-cms.example.com/api/graphql`
 
 ### Database Access
 
-- Auth-service DB must be reachable (queries the auth schema)
-- Keystone GraphQL must be reachable (queries users + updates authId)
+- Auth-service DB must be reachable (creates users in `auth` schema)
+- Keystone GraphQL must be reachable (queries by email + updates `authId`)
 
-## How It Works
+## Data Model
 
-**Resume-studio auth DB schema (Prisma 7):**
-```sql
-CREATE SCHEMA auth;
-CREATE TABLE auth.user (
-  id TEXT PRIMARY KEY,
-  email TEXT UNIQUE,
-  name TEXT,
-  ...
-);
-```
-
-**Keystone CMS schema:**
+### Keystone CMS (`public."User"`)
 ```sql
 CREATE TABLE "User" (
   id SERIAL PRIMARY KEY,
-  authId TEXT UNIQUE,  -- Links to auth.user.id
+  authId TEXT UNIQUE DEFAULT '',          -- Links to auth-service user ID
+  name TEXT DEFAULT '',
   email TEXT UNIQUE,
-  name TEXT,
-  ...
+  password TEXT,
+  createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  userGroup TEXT DEFAULT ''
 );
 ```
 
-**Flow:**
-1. Cognito user signs in → auth-service creates `auth.user` record ✓
-2. `signInUser` callback fires → creates `public."User"` record with `authId` ✓
-3. GraphQL query checks `User.authId` against session's user ID ✓
-4. Query succeeds, user can load/edit resumes ✓
+### Resume-studio Auth (`auth.user`)
+```sql
+CREATE TABLE auth.user (
+  id TEXT PRIMARY KEY,                    -- Referenced by Keystone.authId
+  email TEXT UNIQUE,
+  name TEXT,
+  emailVerified BOOLEAN DEFAULT FALSE,
+  image TEXT,
+  createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updatedAt TIMESTAMP
+);
+```
 
 ## Testing Locally
 
 ```bash
-# Start auth-service, Keystone, web
+# Start Keystone, auth-service, web
 pnpm dev
 
-# Sign in via Cognito
-# Visit http://localhost:5173
+# Sign in with Cognito
+# Visit http://localhost:5173, click "Sign In"
 
-# In another terminal, check migration
+# Verify sync in another terminal
 pnpm --filter @resume-studio/auth-service migrate:keystone-users
 ```
 
-Expected output:
+Expected output (if user already synced):
 ```
-[migrate] Found N Keystone users
-[migrate] SKIP user@example.com (already has authId: xxx)
+[migrate] Found 1 Keystone users
+[migrate] SKIP user@example.com (already linked to authId: xxx-yyy-zzz)
 ```
 
-If users don't have `authId`, they'll be created and linked.
+## Sign-in Flow (End-to-End)
 
-## Production Deployment
-
-1. Push code with auth sync callbacks (already in main: commit `b966c7b`)
-2. Redeploy auth-service to Northflank
-3. (Optional) Run bulk migration for existing Keystone users:
-   ```bash
-   # via CI/CD or manual SSH to Northflank pod
-   pnpm --filter @resume-studio/auth-service migrate:keystone-users
-   ```
+```
+1. User visits app → auth-service checks session
+                  ↓
+2. No session → redirect to Cognito
+                  ↓
+3. Cognito OAuth callback → auth-service receives token
+                  ↓
+4. Create auth-service user in auth.user
+                  ↓
+5. signInUser callback fires
+   - Lookup Keystone user by email
+   - Update Keystone.authId = auth-service user ID
+                  ↓
+6. Browser redirected back to app with session cookie
+                  ↓
+7. useSession() hook reads session
+   - session.user.id = auth-service user ID
+   - useAuth() marks isAuthenticated = true
+                  ↓
+8. Web app fetches resumes via GraphQL
+   - GraphQL middleware checks Keystone.authId == session.user.id
+   - User authorized → resumes loaded ✓
+```
 
 ## Troubleshooting
 
-**Migration fails with "Keystone unreachable"**
-- Check `KEYSTONE_GRAPHQL_ENDPOINT` is set and reachable
-- Verify Keystone is running
-- Check network/firewall between containers
+**"User already has authId" in logs**
+- User was already synced (expected after first sign-in)
+- Safe to ignore
 
-**Migration fails with "Failed to connect to resume-studio DB"**
-- Verify `DATABASE_URL` is correct and reachable
-- Check auth schema exists (should be created by Prisma migrations)
+**Sign-in completes but startup dialog shows (user not authenticated)**
+- Check auth-service logs for sync errors:
+  ```bash
+  # In Northflank or local logs
+  grep "\[auth\]" logs
+  ```
+- Verify Keystone user exists for that email
+- Check that `authId` was actually updated in Keystone
 
-**User has authId but still can't load resumes**
-- Check that the `authId` value matches the session user's ID
-- Verify Keystone's GraphQL access control isn't blocking the user
-- Check resume ownership is correctly linked to the user
+**"Keystone user not found by email"**
+- Cognito user is new (not in Keystone yet)
+- User must be manually created in Keystone admin UI first, or
+- Admin can create via GraphQL mutation before user signs in
 
-## Implementation Details
+**Migration fails "Keystone unreachable"**
+- Verify `KEYSTONE_GRAPHQL_ENDPOINT` is set correctly
+- Check Keystone is running and accessible
+- Test: `curl -X POST $KEYSTONE_GRAPHQL_ENDPOINT -d '{"query":"{ __typename }"}'`
+
+**Migration fails "Database connection refused"**
+- Verify `DATABASE_URL` points to auth-service DB
+- Check Prisma.io connection pool is running
+- Verify credentials in `.env`
+
+## Implementation
 
 **Files modified:**
-- `apps/auth-service/src/auth.ts` — Added `signUpUser` and `signInUser` callbacks
+- `apps/auth-service/src/auth.ts` — Added `signInUser` callback to link Keystone users
 - `apps/auth-service/scripts/migrate-keystone-users.ts` — Bulk migration script
 - `apps/auth-service/package.json` — Added `migrate:keystone-users` npm script
 
 **Commits:**
 - `b966c7b` — feat(auth): sync Cognito users to Keystone CMS on sign-in
 - `7a6c212` — feat(auth): add Keystone user migration script
+- `3b124fc` — fix(auth): correct Keystone user sync logic — link by email, not create
