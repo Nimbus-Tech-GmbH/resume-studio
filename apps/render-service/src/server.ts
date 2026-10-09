@@ -77,10 +77,15 @@ if (AUTH_TARGET) {
         },
         (res) => {
           const status = res.statusCode ?? 502;
-          const resHeaders: Record<string, string> = {};
+          const resHeaders: Record<string, string | string[]> = {};
           for (const [key, value] of Object.entries(res.headers)) {
             if (HOP_BY_HOP.has(key.toLowerCase()) || value === undefined) continue;
-            resHeaders[key] = Array.isArray(value) ? value.join(', ') : value;
+            // Set-Cookie headers must remain as array; other headers can be joined
+            if (key.toLowerCase() === 'set-cookie' && Array.isArray(value)) {
+              resHeaders[key] = value;
+            } else {
+              resHeaders[key] = Array.isArray(value) ? value.join(', ') : value;
+            }
           }
           req.log.info({ status, location: resHeaders.location }, 'auth proxy response');
           reply.raw.writeHead(status, resHeaders);

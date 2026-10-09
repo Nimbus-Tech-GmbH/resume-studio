@@ -59,7 +59,12 @@ app.route({
       });
 
       request.log.info(
-        { url: url.pathname, method: request.method, origin: request.headers.origin },
+        {
+          url: url.pathname,
+          method: request.method,
+          origin: request.headers.origin,
+          cookies: request.headers.cookie,
+        },
         'auth request',
       );
 
@@ -71,6 +76,7 @@ app.route({
           status: response.status,
           location: response.headers.get('location'),
           origin: request.headers.origin,
+          setCookie: response.headers.get('set-cookie'),
         },
         'auth response',
       );

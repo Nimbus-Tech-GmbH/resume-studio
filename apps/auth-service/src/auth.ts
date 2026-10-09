@@ -64,6 +64,7 @@ async function linkKeystoneUser(
   email: string,
   name: string,
 ): Promise<void> {
+  console.info('[auth] linkKeystoneUser called', { authId, email });
   // Determine Keystone GraphQL endpoint
   let endpoint = process.env.KEYSTONE_GRAPHQL_ENDPOINT;
   if (!endpoint && process.env.VITE_GRAPHQL_ENDPOINT) {
