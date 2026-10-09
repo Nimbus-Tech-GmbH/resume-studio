@@ -14,7 +14,8 @@
     "db:migrate:deploy": "prisma migrate deploy",
     "db:migrate:status": "prisma migrate status",
     "db:generate": "prisma generate",
-    "db:validate": "prisma validate"
+    "db:validate": "prisma validate",
+    "migrate:keystone-users": "tsx --env-file=../../.env scripts/migrate-keystone-users.ts"
   },
   "dependencies": {
     "@better-auth/prisma-adapter": "1.7.5",
