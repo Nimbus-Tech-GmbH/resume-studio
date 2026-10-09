@@ -9,13 +9,13 @@ Edit your resume. See it live. Ship it.
 
 Real-time resume editor web app. Loads resume data from the Keystone CMS GraphQL API and renders live previews via multiple [JSON Resume](https://jsonresume.org/) themes. Persistence is currently disabled (save pipeline retained, see below).
 
-> **Status:** Guest mode available (no auth required). Authenticated mode implemented via Better Auth + Cognito.
+> **Status:** Guest mode available (no auth required). Authenticated mode working: Better Auth + Cognito OAuth, with user account sync between resume-studio auth DB and Keystone CMS.
 
 ## Features
 
 - **Guest mode** — try the editor immediately without signing in. Create and import resumes locally, preview and export freely. No data is saved to the CMS.
-- **Authenticated mode** — sign in via Cognito (Better Auth broker) to load existing resumes from the CMS and edit them. Create new resumes locally first; persistence is currently disabled (see below).
-- Startup dialog — on launch, shows existing resumes as selectable cards (authenticated) or prompts to create/import (guest). Fetching/empty/error/guest states handled gracefully.
+- **Authenticated mode** — sign in via Cognito (Better Auth broker) to load existing resumes from the CMS and edit them. User accounts are automatically synced between resume-studio and Keystone. Persistence is available when deployed. Create new resumes locally first; new resume sync is queued for a future milestone.
+- Startup dialog — on launch, shows existing resumes as selectable cards (authenticated) or prompts to create/import (guest). User accounts automatically synced from Keystone on first sign-in. Fetching/empty/error/guest states handled gracefully.
 - Create new resumes from the header `+` button or the startup dialog — populates the editor locally with a blank template. No CMS round-trip (persistence currently disabled).
 - Edit any JSON Resume section: basics, work (with highlights), education, skills, interests, volunteer, projects, certificates, languages, awards, publications.
 - Live preview updates 300 ms after last keystroke, in a sandboxed iframe — with skeleton/overlay loading states so edits never flash blank.

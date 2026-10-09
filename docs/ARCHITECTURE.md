@@ -343,6 +343,29 @@ GET|POST /api/auth/*
   Cognito app client; the SPA hits `/api/auth` on its own origin so the
   callback URL is `{AUTH_URL}/api/auth/callback/cognito` (dev: 5173).
 
+### User sync (Keystone ↔ auth-service)
+
+Resume-studio's auth-service and Keystone CMS use separate databases. When a
+Cognito user signs in, the auth-service creates a user record in its own auth
+schema. To authorize GraphQL access, both databases must be linked.
+
+**Linking via authId:**
+
+1. On Cognito sign-in, the auth-service fires a signInUser callback
+2. Callback looks up the Keystone user by email
+3. Sets Keystone.authId = auth-service user ID
+4. GraphQL queries authorize via Keystone.authId == session.user.id
+
+**Bulk migration** for existing Keystone users:
+
+pnpm --filter @resume-studio/auth-service migrate:keystone-users
+
+Finds all Keystone users without an authId, creates matching auth-service
+users, and links them.
+
+See KEYSTONE_USER_SYNC.md for the complete data model, troubleshooting, and
+end-to-end sign-in flow.
+
 ## 5. Transformer contract
 
 Rule: `toCms(fromCms(x))` round-trips, modulo delimiter normalization to `✌🏻`.

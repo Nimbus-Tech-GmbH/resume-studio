@@ -61,6 +61,19 @@ Vite proxies `/api/auth` to it so the browser stays single-origin at 5173.
 > **Cognito app client (`eu-central-1_BwgQjMok8`) must allow the callback URL**
 > `http://localhost:5173/api/auth/callback/cognito` for local sign-in to work.
 
+#### User Account Sync
+
+**Resume-studio and Keystone use separate databases.** When a Cognito user signs in, a new user is automatically created in resume-studio's auth DB. To authorize access to resumes in Keystone, the two accounts must be linked via `authId`:
+
+- **Automatic (on sign-in):** When a user signs in via Cognito, the auth-service looks up the corresponding Keystone user by email and sets `Keystone.authId` to the new auth-service user ID. GraphQL queries then use `authId` to authorize access.
+- **Bulk migration (existing users):** For users created before Cognito integration, run:
+  ```sh
+  pnpm --filter @resume-studio/auth-service migrate:keystone-users
+  ```
+  This script finds all Keystone users without an `authId`, creates matching auth-service users, and links them.
+
+**See [KEYSTONE_USER_SYNC.md](KEYSTONE_USER_SYNC.md) for the full flow, troubleshooting, and data model.**
+
 ### Keystone CORS
 
 In `nt-keystone-cms/keystone.ts`, ensure `CORS_ORIGIN` includes:

@@ -4,8 +4,8 @@ Focused guides for resume-studio architecture, setup, deployment, and migrations
 
 ## Setup & Local Development
 
-- **[LOCAL_DEV.md](LOCAL_DEV.md)** — Start dev env, local Postgres, Docker, pnpm scripts
-- **[ARCHITECTURE.md](ARCHITECTURE.md)** — High-level app structure, boundaries, data flow, auth wiring
+- **[LOCAL_DEV.md](LOCAL_DEV.md)** — Start dev env, local Postgres, Docker, pnpm scripts, user account sync
+- **[ARCHITECTURE.md](ARCHITECTURE.md)** — High-level app structure, boundaries, data flow, auth wiring, Keystone sync
 - **[SAVE_PIPELINE.md](SAVE_PIPELINE.md)** — How saves work (toCms → operations → executeSave)
 - **[DOMAIN_RELATIONSHIP.md](DOMAIN_RELATIONSHIP.md)** — Entity relationships and mutation handling
 
@@ -17,6 +17,16 @@ Focused guides for resume-studio architecture, setup, deployment, and migrations
 ## Deployment
 
 - **[NORTHFLANK_DEPLOYMENT.md](NORTHFLANK_DEPLOYMENT.md)** — Deploy to Northflank (env setup, container build, runtime)
+
+## Auth & User Sync
+
+- **[KEYSTONE_USER_SYNC.md](KEYSTONE_USER_SYNC.md)** — Linking Keystone CMS users to resume-studio auth DB, bulk migration, troubleshooting
+
+## Contribution
+
+- **[CONTRIBUTING.md](CONTRIBUTING.md)** — Code style, component patterns, PR guidelines
+- **[KNOWN_ISSUES.md](KNOWN_ISSUES.md)** — Application and schema limitations
+- **[FUNCTIONAL_REQUIREMENTS.md](FUNCTIONAL_REQUIREMENTS.md)** — Feature specifications and implementation checklists
 
 ## Quick Links
 
