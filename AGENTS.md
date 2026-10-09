@@ -110,7 +110,7 @@ Do not paste full logs into the response. Report the failing command and the rel
 - Database setup: read `docs/MIGRATIONS.md` (Prisma 7 workflow).
 - Database connections: read `docs/CONNECTION_DIAGRAMS.md` (pooled vs direct URLs).
 - Production deployment: read `docs/NORTHFLANK_DEPLOYMENT.md`.
-- Why psql migrations: read root `WHY_PSQL_MIGRATIONS.md`.
+- Database migrations: read `docs/MIGRATIONS.md`.
 - UI/accessibility review: use the project UI review skill.
 - shadcn changes: use the shadcn skill; this repo runs Tailwind v4 so registry classes apply as-is.
 
