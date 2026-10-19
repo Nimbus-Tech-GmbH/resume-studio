@@ -1,407 +1,145 @@
 # resume-studio — Architecture
 
-Technical architecture for the resume-studio monorepo. For feature-level
-behavior and "which file do I touch" guidance, see
-[FUNCTIONAL_REQUIREMENTS.md](./FUNCTIONAL_REQUIREMENTS.md). For known gaps,
-see [KNOWN_ISSUES.md](./KNOWN_ISSUES.md).
+High-level technical architecture for this monorepo.
+
+For implementation requirements and file-level change maps, see
+`docs/FUNCTIONAL_REQUIREMENTS.md`.
+For save internals, see `docs/SAVE_PIPELINE.md`.
+For active limitations, see `docs/KNOWN_ISSUES.md`.
 
 ---
 
-## 1. System overview
+## 1) System overview
 
-Four cooperating processes:
+Runtime components:
 
-```
-┌────────────────────────────────┐
-│ Browser — React 19 SPA         │
-│  apps/web (Vite, port 5173)    │
-│                                │
-│  AuthProvider (guest/auth)     │
-│  Zustand store  ←→ form UI     │
-│       │                        │
-│       ├─ /api/auth ────────┐   │  [gated by session cookie]
-│       ├─ GraphQL ──────┐   │   │   [gated by isAuthenticated]
-│       └─ POST /render  │   │   │
-│          (debounced 300ms)│   │
-└─────────────────────────┼───┼─┘
-                          │   │
-              ┌───────────┴───────────────┐
-              ▼                           ▼
-┌──────────────────────────┐  ┌───────────────────────────┐
-│ Auth Service             │  │ Render Service            │
-│ apps/auth-service        │  │ apps/render-service       │
-│ Fastify, port 4000       │  │ Fastify, port 8787        │
-│ /api/auth/*              │  │                           │
-│ Better Auth + Cognito    │  │ POST /render              │
-│ Postgres `auth` schema   │  │  → theme render fn        │
-│ (separate DB)            │  │  → postProcess            │
-│                          │  │  → LRU cache              │
-│                          │  │ /api/auth/* (prod proxy)  │
-│                          │  │ /health                   │
-└────────────┬─────────────┘  └────────────┬──────────────┘
-             │                             │
-             └──────────────┬──────────────┘
-                            ▼
-              ┌───────────────────────────┐
-              │ Keystone CMS (external)   │
-              │ nt-keystone-cms           │
-              │ http://localhost:3000     │
-              │ /api/graphql              │
-              │                           │
-              │ Source of truth for all   │
-              │ resume data. Own repo;    │
-              │ schema mirrored in        │
-              │ ./schema.ts + .graphql.   │
-              └───────────────────────────┘
-```
+1. **Web app** (`apps/web`, Vite, `:5173`)
+   - React SPA + Zustand editor store
+   - Guest/authenticated modes
+   - Calls:
+     - `/render` for preview/print
+     - `/api/auth/*` for sign-in/session
+     - Keystone GraphQL (authenticated reads)
 
-- **Web** is the only user-facing surface. It never talks to the database.
-  In **guest mode** (default), no GraphQL calls are made — create/import/preview/export work locally.
-  In **authenticated mode**, CMS read access is available (load/edit).
-  Persistence is currently disabled: the typed save pipeline is retained and
-  tested but the Save button is not rendered.
-  Auth requests go to `/api/auth`, proxied by Vite (dev) or render-service (prod) to the auth-service — the browser stays single-origin at 5173.
-- **Auth service** brokers Better Auth + Cognito OAuth and stores users/sessions/accounts in the `auth` schema of its own Postgres database (dev: `resume-auth-db`, prod: the configured `DATABASE_URL`). It is stateful by design but only exposed locally / via the render-service proxy.
-- **Render service** is stateless besides an in-memory LRU. Local-only
-  (loopback bind + IP allowlist). Must not be exposed publicly until auth
-  exists (KNOWN_ISSUES A6). In prod it also proxies `/api/auth` → auth-service.
-- **Keystone CMS** lives in `nt-keystone-cms`. This repo only mirrors its
-  schema (`schema.ts`, `schema.graphql`) as reference snapshots.
+2. **Render service** (`apps/render-service`, Fastify, dev `:8787`)
+   - Stateless HTML renderer + in-memory LRU cache
+   - `POST /render` and `GET /health`
+   - In production, also proxies `/api/auth/*` to auth-service
 
-## 2. Monorepo layout
+3. **Auth service** (`apps/auth-service`, Fastify, `127.0.0.1:4000`)
+   - Better Auth + Cognito broker
+   - Uses Postgres `auth` schema only
 
-pnpm workspaces (`pnpm-workspace.yaml`):
+4. **Keystone CMS** (external repo)
+   - Source of truth for resume content
+   - Schema mirrored as snapshots in `schema.ts` and `schema.graphql`
 
-```
+### Non-negotiable boundaries
+
+- `apps/web` never accesses DB directly.
+- Guest mode performs no GraphQL calls.
+- Auth flows go through `/api/auth` proxy to keep browser single-origin.
+- `packages/transformer` remains dependency-free and environment-agnostic.
+- Render/auth services are localhost-only in dev and must not be exposed without proper controls.
+
+---
+
+## 2) Monorepo layout and dependency direction
+
+```txt
 apps/
-  web/                    React SPA
-  render-service/         Fastify theme renderer
-  auth-service/           Fastify Better Auth + Cognito broker
+  web/
+  render-service/
+  auth-service/
 
 packages/
-  transformer/            CMS ⇄ JSON Resume codecs + diff planner (pure TS)
-  graphql-client/         Hand-written GraphQL operations (+ codegen placeholder)
-  themes/                 Theme registry: id → lazy import of vendored package
-  vendor/jsonresume-theme-*   Vendored upstream JSON Resume themes (9)
+  transformer/
+  graphql-client/
+  themes/
+  vendor/
 ```
 
-Dependency direction (enforced by convention):
+Dependency direction:
 
-```
+```txt
 web ──▶ transformer ◀── render-service
- │                          │
- └──▶ graphql-client        └──▶ themes ──▶ vendor/*
+ │                         │
+ └──▶ graphql-client       └──▶ themes ──▶ vendor/*
 ```
 
-`transformer` depends on nothing but its own files — it must stay pure so it
-runs identically in browser and Node tests.
+---
 
-### Key packages/scripts
+## 3) Core data and interaction model
 
-| Path | Role |
-|---|---|
-| `apps/web/components.json` | shadcn config — CLI managed |
-| `apps/web/src/index.css` | Design tokens, Tailwind v4 theme, keyframe animations |
-| `packages/transformer/src/types.ts` | `JsonResume*` (editor shape) + `Cms*` (CMS shape) interfaces |
-| `packages/transformer/src/fromCms.ts` | CMS → JSON Resume (load path) |
-| `packages/transformer/src/toCms.ts` | JSON Resume diff → mutation plan (save path) |
-| `packages/transformer/src/listCodec.ts` | `string[] ⇄ delimited String` (`✌🏻`, legacy `\n`, `,;`) |
-| `packages/transformer/src/dateCodec.ts` | `YYYY-MM-DD ⇄ ISO DateTime`, invalid → error |
-| `packages/transformer/src/options.ts` | Canonical select option lists mirroring the CMS |
-| `packages/graphql-client/src/operations.ts` | All GraphQL documents (queries + mutations) |
-| `packages/themes/src/registry.ts` | Theme ids/labels, `isThemeId`, default theme |
-| `packages/themes/src/themes.ts` | Lazy loaders dispatching to vendored packages |
+### Editor state
 
-## 3. Web app internals (`apps/web/src`)
+`apps/web/src/state/editorStore.ts` is the single client source of truth.
 
-```
-src/
-├── main.tsx                  Entry; routes '/' (App) vs '/print' (PrintPage)
-├── App.tsx                   Shell: header (picker/theme/export/login), editor+preview grid, startup dialog
-├── PrintPage.tsx             Standalone print view; reads payload key from localStorage
-│
-├── auth/
-│   └── AuthContext.tsx       AuthProvider + useAuth hook (guest/authenticated toggle)
-│
-├── state/
-│   ├── editorStore.ts        Zustand store — THE source of client truth; EMPTY_RESUME template
-│   └── (themeStore removed)
-│
-├── editor/
-│   ├── EditorPane.tsx        Responsive tab layout (horizontal scroll); registers section forms
-│   ├── sections/             One component per resume section
-│   ├── fields/               Reusable field primitives (text/select/tags)
-│   ├── SaveButton.tsx        Staleness check → plan → execute pipeline trigger; saving state (spinner + disabled); not rendered while save is disabled
-│   ├── ValidationBanner.tsx  Error/warning display from useValidation
-│   ├── SortableList.tsx      Generic dnd-kit reorder wrapper
-│   ├── ResumePicker.tsx      Loads list + selected resume into store; "New Resume" button
-│   └── ExportMenu.tsx        Opens /print with a localStorage payload key
-│
-├── preview/
-│   ├── PreviewFrame.tsx      Debounced iframe preview
-│   └── renderClient.ts       fetch wrapper for POST /render
-│
-├── validation/
-│   ├── schema.ts             zod schema mirroring CMS validations
-│   └── useValidation.ts      Hook: store resume → ValidationIssue[]
-│
-├── graphql/
-│   ├── client.ts             graphql-request client (credentials: include)
-│   ├── useResume.ts          TanStack Query hooks (gated by isAuthenticated), fetchResumeUpdatedAt
-│   └── executeSave.ts        Executes MutationOp[] against the CMS
-│
-└── components/
-    └── StartupDialog.tsx     Launch dialog: list resumes, create new, or import (guest)
-```
+Key invariants:
+- `resume` is the form-mutated state.
+- `cmsIds[section][i] === null` means local row (create on save planning).
+- ID present in `originalCmsIds` but absent in current IDs means delete.
+- `loadFromCms` resets state atomically.
+- `loadFromJson` creates local-only state (`resumeId = null`, no CMS backing).
 
-### State model (`state/editorStore.ts`)
+### Main runtime flows
 
-Single Zustand store. No undo/redo (removed), no persistence.
+- **Load (auth):** GraphQL → `fromCms` → `loadFromCms`
+- **Load (guest/import):** JSON/template → `loadFromJson`
+- **Edit/preview:** form mutation → debounce 300ms → `POST /render` → iframe update
+- **Validation:** store resume → Zod rules mirroring CMS
+- **Save pipeline:** documented in `docs/SAVE_PIPELINE.md` (currently retained while save UI exposure is controlled by product state)
+- **Print:** payload passed via localStorage key into `/print` route
 
-```ts
-interface EditorState {
-  resume: JsonResume;        // live editing copy
-  original: JsonResume;      // snapshot at load — diff base
-  originalCms: CmsResume | null;
-  cmsIds: CmsIdMap;          // live row ids; null = locally added row
-  originalCmsIds: CmsIdMap;  // snapshot ids — delete detection base
-  theme: ThemeId;
-  resumeId: string | null;
-  loadedUpdatedAt: string | null;  // staleness-check anchor
-  isStartup: boolean;              // true while startup dialog is active
-}
-```
+---
 
-Invariants:
+## 4) Service internals
 
-1. `resume` is the only thing forms mutate (via `patchResume` or section actions).
-2. `cmsIds[section][i] === null` ⇒ row i was added locally ⇒ save emits a create.
-3. An id present in `originalCmsIds` but absent from `cmsIds[section]` ⇒ emit delete.
-4. `loadFromCms` resets everything atomically (switching resumes mid-edit discards changes).
-5. `loadFromJson` populates the store for locally-imported JSON files (no CMS
-   backing). All `cmsIds` are null (every row is a pending create),
-   `originalCms` is null, `resumeId` is null.
+### Render service
 
-### Data flow
+Primary modules:
+- `server.ts` (Fastify bootstrap, routes, optional auth proxy)
+- `render.ts` (theme render lifecycle)
+- `cache.ts` (LRU)
+- `auth.ts` (IP allowlist middleware)
+- `postProcess.ts` (HTML post-processing)
 
-**Load (CMS)**
+Request shape:
+- `POST /render` validates payload, resolves theme renderer, returns HTML.
+- Theme failures are returned as renderable error HTML (do not crash the editor).
 
-```
-ResumePicker → useResume(id) [TanStack Query]
-  → fromCms(cms) : JsonResume
-  → loadFromCms({ json, cms })   // seeds all store slices
-```
+### Auth service
 
-**Load (JSON import)**
+Primary modules:
+- `auth.ts` (Better Auth configuration)
+- `server.ts` (Fastify catch-all `/api/auth/*`)
 
-```
-StartupDialog → file input → JSON.parse → validateResume
-  → loadFromJson(json)   // seeds resume, original, cmsIds (all null),
-                         // originalCms = null, resumeId = null
-```
-Imported resumes have no CMS backing — `resumeId` is null and `originalCms`
-is null. The `isEmpty` check in `App.tsx` uses `!resumeId && Object.keys(resume).length === 0`
-to show the editor/preview for imported data. Saving is blocked because
-`originalCms` is null (see KNOWN_ISSUES A11).
+Notes:
+- Callback URL is `{AUTH_URL}/api/auth/callback/cognito`.
+- Apply schema with `apps/auth-service/migrations/auth-schema.sql`.
 
-### Edit → preview
+---
 
-```
-form onChange → patchResume → store.resume updates
-  → PreviewFrame effect (300ms debounce) → requestRender({resume, theme})
-  → POST /render → HTML string → <iframe srcDoc>
-```
+## 5) Transformer contract
 
-**Preview loading states** (see FUNCTIONAL_REQUIREMENTS FR-3):
+`packages/transformer` handles CMS ⇄ JSON Resume conversion and mutation planning.
 
-- First render (no HTML yet): skeleton placeholder block inside the preview
-  pane (`Skeleton` from `components/ui/skeleton.tsx`), announced via
-  `role="status"`.
-- Subsequent renders: previous render stays visible; a translucent
-  `bg-background/50` overlay signals the refresh. No flash of empty content.
+Important mappings:
+- Multi-value text fields use list codec (`string[]` ⇄ delimited string).
+- Dates use codec (`YYYY-MM(-DD)` ⇄ ISO datetime).
+- Work highlights are independent relation rows.
+- Certificates are shared entities via join rows.
+- `basics.image` is relation-backed in CMS; planner emits relation payloads but end-to-end behavior remains explicitly tracked in known issues.
 
-### Startup dialog (FR-1)
+Mutation execution order is **creates → updates → deletes**.
 
-- On launch, if no resume is loaded, a modal dialog appears (`isStartup` flag
-  in store). Behavior depends on auth mode:
-  - **Guest mode:** Shows "Create a resume to get started. Your work won't be
-    saved." with two buttons: "Create New Resume" (loads `EMPTY_RESUME` locally)
-    and "Import JSON Resume". No GraphQL calls, no resume list.
-  - **Authenticated mode:** Shows existing resumes as selectable buttons with
-    title + language. Empty state briefly shows "No resumes" then fades out
-    after 2 seconds. "Create New Resume" and "Import JSON Resume" buttons
-    always visible.
-  Dialog stays open until user selects, creates, or imports — `ResumePicker`
-  auto-select is suppressed while `isStartup` is true.
+---
 
-- List loading: `Skeleton` shaped like the select trigger (`h-8 w-56`).
-- Resume fetch in flight: small `Spinner` overlay inside the picker
-  (`isFetching` from TanStack Query — refetches included).
-- Select disabled while the selected resume is loading.
+## 6) Configuration surface
 
-### Save button pending state (FR-5)
+Primary env families:
+- Web: `VITE_GRAPHQL_ENDPOINT`, `VITE_RENDER_ENDPOINT`
+- Render service: `RENDER_*`, optional `AUTH_TARGET`
+- Auth service: `AUTH_*`, `TRUSTED_ORIGINS`, `DATABASE_URL`, `COGNITO_*`, `BETTER_AUTH_SECRET`
 
-- Hidden for all modes while persistence is disabled (a "Save disabled" badge
-  shows for authenticated users). The pipeline below is retained and tested;
-  it resumes once persistence is re-enabled.
-- While saving: `Spinner` (shadcn) with `data-icon="inline-start"`, button
-  disabled. Entire save flow (including early-exit paths) wrapped in
-  `try/finally` to guarantee the saving state is always cleared.
-
-**Edit → validation**
-
-```
-store.resume → useValidation → zod validateResume
-  → ValidationBanner (errors block Save; warnings don't)
-```
-
-**Save**
-
-```
-SaveButton onClick:
-  1. fetchResumeUpdatedAt(id) ≠ loadedUpdatedAt? → block ("changed on server")
-  2. toCms({current, original, originalCms, cmsIds, originalCmsIds, resumeId})
-       → { ops: MutationOp[], errors: ValidationError[] }
-  3. errors.length > 0 → show, stop
-  4. executeSave(ops):
-       sort ops: creates → updates → deletes
-       run sequentially via graphql-client documents
-       collect per-op OpResult{ok,error}
-  5. all ok → invalidateQueries(['resume', id]) → refetch re-seeds store
-     any failed → toast summary; local state untouched (no rollback)
-```
-
-### Print flow
-
-```
-ExportMenu → localStorage['print-<ts>'] = JSON{resume, theme}
-  → window.open('/print?k=<key>')
-PrintPage → reads key → requestRender → full-height iframe → window.print()
-  → removes payload key
-```
-
-localStorage is used because the print tab cannot share Zustand state.
-
-## 4. Render service internals (`apps/render-service/src`)
-
-```
-server.ts      Fastify bootstrap: CORS, IP allowlist hook, routes, /api/auth prod proxy
-render.ts      renderResume(resume, theme): cache check → renderTheme → postProcess
-cache.ts       LRU (default 100 entries, 15min TTL), SHA-1(theme + resume JSON)
-auth.ts        ipAllowlist middleware — 403 unless req.ip ∈ RENDER_ALLOWED_IPS
-postProcess.ts Injects viewport meta + print-color CSS; wraps partial HTML
-```
-
-Request lifecycle:
-
-```
-POST /render {resume, theme}
-  → ipAllowlist (403 if blocked)
-  → validate body (400 on missing resume / unknown theme)
-  → sha1(theme\0resumeJSON) → LRU hit? return
-  → renderTheme(theme, resume)      // dynamic import, cached render fn
-       on throw → HTML error card (iframe stays functional)
-  → postProcess(html)
-  → cache set → 200 text/html
-
-GET|POST /api/auth/* (prod only, when AUTH_TARGET set)
-  → proxied to auth-service so the SPA stays single-origin
-```
-
-Build: Vite SSR bundles all workspace packages (themes, transformer) and npm
-deps into self-contained JS. Docker runtime needs only `node dist/server.js`
-— no `node_modules`, no TS loader. See `apps/render-service/vite.config.ts`.
-
-## 4a. Auth service internals (`apps/auth-service/src`)
-
-```
-auth.ts        betterAuth() — Cognito social provider, Postgres `auth` schema
-server.ts      Fastify bootstrap: CORS, catch-all /api/auth/* → auth.handler()
-```
-
-Request lifecycle:
-
-```
-GET|POST /api/auth/*
-  → CORS preflight (origins from TRUSTED_ORIGINS)
-  → proxy host/headers into a Fetch Request via fromNodeHeaders
-  → auth.handler(req) → Better Auth routes (sign-in/social, callback, session…)
-  → response headers (Set-Cookie, Location) forwarded verbatim
-```
-
-- Postgres pool uses `options=-c search_path=auth`, so the Kysely adapter
-  creates/reads Better Auth tables only in the `auth` schema — never in the
-  Keystone `public` schema. The auth Postgres is its own database (dev:
-  `resume-auth-db`, `postgres:15-bookworm`, host port 5434) — not Keystone's.
-- Migrations: apply `apps/auth-service/migrations/auth-schema.sql` with psql
-  (`psql "$DATABASE_URL" -f ...`). Do NOT use the Better Auth CLI.
-- The OAuth callback (`/api/auth/callback/cognito`) must be registered on the
-  Cognito app client; the SPA hits `/api/auth` on its own origin so the
-  callback URL is `{AUTH_URL}/api/auth/callback/cognito` (dev: 5173).
-
-## 5. Transformer contract
-
-Rule: `toCms(fromCms(x))` round-trips, modulo delimiter normalization to `✌🏻`.
-
-| JSON Resume | CMS | Codec / notes |
-|---|---|---|
-| `skills[].keywords: string[]` | `keywords: String` | `encodeList` / `decodeList` |
-| `interests[].keywords` | same | same |
-| `volunteer[].highlights` | same | same |
-| `projects[].highlights` | same | same |
-| `education[].courses` | same | same |
-| `work[].highlights: string[]` | `ResumeHighlight[]` relation rows | content-based matching via `Map<value, id>`; create/update/delete ops |
-| dates `YYYY-MM(-DD)` | ISO DateTime | `dateCodec`; invalid blocks save |
-| `certificates[]{name,url,summary}` | `ResumeCertification` join table → `Certification{title,link,description}` | rename map; shared global list via join table (S4) |
-| `basics.image: string` | `Image` relation | read-only (A3/S2) |
-| skill `level`, language `fluency` | CMS `select` options | `options.ts` canonical lists |
-
-Mutation op ordering guarantee (`executeSave`): creates before updates before
-deletes, so new-row references are safe.
-
-## 6. Cross-cutting decisions
-
-- **Editor shape = JSON Resume, not CMS.** All forms operate on `JsonResume`;
-  conversion happens only at load/save boundaries. Adding a field means
-  touching types → fromCms/toCms → form — see FUNCTIONAL_REQUIREMENTS §7.
-- **Auth stub in place.** `AuthProvider` toggles between guest and
-  authenticated modes. Guest mode bypasses all GraphQL calls. Real Cognito
-  integration via Better Auth (`apps/auth-service`) — session state gates the
-  SPA; see §8. All requests send `credentials: 'include'` so the session
-  cookie flows without call-site changes.
-- **Validation mirrors the CMS**, not the official JSON Resume schema — the
-  CMS is what will actually reject a write. Enum mismatches on legacy data are
-  warnings, not errors.
-- **Themes are vendored**, not npm-installed, so preview output is pinned.
-  Registry pattern keeps imports lazy (fast boot, pay-per-use).
-- **Tailwind v4 + shadcn/ui.** Project migrated to Tailwind v4. shadcn
-  components use v4-compatible classes. Token values are oklch (direct CSS
-  vars in `index.css`), mapped to Tailwind utilities via `@theme`.
-- **Testing**: Vitest everywhere. Transformer has unit + property tests;
-  web tests pure logic only (validation); render-service tests postProcess.
-  No component/E2E tests yet.
-
-## 7. Environments & configuration
-
-| Var | Consumer | Default |
-|---|---|---|
-| `VITE_GRAPHQL_ENDPOINT` | web | `http://localhost:3000/api/graphql` |
-| `VITE_RENDER_ENDPOINT` | web | `http://localhost:8787` |
-| `RENDER_PORT` / `RENDER_HOST` | render-service | `5173` / `0.0.0.0` |
-| `RENDER_ALLOWED_IPS` | render-service | unset (open) |
-| `RENDER_CORS_ORIGIN` | render-service | `http://localhost:5173` |
-| `RENDER_CACHE_MAX` | render-service | `100` |
-| `AUTH_TARGET` | render-service (prod proxy) | unset (proxy off) |
-| `AUTH_PORT` / `AUTH_HOST` | auth-service | `4000` / `127.0.0.1` |
-| `AUTH_URL` | auth-service | `http://localhost:5173` |
-| `TRUSTED_ORIGINS` | auth-service | `http://localhost:5173` |
-| `DATABASE_URL` | auth-service | — (must point at a DB with an `auth` schema) |
-| `COGNITO_*` (5 vars) | auth-service | — |
-| `BETTER_AUTH_SECRET` | auth-service | — |
-
-Table shows code defaults. Local dev overrides these via the root `.env`
-(`RENDER_PORT=8787`, `RENDER_HOST=127.0.0.1`, `RENDER_ALLOWED_IPS=127.0.0.1,::1`,
-`AUTH_PORT=4000`, etc.). With `RENDER_ALLOWED_IPS` unset the render service is
-open to all IPs — keep it localhost-only via the `.env`.
-
-Keystone side must allow CORS from both web origins (5173, 8787).
+Use `.env.example` + `docs/LOCAL_DEV.md` for local setup details.

@@ -217,8 +217,8 @@ writes). Current rules:
 **Behavior.** Explicit Save button. Diffs live state vs load snapshot,
 produces a typed mutation plan, executes sequentially against the CMS.
 Currently disabled: the pipeline below is retained and tested (toCms planner
-tests), but the Save button is not rendered (ARCHITECTURE §3 "Save button
-pending state").
+tests), but the Save button is not rendered (see `docs/ARCHITECTURE.md` and
+current product state).
 
 **Files**
 | File | Change |
@@ -354,28 +354,30 @@ path (A4).
 
 ---
 
-## FR-9 Image preview (basics.image)
+## FR-9 Image field (`basics.image`)
 
-**Behavior.** Basics form has an Image URL field plus an 80×80 thumbnail
-preview beside it. Broken URLs fall back to a dashed placeholder. Edits are
-preview-only — not persisted (A3/S2).
+**Behavior.** Basics form includes an Image URL input with thumbnail preview.
+Broken or empty URLs show the placeholder.
+
+Planner behavior currently attempts relation updates when the value changes
+(`{ create: { src } }` on set, `{ disconnect: true }` on clear), but this path
+is not yet verified end-to-end against live Keystone (A3/S2).
 
 **Files**
 | File | Change |
 |---|---|
 | `apps/web/src/editor/sections/BasicsForm.tsx` | `ImagePreview` component |
-| `packages/transformer/src/toCms.ts` | `flattenBasics` excludes `image` (keep excluded until S2 resolved) |
+| `packages/transformer/src/toCms.ts` | `diffBasics` relation payload mapping for `image` |
 
 **Rules**
 1. Error flag resets when URL changes (derived-state pattern during render,
-   NOT setState-in-effect — lint enforces this).
-2. Persisting requires resolving S2 first: run codegen, inspect
-   `ResumeBasicInformationUpdateInput`, add relation payload in `toCms`, then
-   move image out of the exclusion and update KNOWN_ISSUES.
+   not setState-in-effect).
+2. Keep docs aligned with actual planner behavior; do not claim image saves are
+   guaranteed until verified against live CMS.
 
 **AC**
-- [ ] Valid URL → thumbnail; broken → placeholder; empty → placeholder.
-- [ ] Save never emits an `image` field in any op.
+- [ ] Valid URL → thumbnail; broken/empty → placeholder.
+- [ ] Planner emits image relation payload only when image value changes.
 
 ---
 
@@ -410,8 +412,9 @@ logger; blocked IPs logged at warn level.
 | `apps/render-service/src/auth.ts` | Allowlist middleware |
 
 **Rules**
-1. Env vars parsed at startup with defaults (see ARCHITECTURE §7); invalid
-   port numbers fail fast via Fastify listen error path.
+1. Env vars parsed at startup with defaults (see `docs/ARCHITECTURE.md` and
+   `.env.example`); invalid port numbers fail fast via Fastify listen error
+   path.
 2. Library modules (`render.ts`, `cache.ts`, `postProcess.ts`) do not log —
    logging belongs to server/request scope.
 3. Never log full resume payloads (PII).
