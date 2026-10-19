@@ -39,24 +39,26 @@ await app.register(cors, {
 
 app.addHook('onRequest', ipAllowlist(ALLOWED_IPS));
 
-const AUTH_TARGET = process.env.AUTH_TARGET;
-if (AUTH_TARGET) {
-  // Forward only /api/auth/* to the auth-service so the SPA stays single-origin.
-  // Plain node http pass-through keeps the self-contained SSR bundle side-effect free.
-  const HOP_BY_HOP = new Set([
-    'connection', 'keep-alive', 'proxy-authenticate', 'proxy-authorization',
-    'te', 'trailer', 'transfer-encoding', 'upgrade',
-  ]);
-  const authTarget = new URL(AUTH_TARGET);
-  const PROXY_REMOTE = `${authTarget.protocol}//${authTarget.host}`;
+const HOP_BY_HOP = new Set([
+  'connection', 'keep-alive', 'proxy-authenticate', 'proxy-authorization',
+  'te', 'trailer', 'transfer-encoding', 'upgrade',
+]);
+
+function mountProxy(prefix: '/api/auth' | '/api/ai', targetEnv: string | undefined, errorLabel: string): void {
+  if (!targetEnv) {
+    app.log.warn(`${prefix} target is unset — ${prefix}/* will NOT be proxied.`);
+    return;
+  }
+
+  const parsedTarget = new URL(targetEnv);
+  const remote = `${parsedTarget.protocol}//${parsedTarget.host}`;
 
   app.route({
     method: ['GET', 'POST'],
-    url: '/api/auth/*',
+    url: `${prefix}/*`,
     async handler(req, reply) {
-      req.log.info({ method: req.method, url: req.url, target: PROXY_REMOTE }, 'auth proxy request');
+      req.log.info({ method: req.method, url: req.url, target: remote }, `${prefix} proxy request`);
       reply.hijack();
-      const target = new URL(AUTH_TARGET);
       const body = req.body === undefined ? null : JSON.stringify(req.body);
 
       const headers: Record<string, string> = {};
@@ -64,13 +66,13 @@ if (AUTH_TARGET) {
         if (HOP_BY_HOP.has(key.toLowerCase()) || value === undefined) continue;
         headers[key] = Array.isArray(value) ? value.join(', ') : value;
       }
-      headers.host = target.host;
+      headers.host = parsedTarget.host;
       if (body !== null) headers['content-length'] = Buffer.byteLength(body).toString();
 
       const out = httpRequest(
         {
-          hostname: target.hostname,
-          port: target.port,
+          hostname: parsedTarget.hostname,
+          port: parsedTarget.port,
           path: req.url,
           method: req.method,
           headers,
@@ -82,30 +84,30 @@ if (AUTH_TARGET) {
             if (HOP_BY_HOP.has(key.toLowerCase()) || value === undefined) continue;
             resHeaders[key] = Array.isArray(value) ? value.join(', ') : value;
           }
-          req.log.info({ status, location: resHeaders.location }, 'auth proxy response');
+          req.log.info({ status }, `${prefix} proxy response`);
           reply.raw.writeHead(status, resHeaders);
           res.on('data', (chunk) => reply.raw.write(chunk));
           res.on('end', () => reply.raw.end());
           res.on('error', (err) => {
-            req.log.error({ err }, 'auth proxy downstream error');
+            req.log.error({ err }, `${prefix} proxy downstream error`);
             reply.raw.destroy(err as Error);
           });
         },
       );
       out.on('error', (err) => {
-        req.log.error({ err }, 'auth proxy error');
-        if (!reply.raw.headersSent) reply.code(502).send({ error: 'auth-service unreachable' });
+        req.log.error({ err }, `${prefix} proxy error`);
+        if (!reply.raw.headersSent) reply.code(502).send({ error: errorLabel });
       });
       if (body !== null) out.write(body);
       out.end();
     },
   });
-  app.log.info(`proxying /api/auth → ${AUTH_TARGET}`);
-} else {
-  app.log.warn(
-    'AUTH_TARGET is unset — /api/auth/* will NOT be proxied to the auth-service. Sign-in will fail.',
-  );
+
+  app.log.info(`proxying ${prefix} → ${targetEnv}`);
 }
+
+mountProxy('/api/auth', process.env.AUTH_TARGET, 'auth-service unreachable');
+mountProxy('/api/ai', process.env.AI_TARGET, 'ai-service unreachable');
 
 const webDist = resolve(import.meta.dirname, '../web-dist');
 if (existsSync(webDist)) {

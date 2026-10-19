@@ -1,79 +1,89 @@
-import { useEffect, useRef, useState } from "react"
-import type { ReactCodeMirrorRef } from "@uiw/react-codemirror"
-import CodeMirror from "@uiw/react-codemirror"
-import { json } from "@codemirror/lang-json"
-import { githubLight, githubDark } from "@uiw/codemirror-theme-github"
-import { Upload } from "lucide-react"
-import { useTheme } from "next-themes"
-import { useEditorStore } from "@/state/editorStore"
-import { Button } from "@/components/ui/button"
-import { cn } from "@/lib/utils"
+import { useEffect, useRef, useState } from 'react';
+import type { ReactCodeMirrorRef } from '@uiw/react-codemirror';
+import CodeMirror from '@uiw/react-codemirror';
+import { json } from '@codemirror/lang-json';
+import { githubLight, githubDark } from '@uiw/codemirror-theme-github';
+import { Upload } from 'lucide-react';
+import { useTheme } from 'next-themes';
+import type { JsonResume } from '@resume-studio/transformer';
+import { useEditorStore } from '@/state/editorStore';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 
 function formatJson(obj: unknown): string {
-  return JSON.stringify(obj, null, 2)
+  return JSON.stringify(obj, null, 2);
 }
 
 export function JsonEditor() {
-  const resume = useEditorStore((s) => s.resume)
-  const setResume = useEditorStore((s) => s.setResume)
-  const { theme: uiTheme } = useTheme()
-  const isDark = uiTheme === "dark"
+  const resume = useEditorStore((s) => s.resume);
+  const setResume = useEditorStore((s) => s.setResume);
+  const setJsonBufferState = useEditorStore((s) => s.setJsonBufferState);
+  const { theme: uiTheme } = useTheme();
+  const isDark = uiTheme === 'dark';
 
-  const [error, setError] = useState<string | null>(null)
-  const isLocalEdit = useRef(false)
-  const editorRef = useRef<ReactCodeMirrorRef>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [error, setError] = useState<string | null>(null);
+  const isLocalEdit = useRef(false);
+  const editorRef = useRef<ReactCodeMirrorRef>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [doc, setDoc] = useState(() => formatJson(resume))
+  const [doc, setDoc] = useState(() => formatJson(resume));
 
   // Sync from store → editor when resume changes externally
   useEffect(() => {
     if (isLocalEdit.current) {
-      isLocalEdit.current = false
-      return
+      isLocalEdit.current = false;
+      return;
     }
-    const formatted = formatJson(resume)
-    setDoc(formatted)
-    const view = editorRef.current?.view
+    const formatted = formatJson(resume);
+    setDoc(formatted);
+    setError(null);
+    setJsonBufferState({ isValid: true, isDirty: false, error: null });
+    const view = editorRef.current?.view;
     if (view) {
       view.dispatch({
         changes: { from: 0, to: view.state.doc.length, insert: formatted },
-      })
+      });
     }
-  }, [resume])
+  }, [resume, setJsonBufferState]);
 
   const handleChange = (value: string) => {
-    setDoc(value)
+    setDoc(value);
     try {
-      const parsed = JSON.parse(value)
-      setError(null)
-      isLocalEdit.current = true
-      setResume(parsed)
+      const parsed = JSON.parse(value) as JsonResume;
+      setError(null);
+      setJsonBufferState({ isValid: true, isDirty: false, error: null });
+      isLocalEdit.current = true;
+      setResume(parsed);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Invalid JSON")
+      const message = err instanceof Error ? err.message : 'Invalid JSON';
+      setError(message);
+      setJsonBufferState({ isValid: false, isDirty: true, error: message });
     }
-  }
+  };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    const reader = new FileReader()
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
     reader.onload = () => {
-      const text = reader.result as string
-      setDoc(text)
+      const text = reader.result as string;
+      setDoc(text);
       try {
-        const parsed = JSON.parse(text)
-        setError(null)
-        isLocalEdit.current = true
-        setResume(parsed)
+        const parsed = JSON.parse(text) as JsonResume;
+        setError(null);
+        setJsonBufferState({ isValid: true, isDirty: false, error: null });
+        isLocalEdit.current = true;
+        setResume(parsed);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Invalid JSON")
+        const message = err instanceof Error ? err.message : 'Invalid JSON';
+        setError(message);
+        setJsonBufferState({ isValid: false, isDirty: true, error: message });
       }
-    }
-    reader.readAsText(file)
+    };
+    reader.readAsText(file);
     // Reset input so re-uploading the same file triggers onChange
-    e.target.value = ""
-  }
+    e.target.value = '';
+  };
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
@@ -104,7 +114,7 @@ export function JsonEditor() {
           extensions={[json()]}
           onChange={handleChange}
           onCreateEditor={(view) => {
-            editorRef.current = { view }
+            editorRef.current = { view };
           }}
           basicSetup={{
             lineNumbers: true,
@@ -121,13 +131,13 @@ export function JsonEditor() {
       {error && (
         <div
           className={cn(
-            "shrink-0 border-t px-4 py-1.5 text-xs font-medium",
-            "bg-destructive/10 text-destructive border-destructive/20",
+            'shrink-0 border-t px-4 py-1.5 text-xs font-medium',
+            'bg-destructive/10 text-destructive border-destructive/20',
           )}
         >
           {error}
         </div>
       )}
     </div>
-  )
+  );
 }

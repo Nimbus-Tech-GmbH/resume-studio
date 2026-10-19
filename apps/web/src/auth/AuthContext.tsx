@@ -4,6 +4,7 @@ import { signIn, signOut, useSession } from './authClient';
 
 interface AuthState {
   isAuthenticated: boolean;
+  userId: string | null;
   /** True while the initial session check is in flight. */
   isLoading: boolean;
   /** Start the Cognito OAuth flow (redirect to hosted UI). */
@@ -13,6 +14,7 @@ interface AuthState {
 
 const AuthContext = createContext<AuthState>({
   isAuthenticated: false,
+  userId: null,
   isLoading: true,
   login: async () => {},
   logout: async () => {},
@@ -23,8 +25,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<AuthState>(() => {
     const isAuthenticated = Boolean(session?.user);
+    const userId =
+      typeof session?.user === 'object' && session.user && 'id' in session.user
+        ? String(session.user.id)
+        : null;
     return {
       isAuthenticated,
+      userId,
       isLoading: isPending,
       login: async () => {
         // eslint-disable-next-line no-console -- sign-in diagnostics for deployed auth

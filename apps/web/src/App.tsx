@@ -35,6 +35,9 @@ import {
 import { Avatar, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { PanelHeader } from "@/components/PanelHeader"
+import { TailoringPanel } from "@/features/ai-tailoring"
+import { useTailoringStore } from "@/features/ai-tailoring/state/tailoringStore"
+import { useWorkspaceRecovery } from "@/workspace"
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -168,6 +171,10 @@ function Header({ viewMode, setViewMode }: { viewMode: ViewMode; setViewMode: (m
   const { theme: uiTheme, setTheme: setUiTheme } = useTheme()
   const { isAuthenticated, login, logout } = useAuth()
   const resetAll = useEditorStore((s) => s.resetAll)
+  const recoveryStatus = useEditorStore((s) => s.recoveryStatus)
+  const revision = useEditorStore((s) => s.revision)
+  const workspaceLoadState = useEditorStore((s) => s.workspaceLoadState)
+  const lastApplied = useTailoringStore((s) => s.lastApplied)
 
   const handleAuthToggle = () => {
     if (isAuthenticated) {
@@ -215,6 +222,15 @@ function Header({ viewMode, setViewMode }: { viewMode: ViewMode; setViewMode: (m
       </div>
 
       <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+        {recoveryStatus === "recovered" && (
+          <Badge variant="outline">Recovered locally</Badge>
+        )}
+        {workspaceLoadState === "ready" && revision > 0 && (
+          <Badge variant="outline">Modified</Badge>
+        )}
+        {lastApplied && (
+          <Badge variant="outline">Applied to draft</Badge>
+        )}
         {isAuthenticated && (
           <>
             <Badge title="Saving is disabled — changes won't persist." variant="outline">
@@ -235,6 +251,7 @@ function Header({ viewMode, setViewMode }: { viewMode: ViewMode; setViewMode: (m
         </IconButton>
         <ThemePicker />
         <Separator orientation="vertical" />
+        <TailoringPanel />
         <ExportMenu />
         <IconButton title={isAuthenticated ? "Logout" : "Login"} onClick={handleAuthToggle}>
           {isAuthenticated ? <LogOut className="size-3.5" /> : <User className="size-3.5" />}
@@ -327,6 +344,8 @@ function useAppModel() {
 const noop = () => {}
 
 export function App() {
+  useWorkspaceRecovery()
+
   const {
     resume,
     theme,

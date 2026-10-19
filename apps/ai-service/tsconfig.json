@@ -1,0 +1,12 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "types": ["node"],
+    "baseUrl": ".",
+    "paths": {
+      "@resume-studio/ai-contracts": ["../../packages/ai-contracts/src/index.ts"]
+    }
+  },
+  "include": ["src/**/*.ts"]
+}
