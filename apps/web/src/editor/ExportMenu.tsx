@@ -7,6 +7,11 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Download, FileJson, FileText } from 'lucide-react';
+import {
+  PRINT_HANDOFF_TTL_MS,
+  removePrintHandoff,
+  writePrintHandoff,
+} from '@/workspace/printHandoff';
 
 export function ExportMenu() {
   const resume = useEditorStore((s) => s.resume);
@@ -26,24 +31,21 @@ export function ExportMenu() {
   };
 
   const exportPdf = () => {
-    // Use sessionStorage for print payload (cleared on tab close).
-    // Generate cryptographically secure random key instead of predictable timestamp.
-    const randomBytes = crypto.getRandomValues(new Uint8Array(12));
-    const hexKey = Array.from(randomBytes, (b) =>
-      b.toString(16).padStart(2, '0'),
-    ).join('');
-    const key = `print-${hexKey}`;
-    const payload = JSON.stringify({ resume, theme });
+    let key: string;
+    let storage: Storage;
     try {
-      sessionStorage.setItem(key, payload);
+      storage = window.localStorage;
+      key = writePrintHandoff(storage, { resume, theme });
     } catch {
       // eslint-disable-next-line no-console -- intentional error before early return
-      console.error('Failed to write print payload to sessionStorage');
+      console.error('Failed to write print payload to localStorage');
       return;
     }
+
     const url = new URL('/print', window.location.origin);
     url.searchParams.set('k', key);
     window.open(url.toString(), '_blank', 'noopener,noreferrer');
+    window.setTimeout(() => removePrintHandoff(storage, key), PRINT_HANDOFF_TTL_MS);
   };
 
   return (

@@ -101,14 +101,34 @@ pnpm dev:render
 pnpm dev:auth
 ```
 
+### Presentation harness
+
+Develop preview/print behavior without authentication, Keystone, or editor
+state. Start render-service separately, then run:
+
+```sh
+pnpm dev:render
+pnpm --filter @resume-studio/resume-presentation dev:harness
+```
+
+Harness supports populated/empty synthetic resumes, multiple themes, delayed
+renders, failures, and rapid updates. Validate its production bundle with:
+
+```sh
+pnpm --filter @resume-studio/resume-presentation build:harness
+```
+
+Presentation package defaults to `http://localhost:8787`; web host injects its
+configured `VITE_RENDER_ENDPOINT` explicitly.
+
 ## Ports
 
-| Service         | URL                        | Bound     |
-|-----------------|----------------------------|-----------|
-| Web (Vite)      | http://localhost:5173      | 0.0.0.0   |
-| Auth service    | http://localhost:4000      | 127.0.0.1 |
-| Render service  | http://localhost:8787      | 127.0.0.1 |
-| Keystone CMS    | http://localhost:3000      | (external)|
+| Service        | URL                   | Bound      |
+| -------------- | --------------------- | ---------- |
+| Web (Vite)     | http://localhost:5173 | 0.0.0.0    |
+| Auth service   | http://localhost:4000 | 127.0.0.1  |
+| Render service | http://localhost:8787 | 127.0.0.1  |
+| Keystone CMS   | http://localhost:3000 | (external) |
 
 ## Environment variables
 

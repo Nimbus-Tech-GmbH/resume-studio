@@ -1,15 +1,15 @@
-@import "tailwindcss";
-@import "tw-animate-css";
-@import "shadcn/tailwind.css";
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@import 'shadcn/tailwind.css';
 
-@import "@fontsource-variable/jetbrains-mono";
-@import "@fontsource-variable/merriweather";
-@import "@fontsource-variable/inter";
-@import "@fontsource-variable/oxanium";
-@import "@fontsource-variable/geist";
-@import "@fontsource-variable/outfit";
-@import "@fontsource-variable/ibm-plex-sans";
-@import "@fontsource-variable/space-grotesk";
+@import '@fontsource-variable/jetbrains-mono';
+@import '@fontsource-variable/merriweather';
+@import '@fontsource-variable/inter';
+@import '@fontsource-variable/oxanium';
+@import '@fontsource-variable/geist';
+@import '@fontsource-variable/outfit';
+@import '@fontsource-variable/ibm-plex-sans';
+@import '@fontsource-variable/space-grotesk';
 
 @custom-variant dark (&:is(.dark *));
 
@@ -68,9 +68,9 @@
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
 
-  --font-sans: "IBM Plex Sans Variable", sans-serif;
-  --font-heading: "Space Grotesk Variable", sans-serif;
-  --font-mono: "JetBrains Mono Variable", monospace;
+  --font-sans: 'IBM Plex Sans Variable', sans-serif;
+  --font-heading: 'Space Grotesk Variable', sans-serif;
+  --font-mono: 'JetBrains Mono Variable', monospace;
 }
 
 @layer base {
@@ -182,13 +182,15 @@
 
   body {
     @apply bg-background text-foreground;
-    font-feature-settings: "rlig" 1, "calt" 1;
+    font-feature-settings:
+      'rlig' 1,
+      'calt' 1;
   }
 
   .theme {
-    --font-sans: "Inter Variable", sans-serif;
+    --font-sans: 'Inter Variable', sans-serif;
     --font-heading: var(--font-sans);
-    --font-mono: "JetBrains Mono Variable", monospace;
+    --font-mono: 'JetBrains Mono Variable', monospace;
   }
 
   * {
@@ -216,7 +218,8 @@
 }
 
 @keyframes fade-out {
-  0%, 70% {
+  0%,
+  70% {
     opacity: 1;
   }
 
@@ -229,6 +232,31 @@
   animation: fade-out 2s ease forwards;
 }
 
+.resume-workspace-presentation {
+  height: 100%;
+  min-height: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.resume-workspace-presentation .rs-presentation__viewport,
+.resume-workspace-presentation .rs-presentation__frame {
+  min-height: 0;
+}
+
+.print-presentation {
+  height: 100vh;
+  min-height: 0;
+  border: 0;
+  border-radius: 0;
+}
+
+.print-presentation .rs-presentation__viewport,
+.print-presentation .rs-presentation__frame {
+  min-height: 0;
+}
+
 @media print {
   body {
     margin: 0;
@@ -236,7 +264,7 @@
     background: white;
   }
 
-  .print\\:hidden {
+  .print\:hidden {
     display: none !important;
   }
 

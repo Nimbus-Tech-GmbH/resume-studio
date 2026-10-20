@@ -32,6 +32,8 @@
     "@radix-ui/react-tooltip": "^1.1.4",
     "@remixicon/react": "^4.9.0",
     "@resume-studio/graphql-client": "workspace:*",
+    "@resume-studio/resume-presentation": "workspace:*",
+    "@resume-studio/studio-contracts": "workspace:*",
     "@resume-studio/themes": "workspace:*",
     "@resume-studio/transformer": "workspace:*",
     "@tanstack/react-query": "^5.56.2",

@@ -3,6 +3,7 @@ import { GET_RESUME, LIST_RESUMES, CREATE_RESUME } from '@resume-studio/graphql-
 import type { CmsResume } from '@resume-studio/transformer';
 import { useAuth } from '@/auth/AuthContext';
 import { gqlClient } from './client';
+import { canListCmsResumes, canLoadCmsResume } from './queryAccess';
 
 export interface ResumeListItem {
   id: string;
@@ -24,7 +25,7 @@ export function useResumeList() {
   const { isAuthenticated } = useAuth();
   return useQuery({
     queryKey: ['resumes'],
-    enabled: isAuthenticated,
+    enabled: canListCmsResumes(isAuthenticated),
     retry: false,
     queryFn: async () => {
       const res = await gqlClient.request<ListResumesResponse>(LIST_RESUMES);
@@ -37,7 +38,7 @@ export function useResume(id: string | null) {
   const { isAuthenticated } = useAuth();
   return useQuery({
     queryKey: ['resume', id],
-    enabled: Boolean(id) && isAuthenticated,
+    enabled: canLoadCmsResume(id, isAuthenticated),
     retry: false,
     queryFn: async () => {
       if (!id) return null;

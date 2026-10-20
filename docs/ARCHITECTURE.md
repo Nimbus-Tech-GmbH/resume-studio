@@ -79,6 +79,8 @@ apps/
   auth-service/           Fastify Better Auth + Cognito broker
 
 packages/
+  studio-contracts/       Versioned presentation input/status types (types only)
+  resume-presentation/    Preview/print rendering lifecycle, transport, iframe UI, harness
   transformer/            CMS ⇄ JSON Resume codecs + diff planner (pure TS)
   graphql-client/         Hand-written GraphQL operations (+ codegen placeholder)
   themes/                 Theme registry: id → lazy import of vendored package
@@ -88,71 +90,91 @@ packages/
 Dependency direction (enforced by convention):
 
 ```
-web ──▶ transformer ◀── render-service
- │                          │
- └──▶ graphql-client        └──▶ themes ──▶ vendor/*
+web ──▶ resume-presentation ──▶ studio-contracts ──▶ transformer (types only)
+ ├──▶ studio-contracts
+ ├──▶ transformer
+ └──▶ graphql-client
+
+render-service ──▶ transformer
+               └──▶ themes ──▶ vendor/*
 ```
 
 `transformer` depends on nothing but its own files — it must stay pure so it
-runs identically in browser and Node tests.
+runs identically in browser and Node tests. `studio-contracts` contains domain
+types only. `resume-presentation` depends on that contract and React, never on
+web-private paths, authentication, GraphQL, CMS IDs, or editor state.
 
 ### Key packages/scripts
 
-| Path | Role |
-|---|---|
-| `apps/web/components.json` | shadcn config — CLI managed |
-| `apps/web/src/index.css` | Design tokens, Tailwind v4 theme, keyframe animations |
-| `packages/transformer/src/types.ts` | `JsonResume*` (editor shape) + `Cms*` (CMS shape) interfaces |
-| `packages/transformer/src/fromCms.ts` | CMS → JSON Resume (load path) |
-| `packages/transformer/src/toCms.ts` | JSON Resume diff → mutation plan (save path) |
-| `packages/transformer/src/listCodec.ts` | `string[] ⇄ delimited String` (`✌🏻`, legacy `\n`, `,;`) |
-| `packages/transformer/src/dateCodec.ts` | `YYYY-MM-DD ⇄ ISO DateTime`, invalid → error |
-| `packages/transformer/src/options.ts` | Canonical select option lists mirroring the CMS |
-| `packages/graphql-client/src/operations.ts` | All GraphQL documents (queries + mutations) |
-| `packages/themes/src/registry.ts` | Theme ids/labels, `isThemeId`, default theme |
-| `packages/themes/src/themes.ts` | Lazy loaders dispatching to vendored packages |
+| Path                                              | Role                                                             |
+| ------------------------------------------------- | ---------------------------------------------------------------- |
+| `apps/web/components.json`                        | shadcn config — CLI managed                                      |
+| `apps/web/src/index.css`                          | Design tokens, Tailwind v4 theme, keyframe animations            |
+| `packages/studio-contracts/src/types.ts`          | Versioned immutable presentation input and status event contract |
+| `packages/resume-presentation/src/controller.ts`  | Debounce/cancellation/stale-result lifecycle                     |
+| `packages/resume-presentation/src/components.tsx` | Portable preview and print surfaces                              |
+| `packages/transformer/src/types.ts`               | `JsonResume*` (editor shape) + `Cms*` (CMS shape) interfaces     |
+| `packages/transformer/src/fromCms.ts`             | CMS → JSON Resume (load path)                                    |
+| `packages/transformer/src/toCms.ts`               | JSON Resume diff → mutation plan (save path)                     |
+| `packages/transformer/src/listCodec.ts`           | `string[] ⇄ delimited String` (`✌🏻`, legacy `\n`, `,;`)          |
+| `packages/transformer/src/dateCodec.ts`           | `YYYY-MM-DD ⇄ ISO DateTime`, invalid → error                     |
+| `packages/transformer/src/options.ts`             | Canonical select option lists mirroring the CMS                  |
+| `packages/graphql-client/src/operations.ts`       | All GraphQL documents (queries + mutations)                      |
+| `packages/themes/src/registry.ts`                 | Theme ids/labels, `isThemeId`, default theme                     |
+| `packages/themes/src/themes.ts`                   | Lazy loaders dispatching to vendored packages                    |
 
 ## 3. Web app internals (`apps/web/src`)
 
 ```
 src/
-├── main.tsx                  Entry; routes '/' (App) vs '/print' (PrintPage)
-├── App.tsx                   Shell: header (picker/theme/export/login), editor+preview grid, startup dialog
-├── PrintPage.tsx             Standalone print view; reads payload key from localStorage
+├── main.tsx                  Entry; routes '/' (providers + App) vs isolated '/print'
+├── App.tsx                   Thin shell/workspace composition
+├── PrintPage.tsx             Reads/validates print handoff; owns back navigation
+│
+├── shell/
+│   └── StudioShell.tsx       Frame, branding, session/UI-theme controls, responsive layout, notifications
+│
+├── workspace/
+│   ├── ResumeWorkspace.tsx   Active document, editor mode, validation, theme/presentation inputs
+│   ├── printHandoff.ts       Versioned key-based localStorage handoff helpers
+│   └── logout.ts             Reset-before-logout orchestration
 │
 ├── auth/
-│   └── AuthContext.tsx       AuthProvider + useAuth hook (guest/authenticated toggle)
+│   └── AuthContext.tsx       AuthProvider + useAuth hook
 │
 ├── state/
-│   ├── editorStore.ts        Zustand store — THE source of client truth; EMPTY_RESUME template
-│   └── (themeStore removed)
+│   └── editorStore.ts        Authoritative editable document + persistence/lifecycle metadata
 │
 ├── editor/
-│   ├── EditorPane.tsx        Responsive tab layout (horizontal scroll); registers section forms
+│   ├── EditorPane.tsx        Section forms and navigation
 │   ├── sections/             One component per resume section
-│   ├── fields/               Reusable field primitives (text/select/tags)
-│   ├── SaveButton.tsx        Staleness check → plan → execute pipeline trigger; saving state (spinner + disabled); not rendered while save is disabled
-│   ├── ValidationBanner.tsx  Error/warning display from useValidation
-│   ├── SortableList.tsx      Generic dnd-kit reorder wrapper
-│   ├── ResumePicker.tsx      Loads list + selected resume into store; "New Resume" button
-│   └── ExportMenu.tsx        Opens /print with a localStorage payload key
+│   ├── fields/               Reusable field primitives
+│   ├── SaveButton.tsx        Retained disabled persistence orchestration
+│   ├── ValidationBanner.tsx  Error/warning display
+│   ├── ResumePicker.tsx      Auth-gated CMS selection/load
+│   └── ExportMenu.tsx        JSON export and /print handoff
 │
-├── preview/
-│   ├── PreviewFrame.tsx      Debounced iframe preview
-│   └── renderClient.ts       fetch wrapper for POST /render
-│
-├── validation/
-│   ├── schema.ts             zod schema mirroring CMS validations
-│   └── useValidation.ts      Hook: store resume → ValidationIssue[]
-│
-├── graphql/
-│   ├── client.ts             graphql-request client (credentials: include)
-│   ├── useResume.ts          TanStack Query hooks (gated by isAuthenticated), fetchResumeUpdatedAt
-│   └── executeSave.ts        Executes MutationOp[] against the CMS
-│
-└── components/
-    └── StartupDialog.tsx     Launch dialog: list resumes, create new, or import (guest)
+├── validation/               CMS-compatible validation
+└── graphql/                  Auth-gated reads + retained save executor
 ```
+
+### Shell, workspace, and presentation boundary
+
+- `StudioShell` owns global frame, branding, auth controls, application color
+  theme, responsive panes/tabs, error containment, and notifications. It
+  receives feature slots and does not import editor/store implementations.
+- `ResumeWorkspace` owns active resume lifecycle, form/JSON mode, validation,
+  theme/document inputs, editor composition, import/export integration, and
+  logout reset callback.
+- `PresentationInputV1` crosses the package boundary with only immutable JSON
+  Resume data, stable document key, revision, and theme ID. CMS IDs, auth,
+  GraphQL, save orchestration, and Zustand never cross it.
+- `resume-presentation` owns HTTP rendering lifecycle and iframe display. Host
+  explicitly configures `VITE_RENDER_ENDPOINT`; package itself reads no app env.
+
+This package boundary prepares a future independently deployed presentation
+frontend, but current implementation is a local workspace dependency. No
+runtime federation or independent deployment is implemented.
 
 ### State model (`state/editorStore.ts`)
 
@@ -160,15 +182,17 @@ Single Zustand store. No undo/redo (removed), no persistence.
 
 ```ts
 interface EditorState {
-  resume: JsonResume;        // live editing copy
-  original: JsonResume;      // snapshot at load — diff base
+  resume: JsonResume; // live editing copy
+  original: JsonResume; // snapshot at load — diff base
   originalCms: CmsResume | null;
-  cmsIds: CmsIdMap;          // live row ids; null = locally added row
-  originalCmsIds: CmsIdMap;  // snapshot ids — delete detection base
+  cmsIds: CmsIdMap; // live row ids; null = locally added row
+  originalCmsIds: CmsIdMap; // snapshot ids — delete detection base
   theme: ThemeId;
   resumeId: string | null;
-  loadedUpdatedAt: string | null;  // staleness-check anchor
-  isStartup: boolean;              // true while startup dialog is active
+  documentKey: string | null; // stable client-only presentation identity
+  documentRevision: number; // advances with editable snapshots
+  loadedUpdatedAt: string | null; // staleness-check anchor
+  isStartup: boolean; // true while startup dialog is active
 }
 ```
 
@@ -177,10 +201,12 @@ Invariants:
 1. `resume` is the only thing forms mutate (via `patchResume` or section actions).
 2. `cmsIds[section][i] === null` ⇒ row i was added locally ⇒ save emits a create.
 3. An id present in `originalCmsIds` but absent from `cmsIds[section]` ⇒ emit delete.
-4. `loadFromCms` resets everything atomically (switching resumes mid-edit discards changes).
-5. `loadFromJson` populates the store for locally-imported JSON files (no CMS
-   backing). All `cmsIds` are null (every row is a pending create),
-   `originalCms` is null, `resumeId` is null.
+4. `loadFromCms` resets document, persistence metadata, stable `cms:<id>` key,
+   and revision atomically (switching resumes mid-edit discards changes).
+5. `loadFromJson` populates a new local/imported document with a fresh stable
+   `local:<uuid>` key, no CMS backing, and null CMS IDs.
+6. Form and JSON actions mutate the same `resume` and advance only
+   `documentRevision`; lifecycle metadata is never serialized into JSON export.
 
 ### Data flow
 
@@ -199,26 +225,33 @@ StartupDialog → file input → JSON.parse → validateResume
   → loadFromJson(json)   // seeds resume, original, cmsIds (all null),
                          // originalCms = null, resumeId = null
 ```
-Imported resumes have no CMS backing — `resumeId` is null and `originalCms`
-is null. The `isEmpty` check in `App.tsx` uses `!resumeId && Object.keys(resume).length === 0`
-to show the editor/preview for imported data. Saving is blocked because
-`originalCms` is null (see KNOWN_ISSUES A11).
+
+Imported resumes have no CMS backing — `resumeId` and `originalCms` are null,
+but their local `documentKey` keeps editor/presentation active. A null
+`documentKey` represents no active/fully loaded document. Saving remains
+blocked because `originalCms` is null (see KNOWN_ISSUES A11).
 
 ### Edit → preview
 
 ```
-form onChange → patchResume → store.resume updates
-  → PreviewFrame effect (300ms debounce) → requestRender({resume, theme})
-  → POST /render → HTML string → <iframe srcDoc>
+form/JSON action → store.resume + documentRevision update
+  → ResumeWorkspace builds PresentationInputV1
+  → PreviewPresentation controller (one 300ms document debounce)
+  → configured transport → POST /render → HTML string → sandboxed iframe
 ```
 
 **Preview loading states** (see FUNCTIONAL_REQUIREMENTS FR-3):
 
-- First render (no HTML yet): skeleton placeholder block inside the preview
-  pane (`Skeleton` from `components/ui/skeleton.tsx`), announced via
-  `role="status"`.
-- Subsequent renders: previous render stays visible; a translucent
-  `bg-background/50` overlay signals the refresh. No flash of empty content.
+- First render: loading placeholder announced with `role="status"`.
+- Same-document revision refresh: previous successful HTML stays visible under
+  an updating overlay.
+- Theme changes render immediately with the latest document snapshot and cancel
+  pending document debounce work.
+- Different document keys clear old HTML immediately.
+- Superseded requests are aborted and generation-guarded, so stale success,
+  error, or completion handlers cannot update current state.
+- Recoverable same-document failures retain prior HTML and expose Retry; retry
+  always uses current input.
 
 ### Startup dialog (FR-1)
 
@@ -231,8 +264,8 @@ form onChange → patchResume → store.resume updates
     title + language. Empty state briefly shows "No resumes" then fades out
     after 2 seconds. "Create New Resume" and "Import JSON Resume" buttons
     always visible.
-  Dialog stays open until user selects, creates, or imports — `ResumePicker`
-  auto-select is suppressed while `isStartup` is true.
+    Dialog stays open until user selects, creates, or imports — `ResumePicker`
+    auto-select is suppressed while `isStartup` is true.
 
 - List loading: `Skeleton` shaped like the select trigger (`h-8 w-56`).
 - Resume fetch in flight: small `Spinner` overlay inside the picker
@@ -274,13 +307,17 @@ SaveButton onClick:
 ### Print flow
 
 ```
-ExportMenu → localStorage['print-<ts>'] = JSON{resume, theme}
-  → window.open('/print?k=<key>')
-PrintPage → reads key → requestRender → full-height iframe → window.print()
-  → removes payload key
+ExportMenu → localStorage['print-<random-hex>'] = JSON{resume, theme}
+  → window.open('/print?k=<key>', noopener)
+PrintPage → validates + consumes/removes payload → PresentationInputV1
+  → PrintPresentation (immediate render) → sandboxed iframe → window.print()
 ```
 
-localStorage is used because the print tab cannot share Zustand state.
+`localStorage` is used only as a random-key cross-tab handoff because the print
+tab has no editor store or auth lifecycle. Payload content never enters the URL;
+the payload is removed when consumed. Versioned handoffs expire after 5 minutes
+and stale entries are swept on application bootstrap and later exports, covering
+blocked or failed tabs.
 
 ## 4. Render service internals (`apps/render-service/src`)
 
@@ -333,10 +370,9 @@ GET|POST /api/auth/*
   adapter (configured in `prisma/schema.prisma`) automatically sets
   `search_path=auth` at connection time, so Prisma queries read/write only the
   `auth` schema — never Keystone's `public` schema. The auth Postgres is its
-  own database (dev: `resume-auth-db`, `postgres:15-bookworm`, host port
-  5434) — not Keystone's.
+  own database (dev: `resume-auth-db`, `postgres:15-bookworm`, host port 5434) — not Keystone's.
 - **Migrations:** Prisma handles schema creation and migrations. Run `prisma
-  migrate deploy` (or `prisma db push` for local dev) to apply migrations from
+migrate deploy` (or `prisma db push` for local dev) to apply migrations from
   `apps/auth-service/prisma/migrations/`. Use `DIRECT_URL` if `DATABASE_URL`
   is pooled. Do NOT use the Better Auth CLI.
 - The OAuth callback (`/api/auth/callback/cognito`) must be registered on the
@@ -370,18 +406,18 @@ end-to-end sign-in flow.
 
 Rule: `toCms(fromCms(x))` round-trips, modulo delimiter normalization to `✌🏻`.
 
-| JSON Resume | CMS | Codec / notes |
-|---|---|---|
-| `skills[].keywords: string[]` | `keywords: String` | `encodeList` / `decodeList` |
-| `interests[].keywords` | same | same |
-| `volunteer[].highlights` | same | same |
-| `projects[].highlights` | same | same |
-| `education[].courses` | same | same |
-| `work[].highlights: string[]` | `ResumeHighlight[]` relation rows | content-based matching via `Map<value, id>`; create/update/delete ops |
-| dates `YYYY-MM(-DD)` | ISO DateTime | `dateCodec`; invalid blocks save |
-| `certificates[]{name,url,summary}` | `ResumeCertification` join table → `Certification{title,link,description}` | rename map; shared global list via join table (S4) |
-| `basics.image: string` | `Image` relation | read-only (A3/S2) |
-| skill `level`, language `fluency` | CMS `select` options | `options.ts` canonical lists |
+| JSON Resume                        | CMS                                                                        | Codec / notes                                                         |
+| ---------------------------------- | -------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| `skills[].keywords: string[]`      | `keywords: String`                                                         | `encodeList` / `decodeList`                                           |
+| `interests[].keywords`             | same                                                                       | same                                                                  |
+| `volunteer[].highlights`           | same                                                                       | same                                                                  |
+| `projects[].highlights`            | same                                                                       | same                                                                  |
+| `education[].courses`              | same                                                                       | same                                                                  |
+| `work[].highlights: string[]`      | `ResumeHighlight[]` relation rows                                          | content-based matching via `Map<value, id>`; create/update/delete ops |
+| dates `YYYY-MM(-DD)`               | ISO DateTime                                                               | `dateCodec`; invalid blocks save                                      |
+| `certificates[]{name,url,summary}` | `ResumeCertification` join table → `Certification{title,link,description}` | rename map; shared global list via join table (S4)                    |
+| `basics.image: string`             | `Image` relation                                                           | read-only (A3/S2)                                                     |
+| skill `level`, language `fluency`  | CMS `select` options                                                       | `options.ts` canonical lists                                          |
 
 Mutation op ordering guarantee (`executeSave`): creates before updates before
 deletes, so new-row references are safe.
@@ -404,27 +440,28 @@ deletes, so new-row references are safe.
 - **Tailwind v4 + shadcn/ui.** Project migrated to Tailwind v4. shadcn
   components use v4-compatible classes. Token values are oklch (direct CSS
   vars in `index.css`), mapped to Tailwind utilities via `@theme`.
-- **Testing**: Vitest everywhere. Transformer has unit + property tests;
-  web tests pure logic only (validation); render-service tests postProcess.
-  No component/E2E tests yet.
+- **Testing**: Vitest everywhere. Transformer has unit + property tests; web
+  covers validation, store invariants, guest query gates, logout, and print
+  handoff. Presentation lifecycle tests use fake timers and controllable
+  promises. Render-service tests postProcess. No browser E2E suite yet.
 
 ## 7. Environments & configuration
 
-| Var | Consumer | Default |
-|---|---|---|
-| `VITE_GRAPHQL_ENDPOINT` | web | `http://localhost:3000/api/graphql` |
-| `VITE_RENDER_ENDPOINT` | web | `http://localhost:8787` |
-| `RENDER_PORT` / `RENDER_HOST` | render-service | `5173` / `0.0.0.0` |
-| `RENDER_ALLOWED_IPS` | render-service | unset (open) |
-| `RENDER_CORS_ORIGIN` | render-service | `http://localhost:5173` |
-| `RENDER_CACHE_MAX` | render-service | `100` |
-| `AUTH_TARGET` | render-service (prod proxy) | unset (proxy off) |
-| `AUTH_PORT` / `AUTH_HOST` | auth-service | `4000` / `127.0.0.1` |
-| `AUTH_URL` | auth-service | `http://localhost:5173` |
-| `TRUSTED_ORIGINS` | auth-service | `http://localhost:5173` |
-| `DATABASE_URL` | auth-service | — (must point at a DB with an `auth` schema) |
-| `COGNITO_*` (5 vars) | auth-service | — |
-| `BETTER_AUTH_SECRET` | auth-service | — |
+| Var                           | Consumer                    | Default                                      |
+| ----------------------------- | --------------------------- | -------------------------------------------- |
+| `VITE_GRAPHQL_ENDPOINT`       | web                         | `http://localhost:3000/api/graphql`          |
+| `VITE_RENDER_ENDPOINT`        | web                         | `http://localhost:8787`                      |
+| `RENDER_PORT` / `RENDER_HOST` | render-service              | `5173` / `0.0.0.0`                           |
+| `RENDER_ALLOWED_IPS`          | render-service              | unset (open)                                 |
+| `RENDER_CORS_ORIGIN`          | render-service              | `http://localhost:5173`                      |
+| `RENDER_CACHE_MAX`            | render-service              | `100`                                        |
+| `AUTH_TARGET`                 | render-service (prod proxy) | unset (proxy off)                            |
+| `AUTH_PORT` / `AUTH_HOST`     | auth-service                | `4000` / `127.0.0.1`                         |
+| `AUTH_URL`                    | auth-service                | `http://localhost:5173`                      |
+| `TRUSTED_ORIGINS`             | auth-service                | `http://localhost:5173`                      |
+| `DATABASE_URL`                | auth-service                | — (must point at a DB with an `auth` schema) |
+| `COGNITO_*` (5 vars)          | auth-service                | —                                            |
+| `BETTER_AUTH_SECRET`          | auth-service                | —                                            |
 
 Table shows code defaults. Local dev overrides these via the root `.env`
 (`RENDER_PORT=8787`, `RENDER_HOST=127.0.0.1`, `RENDER_ALLOWED_IPS=127.0.0.1,::1`,
