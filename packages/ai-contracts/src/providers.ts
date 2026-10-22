@@ -29,6 +29,24 @@ function asOptionalNonNegativeInt(value: unknown, field: string): number | undef
 
 export type ProviderKind = 'local' | 'cloud';
 
+/** Providers the AI service can talk to. */
+export const PROVIDER_IDS = [
+  'mock',
+  'openai-compatible',
+  'ollama',
+  'apple-foundation-models',
+] as const;
+
+export type ProviderId = (typeof PROVIDER_IDS)[number];
+
+export function parseProviderId(input: unknown): ProviderId {
+  const provider = asString(input, 'providerId');
+  if ((PROVIDER_IDS as readonly string[]).includes(provider)) {
+    return provider as ProviderId;
+  }
+  throw new Error('Invalid providerId');
+}
+
 export interface ProviderCapability {
   supportsJsonSchema: boolean;
   supportsModelListing: boolean;

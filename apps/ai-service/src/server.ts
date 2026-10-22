@@ -92,10 +92,9 @@ const server = createServer(async (req, res) => {
         controller.signal,
       );
 
-      if (!result.ok) {
-        sendJson(res, 400, result, origin);
-        return;
-      }
+      // The test ran: the outcome lives in the body (`ok`), not in the status
+      // code. A failed connection is a valid answer, so it stays 200. 400 is
+      // reserved for malformed requests, which throw and land in the catch.
       sendJson(res, 200, result, origin);
       return;
     }

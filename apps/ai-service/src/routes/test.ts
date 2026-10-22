@@ -1,4 +1,9 @@
-import { adapterFor, type ProviderRuntime } from '../providers/adapters.js';
+import {
+  adapterFor,
+  parseDestination,
+  parseProvider,
+  type ProviderRuntime,
+} from '../providers/adapters.js';
 
 function isObject(input: unknown): input is Record<string, unknown> {
   return typeof input === 'object' && input !== null;
@@ -9,20 +14,6 @@ function asString(value: unknown, field: string): string {
     throw new Error(`Invalid ${field}`);
   }
   return value;
-}
-
-function parseProvider(value: unknown): ProviderRuntime['providerId'] {
-  const provider = asString(value, 'providerId');
-  if (provider === 'openai-compatible' || provider === 'ollama' || provider === 'mock') {
-    return provider;
-  }
-  throw new Error('Invalid providerId');
-}
-
-function parseDestination(value: unknown): ProviderRuntime['destination'] {
-  const destination = asString(value, 'destination');
-  if (destination === 'local' || destination === 'cloud') return destination;
-  throw new Error('Invalid destination');
 }
 
 function parseTestBody(body: unknown): Omit<ProviderRuntime, 'apiKey'> {

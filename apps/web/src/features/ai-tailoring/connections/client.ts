@@ -32,19 +32,41 @@ function buildHeaders(): HeadersInit {
 }
 
 export async function testAiConnection(connection: ConnectionProfile): Promise<ConnectionTestResponse> {
-  const res = await fetch('/api/ai/test', {
-    method: 'POST',
-    headers: buildHeaders(),
-    body: JSON.stringify({
-      providerId: connection.providerId,
-      destination: connection.destination,
-      endpoint: connection.endpoint,
-      model: connection.model,
-    }),
-  });
+  let res: Response;
 
-  const body = (await res.json()) as ConnectionTestResponse;
-  if (!res.ok) {
+  try {
+    res = await fetch('/api/ai/test', {
+      method: 'POST',
+      headers: buildHeaders(),
+      body: JSON.stringify({
+        providerId: connection.providerId,
+        destination: connection.destination,
+        endpoint: connection.endpoint,
+        model: connection.model,
+      }),
+    });
+  } catch {
+    return {
+      ok: false,
+      code: 'CONNECTION_FAILED',
+      message: 'AI service unreachable.',
+    };
+  }
+
+  let body: ConnectionTestResponse;
+  try {
+    body = (await res.json()) as ConnectionTestResponse;
+  } catch {
+    return {
+      ok: false,
+      code: 'CONNECTION_FAILED',
+      message: `AI service returned an unreadable response (HTTP ${res.status}).`,
+    };
+  }
+
+  // A completed test reports its outcome in the body, so `ok: false` can come
+  // back with HTTP 200.
+  if (!res.ok || !body.ok) {
     return {
       ok: false,
       code: body.code ?? 'CONNECTION_FAILED',
@@ -55,13 +77,25 @@ export async function testAiConnection(connection: ConnectionProfile): Promise<C
 }
 
 export async function runAiAnalysis(request: AnalyzeRequest): Promise<AnalysisEnvelope> {
-  const res = await fetch('/api/ai/proposals', {
-    method: 'POST',
-    headers: buildHeaders(),
-    body: JSON.stringify(request),
-  });
+  let res: Response;
 
-  const body = (await res.json()) as unknown;
+  try {
+    res = await fetch('/api/ai/proposals', {
+      method: 'POST',
+      headers: buildHeaders(),
+      body: JSON.stringify(request),
+    });
+  } catch {
+    throw new Error('AI service unreachable.');
+  }
+
+  let body: unknown;
+  try {
+    body = await res.json();
+  } catch {
+    throw new Error(`AI service returned an unreadable response (HTTP ${res.status}).`);
+  }
+
   if (!res.ok) {
     const maybe = body as { message?: string; code?: string };
     throw new Error(maybe.message ?? maybe.code ?? 'AI request failed');

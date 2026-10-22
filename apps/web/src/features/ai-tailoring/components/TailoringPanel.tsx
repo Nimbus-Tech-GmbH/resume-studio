@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { WandSparkles } from 'lucide-react';
-import type { Proposal } from '@resume-studio/ai-contracts';
+import { PROVIDER_IDS, type ProviderId, type Proposal } from '@resume-studio/ai-contracts';
 import { toast } from 'sonner';
 import { useEditorStore } from '@/state/editorStore';
 import { useAuth } from '@/auth/AuthContext';
@@ -22,6 +22,7 @@ import {
 } from '../apply/applyBatch';
 import { createTailoringSnapshot, hasMeaningfulResumeContent } from '../analysis/snapshot';
 import { runAiAnalysis, testAiConnection } from '../connections/client';
+import { PROVIDER_PRESETS, providerPreset } from '../connections/providers';
 import {
   clearTailoringApiKey,
   setTailoringApiKey,
@@ -250,16 +251,16 @@ export function TailoringPanel() {
                 className="border-input bg-background ring-offset-background h-10 w-full rounded-md border px-3 py-2 text-sm"
                 value={connection.providerId}
                 onChange={(event) => {
-                  const providerId = event.target.value as
-                    | 'openai-compatible'
-                    | 'ollama'
-                    | 'mock';
-                  setConnection({ providerId });
+                  setConnection(
+                    providerPreset(event.target.value as ProviderId),
+                  );
                 }}
               >
-                <option value="mock">Mock (offline)</option>
-                <option value="openai-compatible">OpenAI-compatible</option>
-                <option value="ollama">Ollama</option>
+                {PROVIDER_IDS.map((providerId) => (
+                  <option key={providerId} value={providerId}>
+                    {PROVIDER_PRESETS[providerId].label}
+                  </option>
+                ))}
               </select>
             </div>
 

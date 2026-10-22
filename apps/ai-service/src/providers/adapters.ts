@@ -1,12 +1,14 @@
-import type {
-  AnalysisEnvelope,
-  ConnectionResult,
-  EvidenceQuestion,
-  EvidenceRef,
-  HighlightParent,
-  Proposal,
-  Requirement,
-  TextTarget,
+import {
+  parseProviderId,
+  type AnalysisEnvelope,
+  type ConnectionResult,
+  type EvidenceQuestion,
+  type EvidenceRef,
+  type HighlightParent,
+  type Proposal,
+  type ProviderId,
+  type Requirement,
+  type TextTarget,
 } from '@resume-studio/ai-contracts';
 
 export interface TailoringSnapshot {
@@ -27,11 +29,25 @@ export interface TailoringSnapshot {
 }
 
 export interface ProviderRuntime {
-  providerId: 'openai-compatible' | 'ollama' | 'mock';
+  providerId: ProviderId;
   destination: 'local' | 'cloud';
   endpoint: string;
   model: string;
   apiKey: string;
+}
+
+/** Local servers (Ollama, `fm serve`) ignore credentials but the AI SDK still
+ *  demands one, so a placeholder is sent when the user supplied none. */
+const LOCAL_PLACEHOLDER_KEY = 'local-no-key';
+
+export function parseProvider(value: unknown): ProviderRuntime['providerId'] {
+  return parseProviderId(value);
+}
+
+export function parseDestination(value: unknown): ProviderRuntime['destination'] {
+  const destination = asString(value, 'destination');
+  if (destination === 'local' || destination === 'cloud') return destination;
+  throw new Error('Invalid destination');
 }
 
 export interface AnalyzeInput {
@@ -58,20 +74,15 @@ type GeneratedDraft = {
     status?: 'supported' | 'partial' | 'not-evidenced' | 'unclear';
   }>;
   proposals?: Array<{
-    requirementIds?: string[];
-    evidence?: Array<{
-      snapshotRef?: string;
-      quote?: string;
-    }>;
+    requirementId?: string;
+    targetRef?: string;
+    value?: string;
+    quote?: string;
+    snapshotRef?: string;
     rationale?: string;
-    action?: {
-      kind?: 'setText' | 'appendHighlight';
-      targetRef?: string;
-      value?: string;
-    };
   }>;
   questions?: Array<{
-    requirementIds?: string[];
+    requirementId?: string;
     text?: string;
     scope?: 'resume' | 'work' | 'project';
     entryId?: string;
@@ -206,27 +217,93 @@ function hashHighlights(values: string[]): string {
   return hash(`${values.length}:${normalized}`);
 }
 
-function extractJsonObject(raw: string): unknown {
+/**
+ * Small on-device models occasionally emit slightly broken JSON: dropped
+ * opening quotes on keys, stray `key":` echoes in front of a value, trailing
+ * commas, or output cut off mid-string by the token limit.
+ */
+function closeTruncatedJson(candidate: string): string {
+  const stack: string[] = [];
+  let inString = false;
+  let escaped = false;
+
+  for (const char of candidate) {
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (char === '\\') escaped = true;
+      else if (char === '"') inString = false;
+      continue;
+    }
+    if (char === '"') inString = true;
+    else if (char === '{' || char === '[') stack.push(char);
+    else if (char === '}' || char === ']') stack.pop();
+  }
+
+  if (!inString && stack.length === 0) return candidate;
+
+  let closed = candidate;
+  if (inString) {
+    closed += escaped ? '\\"' : '"';
+  }
+  for (let index = stack.length - 1; index >= 0; index -= 1) {
+    closed += stack[index] === '{' ? '}' : ']';
+  }
+  return closed;
+}
+
+function repairJson(candidate: string): string {
+  // Quote repairs come first: they restore the string boundaries that the
+  // truncation scan below depends on.
+  const quoted = candidate
+    .replace(/""\s+(?=")/g, '')
+    .replace(/([,{[])\s*([A-Za-z_][A-Za-z0-9_]*)"\s*:/g, '$1"$2":')
+    .replace(/("[^"]*"\s*:\s*)"[A-Za-z_][A-Za-z0-9_]*"\s*:\s*/g, '$1');
+
+  return closeTruncatedJson(quoted).replace(/,\s*([}\]])/g, '$1');
+}
+
+function parseJsonLeniently(candidate: string): unknown {
+  try {
+    return JSON.parse(candidate);
+  } catch (error) {
+    const repaired = repairJson(candidate);
+    if (repaired === candidate) throw error;
+    return JSON.parse(repaired);
+  }
+}
+
+export function extractJsonObject(raw: string): unknown {
   const trimmed = raw.trim();
   const fenceMatch = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i);
   const candidate = fenceMatch?.[1] ?? trimmed;
 
   const start = candidate.indexOf('{');
-  const end = candidate.lastIndexOf('}');
-  if (start < 0 || end < 0 || end <= start) {
+  if (start < 0) {
     throw new Error('Model did not return a JSON object.');
   }
 
-  return JSON.parse(candidate.slice(start, end + 1));
+  const body = candidate.slice(start);
+  // Truncated output may have no closing brace at all, so fall back to the
+  // whole remainder and let the repair close the open structures.
+  const end = body.lastIndexOf('}');
+  return parseJsonLeniently(end > 0 ? body.slice(0, end + 1) : body);
 }
 
 function normalizeBaseUrl(config: ProviderRuntime): string {
   const base = config.endpoint.replace(/\/+$/, '');
-  if (config.providerId === 'ollama') {
+  if (config.providerId === 'ollama' || config.providerId === 'apple-foundation-models') {
     if (base.endsWith('/v1')) return base;
     return `${base}/v1`;
   }
   return base;
+}
+
+function providerApiKey(config: ProviderRuntime): string {
+  if (config.apiKey) return config.apiKey;
+  if (config.providerId === 'ollama' || config.providerId === 'apple-foundation-models') {
+    return LOCAL_PLACEHOLDER_KEY;
+  }
+  return '';
 }
 
 function textTargetManifest(snapshot: TailoringSnapshot): TextTargetManifestRow[] {
@@ -362,12 +439,7 @@ function normalizeQuestions(
 
   for (const row of rows) {
     if (!row || typeof row.text !== 'string' || row.text.trim().length === 0) continue;
-
-    const linked = (Array.isArray(row.requirementIds) ? row.requirementIds : []).filter((id) =>
-      requirementIds.has(id),
-    );
-
-    if (linked.length === 0) continue;
+    if (typeof row.requirementId !== 'string' || !requirementIds.has(row.requirementId)) continue;
 
     const scope =
       row.scope === 'work' && typeof row.entryId === 'string' && row.entryId.trim().length > 0
@@ -378,28 +450,12 @@ function normalizeQuestions(
 
     out.push({
       id: randomId(),
-      requirementIds: linked,
+      requirementIds: [row.requirementId],
       text: row.text.trim(),
       scope,
     });
   }
 
-  return out;
-}
-
-function normalizeEvidence(raw: unknown): EvidenceRef[] {
-  if (!Array.isArray(raw)) return [];
-  const out: EvidenceRef[] = [];
-  for (const item of raw) {
-    if (!isObject(item)) continue;
-    if (typeof item.snapshotRef !== 'string' || item.snapshotRef.trim().length === 0) continue;
-    if (typeof item.quote !== 'string' || item.quote.trim().length === 0) continue;
-    out.push({
-      source: 'resume',
-      snapshotRef: item.snapshotRef.trim(),
-      quote: item.quote.trim(),
-    });
-  }
   return out;
 }
 
@@ -417,55 +473,55 @@ function normalizeProposals(
   const out: Proposal[] = [];
 
   for (const row of rows) {
-    if (!row || !isObject(row.action)) continue;
+    if (!isObject(row)) continue;
+    if (typeof row.requirementId !== 'string' || !requirementIds.has(row.requirementId)) continue;
 
-    const linked = (Array.isArray(row.requirementIds) ? row.requirementIds : []).filter((id) =>
-      requirementIds.has(id),
-    );
-    if (linked.length === 0) continue;
+    const value = typeof row.value === 'string' ? row.value.trim() : '';
+    const targetRef = typeof row.targetRef === 'string' ? row.targetRef.trim() : '';
+    if (!value || !targetRef) continue;
 
-    const value = typeof row.action.value === 'string' ? row.action.value.trim() : '';
-    if (!value) continue;
+    const quote = typeof row.quote === 'string' ? row.quote.trim() : '';
+    if (!quote) continue;
 
-    const rationale = typeof row.rationale === 'string' && row.rationale.trim().length > 0
-      ? row.rationale.trim()
-      : 'Tailoring proposal generated from provided resume evidence.';
+    const snapshotRef =
+      typeof row.snapshotRef === 'string' && row.snapshotRef.trim().length > 0
+        ? row.snapshotRef.trim()
+        : targetRef;
 
-    const evidence = normalizeEvidence(row.evidence);
-    if (evidence.length === 0) continue;
+    const evidence: EvidenceRef[] = [{ source: 'resume', snapshotRef, quote }];
+    const rationale =
+      typeof row.rationale === 'string' && row.rationale.trim().length > 0
+        ? row.rationale.trim()
+        : 'Tailoring proposal generated from provided resume evidence.';
 
-    if (row.action.kind === 'setText' && typeof row.action.targetRef === 'string') {
-      const target = textMap.get(row.action.targetRef);
-      if (!target) continue;
-
+    const textTarget = textMap.get(targetRef);
+    if (textTarget) {
       out.push({
         id: randomId(),
         operation: {
           kind: 'setText',
-          target: target.target,
-          expected: target.expected,
+          target: textTarget.target,
+          expected: textTarget.expected,
           value,
         },
-        requirementIds: linked,
+        requirementIds: [row.requirementId],
         evidence,
         rationale,
       });
       continue;
     }
 
-    if (row.action.kind === 'appendHighlight' && typeof row.action.targetRef === 'string') {
-      const parent = appendMap.get(row.action.targetRef);
-      if (!parent) continue;
-
+    const appendParent = appendMap.get(targetRef);
+    if (appendParent) {
       out.push({
         id: randomId(),
         operation: {
           kind: 'appendHighlight',
-          parent: parent.parent,
-          expectedHighlightsHash: parent.expectedHighlightsHash,
+          parent: appendParent.parent,
+          expectedHighlightsHash: appendParent.expectedHighlightsHash,
           value,
         },
-        requirementIds: linked,
+        requirementIds: [row.requirementId],
         evidence,
         rationale,
       });
@@ -483,21 +539,37 @@ async function loadAiSdk(): Promise<{
     temperature?: number;
     abortSignal?: AbortSignal;
   }) => Promise<{ text: string }>;
+  streamText: (input: {
+    model: unknown;
+    prompt: string;
+    maxTokens?: number;
+    temperature?: number;
+    abortSignal?: AbortSignal;
+    onError?: (event: { error: unknown }) => void;
+  }) => { consumeStream: () => Promise<void>; text: Promise<string> };
   createOpenAI: (config: { apiKey?: string; baseURL?: string }) => (modelId: string) => unknown;
 }> {
   const aiModuleName = 'ai';
   const openAiModuleName = '@ai-sdk/openai';
 
-  const [{ generateText }, { createOpenAI }] = await Promise.all([
+  const [{ generateText, streamText }, { createOpenAI }] = await Promise.all([
     import(aiModuleName),
     import(openAiModuleName),
   ]);
 
   return {
     generateText,
+    streamText,
     createOpenAI,
   };
 }
+
+type TextGenerator = (
+  config: ProviderRuntime,
+  prompt: string,
+  signal: AbortSignal,
+  maxTokens: number,
+) => Promise<string>;
 
 async function generateWithAiSdk(
   config: ProviderRuntime,
@@ -508,7 +580,7 @@ async function generateWithAiSdk(
   const { generateText, createOpenAI } = await loadAiSdk();
 
   const modelFactory = createOpenAI({
-    apiKey: config.apiKey || undefined,
+    apiKey: providerApiKey(config),
     baseURL: normalizeBaseUrl(config),
   });
 
@@ -523,26 +595,229 @@ async function generateWithAiSdk(
   return result.text;
 }
 
-function buildAnalysisPrompt(input: AnalyzeInput): string {
-  const textTargets = textTargetManifest(input.snapshot);
-  const appendParents = appendParentManifest(input.snapshot);
+/**
+ * Streaming variant. `fm serve` (Apple Foundation Models) only ever answers
+ * with SSE, so it cannot use the non-streaming JSON path.
+ */
+async function streamWithAiSdk(
+  config: ProviderRuntime,
+  prompt: string,
+  signal: AbortSignal,
+  maxTokens: number,
+): Promise<string> {
+  const { streamText, createOpenAI } = await loadAiSdk();
+
+  const modelFactory = createOpenAI({
+    apiKey: providerApiKey(config),
+    baseURL: normalizeBaseUrl(config),
+  });
+
+  const state: { error: string | null } = { error: null };
+
+  const result = streamText({
+    model: modelFactory(config.model),
+    prompt,
+    maxTokens,
+    temperature: 0,
+    abortSignal: signal,
+    onError: ({ error }) => {
+      state.error = describeError(error);
+    },
+  });
+
+  await result.consumeStream();
+  const text = await result.text;
+
+  // `fm serve` reports errors inside the stream (HTTP 200, `event: error`), so
+  // the text promise resolves empty instead of rejecting. Surface the cause.
+  if (!text.trim() && state.error) {
+    throw new Error(state.error);
+  }
+
+  return text;
+}
+
+function describeError(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (isObject(error) && typeof error.message === 'string') return error.message;
+  if (typeof error === 'string') return error;
+  try {
+    return JSON.stringify(error);
+  } catch {
+    return String(error);
+  }
+}
+
+/**
+ * Conservative English token estimate. One token per three characters
+ * overestimates by roughly a third, which keeps us clear of tokenizer drift.
+ */
+const CHARS_PER_TOKEN = 3;
+
+export function estimateTokens(text: string): number {
+  return Math.ceil(text.length / CHARS_PER_TOKEN) + 8;
+}
+
+const NO_LIMIT = Number.POSITIVE_INFINITY;
+
+/** Cloud endpoints offer 128k windows; `fm serve` is the tight one. */
+const FALLBACK_CONTEXT_LIMIT = 128_000;
+/** Apple Foundation Models: hard prompt + completion window. */
+const APPLE_FOUNDATION_MODELS_CONTEXT_LIMIT = 8192;
+
+function contextLimitFor(config: ProviderRuntime): number {
+  if (config.providerId === 'apple-foundation-models') {
+    return APPLE_FOUNDATION_MODELS_CONTEXT_LIMIT;
+  }
+  return FALLBACK_CONTEXT_LIMIT;
+}
+
+function maxOutputTokensFor(config: ProviderRuntime): number {
+  return config.providerId === 'apple-foundation-models' ? 1200 : 2400;
+}
+
+/** Tokens the prompt may occupy, keeping room for the answer and estimate drift. */
+export function promptTokenBudget(config: ProviderRuntime, maxOutputTokens: number): number {
+  const limit = contextLimitFor(config);
+  const safety = Math.ceil(limit * 0.1);
+  return Math.max(256, limit - maxOutputTokens - safety);
+}
+
+interface CompressionPlan {
+  jobChars: number;
+  entries: number;
+  highlightsPerEntry: number;
+  textChars: number;
+  targetPreviewChars: number;
+}
+
+/**
+ * Tried in order; the first plan that fits the token budget wins. Later plans
+ * drop entries, shorten text and finally omit value previews from textTargets.
+ */
+const UNCOMPRESSED_PLAN: CompressionPlan = {
+  jobChars: NO_LIMIT,
+  entries: NO_LIMIT,
+  highlightsPerEntry: NO_LIMIT,
+  textChars: NO_LIMIT,
+  targetPreviewChars: NO_LIMIT,
+};
+
+const COMPRESSION_PLANS: CompressionPlan[] = [
+  UNCOMPRESSED_PLAN,
+  { jobChars: 16_000, entries: 24, highlightsPerEntry: 16, textChars: 800, targetPreviewChars: 200 },
+  { jobChars: 10_000, entries: 16, highlightsPerEntry: 10, textChars: 500, targetPreviewChars: 120 },
+  { jobChars: 6_000, entries: 10, highlightsPerEntry: 8, textChars: 350, targetPreviewChars: 80 },
+  { jobChars: 3_500, entries: 8, highlightsPerEntry: 6, textChars: 250, targetPreviewChars: 0 },
+  { jobChars: 2_000, entries: 5, highlightsPerEntry: 4, textChars: 180, targetPreviewChars: 0 },
+  { jobChars: 1_200, entries: 3, highlightsPerEntry: 3, textChars: 140, targetPreviewChars: 0 },
+];
+
+function truncateText(value: string, limit: number): string {
+  if (!Number.isFinite(limit) || value.length <= limit) return value;
+  if (limit <= 0) return '';
+
+  const head = Math.ceil(limit * 0.7);
+  const tail = limit - head;
+  const omitted = value.length - limit;
+  const marker = `[…${omitted} chars omitted…]`;
+  if (tail <= 0) return `${value.slice(0, head)}\n${marker}`;
+  return `${value.slice(0, head)}\n${marker}\n${value.slice(-tail)}`;
+}
+
+function take<T>(items: T[], limit: number): T[] {
+  return Number.isFinite(limit) ? items.slice(0, limit) : items;
+}
+
+function compactProjection(
+  snapshot: TailoringSnapshot,
+  plan: CompressionPlan,
+): TailoringSnapshot {
+  const trunc = (value: string | undefined): string | undefined =>
+    value === undefined ? undefined : truncateText(value, plan.textChars);
+
+  const compactHighlights = (
+    highlights: TailoringSnapshot['projection']['work'][number]['highlights'],
+  ) =>
+    take(highlights, plan.highlightsPerEntry).map((highlight) => ({
+      highlightId: highlight.highlightId,
+      value: truncateText(highlight.value, plan.textChars),
+    }));
+
+  return {
+    projection: {
+      summary: trunc(snapshot.projection.summary),
+      work: take(snapshot.projection.work, plan.entries).map((entry) => ({
+        entryId: entry.entryId,
+        summary: trunc(entry.summary),
+        highlights: compactHighlights(entry.highlights),
+      })),
+      projects: take(snapshot.projection.projects, plan.entries).map((entry) => ({
+        entryId: entry.entryId,
+        description: trunc(entry.description),
+        highlights: compactHighlights(entry.highlights),
+      })),
+    },
+    snapshotHash: snapshot.snapshotHash,
+  };
+}
+
+/**
+ * The model only needs the refs to build `targetRef` values; the server keeps
+ * the full manifest for validation. Values are shortened or dropped entirely.
+ */
+function compactTextTargets(
+  rows: TextTargetManifestRow[],
+  previewChars: number,
+): Array<{ ref: string; exists: boolean; value?: string }> {
+  return rows.map((row) => {
+    const compact: { ref: string; exists: boolean; value?: string } = {
+      ref: row.ref,
+      exists: row.expected.exists,
+    };
+    const value = row.expected.value;
+    if (value !== null && previewChars !== 0) {
+      compact.value = Number.isFinite(previewChars) ? truncateText(value, previewChars) : value;
+    }
+    return compact;
+  });
+}
+
+function buildAnalysisPrompt(
+  input: AnalyzeInput,
+  plan: CompressionPlan = UNCOMPRESSED_PLAN,
+): string {
+  // Manifests are built from the compacted snapshot, so dropped entries never
+  // show up as targetRefs the model could pick.
+  const snapshot = compactProjection(input.snapshot, plan);
+  const textTargets = textTargetManifest(snapshot);
+  const appendParents = appendParentManifest(snapshot);
+
+  // The example carries a real ref, so a model that copies it still lands on a
+  // valid target instead of an invented one.
+  const exampleAppendRef = appendParents[0]?.ref ?? 'append:work:entry-1';
 
   return [
     'You are an expert resume tailoring assistant.',
-    'You must return ONLY valid JSON with keys: requirements, proposals, questions.',
-    'Never invent candidate evidence. Use only provided resume snapshot text as evidence quotes.',
-    'Allowed proposal action kinds: setText, appendHighlight.',
-    'For setText use a targetRef from textTargets.',
-    'For appendHighlight use a targetRef from appendParents.',
+    'Return ONLY valid JSON with keys: requirements, proposals, questions.',
+    'Each proposal has one requirementId, one targetRef, a value, a quote and a rationale.',
+    'Each question has one requirementId, a text and a scope.',
+    'Copy targetRef exactly from textTargets (rewrite existing text) or appendParents (add a highlight).',
+    'quote must be text copied from resumeSnapshot. Never invent candidate evidence.',
+    'snapshotRef is optional; omit it unless you know the snapshot path.',
+    'The example below shows the shape only. Never copy its literal values.',
+    'Use double quotes around every key. Keep each string value under 240 characters.',
+    'Return at most 6 requirements, 4 proposals and 3 questions.',
+    'Text ending with an omitted marker was truncated; never quote the marker.',
     '',
     'jobDescription:',
-    input.jobText,
+    truncateText(input.jobText, plan.jobChars),
     '',
     'resumeSnapshot:',
-    JSON.stringify(input.snapshot.projection),
+    JSON.stringify(snapshot.projection),
     '',
     'textTargets:',
-    JSON.stringify(textTargets),
+    JSON.stringify(compactTextTargets(textTargets, plan.targetPreviewChars)),
     '',
     'appendParents:',
     JSON.stringify(appendParents),
@@ -552,38 +827,57 @@ function buildAnalysisPrompt(input: AnalyzeInput): string {
       requirements: [
         {
           id: 'req-1',
-          text: 'string',
-          jobQuote: 'string',
+          text: 'short requirement',
+          jobQuote: 'short quote from jobDescription',
           importance: 'high',
           status: 'supported',
         },
       ],
       proposals: [
         {
-          requirementIds: ['req-1'],
-          evidence: [
-            {
-              snapshotRef: 'work:entry-id:summary',
-              quote: 'exact quote from snapshot',
-            },
-          ],
-          rationale: 'short rationale',
-          action: {
-            kind: 'appendHighlight',
-            targetRef: 'append:work:entry-id',
-            value: 'proposal text',
-          },
+          requirementId: 'req-1',
+          targetRef: exampleAppendRef,
+          value: 'new highlight text',
+          quote: 'text copied from resumeSnapshot',
+          rationale: 'why it fits',
         },
       ],
       questions: [
         {
-          requirementIds: ['req-1'],
-          text: 'question text',
+          requirementId: 'req-1',
+          text: 'question to ask the candidate',
           scope: 'resume',
         },
       ],
     }),
   ].join('\n');
+}
+
+/**
+ * Picks the richest compression plan that fits the provider's prompt budget,
+ * so a request never exceeds the provider's context window.
+ */
+export function buildFittingPrompt(
+  input: AnalyzeInput,
+  budget: number,
+): { prompt: string; plan: CompressionPlan } {
+  let prompt = '';
+  let plan = UNCOMPRESSED_PLAN;
+
+  for (const candidate of COMPRESSION_PLANS) {
+    prompt = buildAnalysisPrompt(input, candidate);
+    plan = candidate;
+    if (estimateTokens(prompt) <= budget) break;
+  }
+
+  return { prompt, plan };
+}
+
+function isContextOverflowError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return /context (size|length|window)|content contains|transcript exceeded|too many tokens|maximum allowed context/i.test(
+    message,
+  );
 }
 
 function runMockAnalysis(inputRaw: AnalyzeInput): AnalysisEnvelope {
@@ -611,14 +905,69 @@ function runMockAnalysis(inputRaw: AnalyzeInput): AnalysisEnvelope {
   };
 }
 
-async function runAiSdkAnalysis(inputRaw: AnalyzeInput, config: ProviderRuntime, signal: AbortSignal): Promise<AnalysisEnvelope> {
+async function generateDraft(
+  config: ProviderRuntime,
+  signal: AbortSignal,
+  generate: TextGenerator,
+  prompt: string,
+  maxOutputTokens: number,
+): Promise<GeneratedDraft> {
+  const raw = await generate(config, prompt, signal, maxOutputTokens);
+  if (process.env.AI_DEBUG_RAW === '1') {
+    process.stderr.write(`[ai-service] raw model output: ${JSON.stringify(raw)}\n`);
+  }
+
+  try {
+    return extractJsonObject(raw) as GeneratedDraft;
+  } catch (error) {
+    // On-device models sometimes break JSON formatting; one clean retry is
+    // cheaper than failing the whole analysis.
+    const retry = await generate(config, prompt, signal, maxOutputTokens);
+    if (process.env.AI_DEBUG_RAW === '1') {
+      process.stderr.write(`[ai-service] raw retry output: ${JSON.stringify(retry)}\n`);
+    }
+    try {
+      return extractJsonObject(retry) as GeneratedDraft;
+    } catch {
+      throw error;
+    }
+  }
+}
+
+async function runAiSdkAnalysis(
+  inputRaw: AnalyzeInput,
+  config: ProviderRuntime,
+  signal: AbortSignal,
+  generate: TextGenerator,
+): Promise<AnalysisEnvelope> {
   const input = parseAnalyzeInput(inputRaw);
   const textTargets = textTargetManifest(input.snapshot);
   const appendParents = appendParentManifest(input.snapshot);
 
-  const prompt = buildAnalysisPrompt(input);
-  const raw = await generateWithAiSdk(config, prompt, signal, 2400);
-  const parsed = extractJsonObject(raw) as GeneratedDraft;
+  const maxOutputTokens = maxOutputTokensFor(config);
+  const budget = promptTokenBudget(config, maxOutputTokens);
+
+  let parsed: GeneratedDraft;
+  try {
+    parsed = await generateDraft(
+      config,
+      signal,
+      generate,
+      buildFittingPrompt(input, budget).prompt,
+      maxOutputTokens,
+    );
+  } catch (error) {
+    if (!isContextOverflowError(error)) throw error;
+    // The provider counts tokens differently than we do; retry once with half
+    // the budget and a shorter answer.
+    parsed = await generateDraft(
+      config,
+      signal,
+      generate,
+      buildFittingPrompt(input, Math.floor(budget / 2)).prompt,
+      Math.max(400, Math.floor(maxOutputTokens / 2)),
+    );
+  }
 
   const requirements = normalizeRequirements(parsed.requirements);
   const proposals = normalizeProposals(
@@ -644,9 +993,13 @@ async function runAiSdkAnalysis(inputRaw: AnalyzeInput, config: ProviderRuntime,
   };
 }
 
-async function runAiSdkPing(config: ProviderRuntime, signal: AbortSignal): Promise<void> {
+async function runAiSdkPing(
+  config: ProviderRuntime,
+  signal: AbortSignal,
+  generate: TextGenerator,
+): Promise<void> {
   const prompt = 'Reply with exactly: OK';
-  const text = await generateWithAiSdk(config, prompt, signal, 8);
+  const text = await generate(config, prompt, signal, 8);
   if (!text || text.trim().length === 0) {
     throw new Error('Empty model response');
   }
@@ -668,7 +1021,7 @@ const openAiCompatibleAdapter: ProviderAdapter = {
     }
 
     try {
-      await runAiSdkPing(config, signal);
+      await runAiSdkPing(config, signal, generateWithAiSdk);
       return { ok: true };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -682,14 +1035,14 @@ const openAiCompatibleAdapter: ProviderAdapter = {
     }
   },
   async analyze(input, config, signal) {
-    return runAiSdkAnalysis(input, config, signal);
+    return runAiSdkAnalysis(input, config, signal, generateWithAiSdk);
   },
 };
 
 const ollamaAdapter: ProviderAdapter = {
   async testConnection(config, signal) {
     try {
-      await runAiSdkPing(config, signal);
+      await runAiSdkPing(config, signal, generateWithAiSdk);
       return { ok: true };
     } catch (error) {
       return {
@@ -700,12 +1053,35 @@ const ollamaAdapter: ProviderAdapter = {
     }
   },
   async analyze(input, config, signal) {
-    return runAiSdkAnalysis(input, config, signal);
+    return runAiSdkAnalysis(input, config, signal, generateWithAiSdk);
+  },
+};
+
+/**
+ * Apple Foundation Models (`fm serve`). Loopback-only, no credential, and the
+ * server answers every request with SSE — never with a JSON body.
+ */
+const appleFoundationModelsAdapter: ProviderAdapter = {
+  async testConnection(config, signal) {
+    try {
+      await runAiSdkPing(config, signal, streamWithAiSdk);
+      return { ok: true };
+    } catch (error) {
+      return {
+        ok: false,
+        code: 'CONNECTION_FAILED',
+        message: error instanceof Error ? error.message : String(error),
+      };
+    }
+  },
+  async analyze(input, config, signal) {
+    return runAiSdkAnalysis(input, config, signal, streamWithAiSdk);
   },
 };
 
 export function adapterFor(providerId: ProviderRuntime['providerId']): ProviderAdapter {
   if (providerId === 'openai-compatible') return openAiCompatibleAdapter;
   if (providerId === 'ollama') return ollamaAdapter;
+  if (providerId === 'apple-foundation-models') return appleFoundationModelsAdapter;
   return mockAdapter;
 }

@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import type {
   AnalysisEnvelope,
   ProposalDecision,
+  ProviderId,
 } from '@resume-studio/ai-contracts';
 
 export type AnalysisStatus =
@@ -16,7 +17,7 @@ export type AnalysisStatus =
   | 'outdated';
 
 export interface ConnectionProfile {
-  providerId: 'openai-compatible' | 'ollama' | 'mock';
+  providerId: ProviderId;
   destination: 'local' | 'cloud';
   model: string;
   endpoint: string;
