@@ -4,6 +4,7 @@ import { useEditorStore } from '@/state/editorStore';
 import { useTailoringStore } from '@/features/ai-tailoring/state/tailoringStore';
 import { clearTailoringApiKey } from '@/features/ai-tailoring/credentialStore';
 import { clearWorkspace, loadWorkspace, saveWorkspace } from './repository';
+import { isLogoutTransition, isScopeHydrated, resolveStartupAfterRestore, shouldShowStartupDialog } from './hydration';
 import type { PersistedWorkspaceRecord } from './schema';
 
 function scopeForUser(isAuthenticated: boolean, userId: string | null): string {
@@ -51,21 +52,37 @@ function buildPersistedRecord(scope: string): PersistedWorkspaceRecord {
   };
 }
 
-export function useWorkspaceRecovery() {
+export function useWorkspaceRecovery(): { startupDialogOpen: boolean } {
   const { isAuthenticated, userId } = useAuth();
   const scope = useMemo(
     () => scopeForUser(isAuthenticated, userId),
     [isAuthenticated, userId],
   );
 
-  const [hydrated, setHydrated] = useState(false);
-  const prevScope = useRef<string | null>(null);
+  const [hydratedScope, setHydratedScope] = useState<string | null>(null);
+  const loadedScope = useRef<string | null>(null);
+  const isStartup = useEditorStore((state) => state.isStartup);
 
   useEffect(() => {
+    const previousScope = loadedScope.current;
+    loadedScope.current = scope;
+
+    // Logging out leaves the signed-in account, so its local workspace goes
+    // away and the startup dialog has to reopen.
+    const isLogout = isLogoutTransition(previousScope, scope);
+
+    if (
+      previousScope &&
+      previousScope !== scope &&
+      previousScope.startsWith('account:')
+    ) {
+      void clearWorkspace(previousScope);
+      clearTailoringApiKey();
+    }
+
     let canceled = false;
 
     const run = async () => {
-      setHydrated(false);
       useEditorStore.setState({ recoveryStatus: 'recovering' });
 
       try {
@@ -75,7 +92,10 @@ export function useWorkspaceRecovery() {
         if (record?.version === 1) {
           useEditorStore.setState({
             ...record.editor,
-            isStartup: false,
+            isStartup: resolveStartupAfterRestore(
+              isLogout,
+              record.editor.isStartup,
+            ),
             recoveryStatus: 'recovered',
           });
           useTailoringStore.setState({
@@ -90,7 +110,7 @@ export function useWorkspaceRecovery() {
           useEditorStore.setState({ recoveryStatus: 'storage-error' });
         }
       } finally {
-        if (!canceled) setHydrated(true);
+        if (!canceled) setHydratedScope(scope);
       }
     };
 
@@ -101,14 +121,7 @@ export function useWorkspaceRecovery() {
     };
   }, [scope]);
 
-  useEffect(() => {
-    const previous = prevScope.current;
-    if (previous && previous !== scope && previous.startsWith('account:')) {
-      void clearWorkspace(previous);
-      clearTailoringApiKey();
-    }
-    prevScope.current = scope;
-  }, [scope]);
+  const hydrated = isScopeHydrated(hydratedScope, scope);
 
   useEffect(() => {
     if (!hydrated) return;
@@ -145,6 +158,8 @@ export function useWorkspaceRecovery() {
       }
     };
   }, [scope, hydrated]);
+
+  return { startupDialogOpen: shouldShowStartupDialog(isStartup, hydrated) };
 }
 
 export async function clearLocalWorkspace(scope: string): Promise<void> {

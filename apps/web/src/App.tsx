@@ -320,7 +320,6 @@ function useAppModel() {
   const resume = useEditorStore((s) => s.resume)
   const resumeId = useEditorStore((s) => s.resumeId)
   const theme = useEditorStore((s) => s.theme)
-  const isStartup = useEditorStore((s) => s.isStartup)
   const issues = useValidation()
 
   const isDesktop = useMediaQuery("(min-width: 768px)")
@@ -336,7 +335,7 @@ function useAppModel() {
       : "live"
   const isEmpty = !resumeId && Object.keys(resume).length === 0
 
-  return { resume, theme, isStartup, isDesktop, mobileTab, setMobileTab, viewMode, setViewMode, name, pdfName, previewStatus, isEmpty }
+  return { resume, theme, isDesktop, mobileTab, setMobileTab, viewMode, setViewMode, name, pdfName, previewStatus, isEmpty }
 }
 
 // ─── App ────────────────────────────────────────────────────────────────────
@@ -344,12 +343,11 @@ function useAppModel() {
 const noop = () => {}
 
 export function App() {
-  useWorkspaceRecovery()
+  const { startupDialogOpen } = useWorkspaceRecovery()
 
   const {
     resume,
     theme,
-    isStartup,
     isDesktop,
     mobileTab,
     setMobileTab,
@@ -383,7 +381,7 @@ export function App() {
           </div>
         </main>
       </div>
-      <StartupDialog open={isStartup} onOpenChange={noop} />
+      <StartupDialog open={startupDialogOpen} onOpenChange={noop} />
       <Toaster />
     </TooltipProvider>
   )
