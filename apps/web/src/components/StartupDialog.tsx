@@ -120,10 +120,24 @@ function useStartupDialogPhase(): DialogPhase {
 }
 
 async function parseResumeFile(file: File): Promise<JsonResume> {
-  return file.text().then((text) => {
-    const json: unknown = JSON.parse(text);
-    return json as JsonResume;
-  });
+  // Validate file type + size
+  const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+  if (file.size > MAX_FILE_SIZE) {
+    throw new Error('File too large. Max 5MB.');
+  }
+  if (!file.type.includes('json') && !file.name.endsWith('.json')) {
+    throw new Error('File must be JSON.');
+  }
+  
+  const text = await file.text();
+  const json: unknown = JSON.parse(text);
+  
+  // Validate structure
+  if (typeof json !== 'object' || json === null) {
+    throw new Error('Invalid JSON: must be an object.');
+  }
+  
+  return json as JsonResume;
 }
 
 function getBlockingImportErrors(json: JsonResume): ImportError[] {

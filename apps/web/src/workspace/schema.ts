@@ -20,6 +20,8 @@ export interface PersistedEditorState {
   originalCmsIds: CmsIdMap;
   theme: ThemeId;
   resumeId: string | null;
+  documentKey: string | null;
+  documentRevision: number;
   loadedUpdatedAt: string | null;
   isStartup: boolean;
   workspaceLoadState: WorkspaceLoadState;

@@ -47,6 +47,10 @@ web_modules/
 # TypeScript cache
 *.tsbuildinfo
 
+# Prisma contract files (generated from schema)
+apps/auth-service/prisma/contract.d.ts
+apps/auth-service/prisma/contract.json
+
 # Optional npm cache directory
 .npm
 
@@ -149,3 +153,8 @@ vite.config.ts.timestamp-*
 # OS generated files
 .DS_Store
 .DS_Store
+
+# Prisma generated files (emitted by contract emit / prisma generate)
+apps/auth-service/prisma/generated/
+apps/auth-service/src/generated/
+*.d.ts.map

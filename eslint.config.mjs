@@ -10,11 +10,14 @@ export default tseslint.config(
       '**/dist/**',
       '**/node_modules/**',
       '**/generated.ts',
+      '**/generated/**',
       '**/*.config.*',
       'packages/vendor/**',
       // Keystone CMS schema — lives in the external repo; linted there, not here.
       'schema.ts',
       'schema.graphql',
+      // Prisma generated files (runtime types, wasm loaders)
+      'apps/auth-service/src/generated/**',
     ],
   },
   eslint.configs.recommended,
@@ -33,6 +36,13 @@ export default tseslint.config(
       'no-console': 'warn',
       // shims.d.ts ambient declarations are the established pattern here.
       '@typescript-eslint/triple-slash-reference': 'off',
+    },
+  },
+  {
+    // Node services/scripts intentionally write operational logs to stdout/stderr.
+    files: ['apps/auth-service/**/*.{ts,tsx}', 'apps/render-service/**/*.{ts,tsx}'],
+    rules: {
+      'no-console': 'off',
     },
   },
   {

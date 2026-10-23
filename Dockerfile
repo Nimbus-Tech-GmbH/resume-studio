@@ -1,30 +1,25 @@
-# ── Base: install all deps ────────────────────────────────────────
+# ── Base ──────────────────────────────────────────────────────────
 FROM node:20-alpine AS base
+ENV PNPM_HOME=/pnpm
+ENV PATH="$PNPM_HOME:$PATH"
+RUN corepack enable && corepack prepare pnpm@9.12.0 --activate
 WORKDIR /app
-COPY package.json pnpm-workspace.yaml pnpm-lock.yaml tsconfig.base.json ./
-COPY apps/render-service/package.json apps/render-service/
-COPY apps/web/package.json apps/web/
-COPY apps/auth-service/package.json apps/auth-service/
-COPY apps/ai-service/package.json apps/ai-service/
-COPY packages ./packages
-RUN corepack enable && pnpm install --frozen-lockfile
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY turbo.json ./turbo.json 2>/dev/null || true
 
-# ── Render: build render-service ──────────────────────────────────
+# ── Render: build web + render-service ───────────────────────────
 FROM base AS render-build
-COPY apps/render-service ./apps/render-service
-RUN pnpm --filter @resume-studio/render-service build
-
-# ── Web: build SPA ────────────────────────────────────────────────
-FROM base AS web-build
-ARG VITE_GRAPHQL_ENDPOINT
-ARG VITE_RENDER_ENDPOINT
 COPY apps/web ./apps/web
-COPY packages/themes ./packages/themes
+COPY apps/render-service ./apps/render-service
+COPY packages ./packages
+RUN pnpm install --frozen-lockfile
 RUN pnpm --filter @resume-studio/web build
+RUN pnpm --filter @resume-studio/render-service build
 
 # ── Auth: deploy auth-service + deps ─────────────────────────────
 FROM base AS auth-build
 COPY apps/auth-service ./apps/auth-service
+RUN pnpm --filter @resume-studio/auth-service db:generate
 RUN pnpm --filter @resume-studio/auth-service deploy --legacy /app/auth-service
 
 # ── AI: deploy ai-service + deps ─────────────────────────────────
@@ -36,12 +31,13 @@ RUN pnpm --filter @resume-studio/ai-service deploy --legacy /app/ai-service
 FROM node:20-alpine
 WORKDIR /app
 COPY --from=render-build /app/apps/render-service/dist ./dist
-COPY --from=web-build /app/apps/web/dist ./web-dist
-COPY --from=auth-build /app/auth-service ./auth-service
-COPY --from=ai-build /app/ai-service ./ai-service
+COPY --from=render-build /app/apps/web/dist ./public
+COPY --from=auth-build /app/auth-service ./
+COPY --from=ai-build /app/ai-service ./
 COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 EXPOSE 5173
 # NOTE: auth-service and ai-service run from source via tsx, so `pnpm deploy`
 # must keep devDependencies. Adding --prod to deploy above breaks startup.
+# Prisma 7 contract files must be present for db.ts to import them at runtime.
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

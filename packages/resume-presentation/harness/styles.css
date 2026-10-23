@@ -1,0 +1,49 @@
+.harness {
+  min-height: 100vh;
+  padding: 1.5rem;
+  color: #172033;
+  background: #f4f6f9;
+  font:
+    400 0.9rem/1.5 system-ui,
+    sans-serif;
+}
+
+.harness__controls,
+.harness__status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.harness__controls button,
+.harness__controls select {
+  min-height: 2.25rem;
+  padding: 0.4rem 0.7rem;
+  border: 1px solid #b9c1ce;
+  border-radius: 0.4rem;
+  background: white;
+  font: inherit;
+}
+
+.harness__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(30rem, 100%), 1fr));
+  gap: 1rem;
+}
+
+.harness__panel {
+  display: grid;
+  min-height: 38rem;
+  grid-template-rows: auto 1fr;
+  gap: 0.5rem;
+}
+
+.harness__panel h2 {
+  margin: 0;
+  font-size: 1rem;
+}
+.harness__presentation {
+  min-height: 36rem;
+}

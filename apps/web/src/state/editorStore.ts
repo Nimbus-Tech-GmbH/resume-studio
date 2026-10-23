@@ -54,6 +54,19 @@ export type ListSection =
   | 'certificates'
   | 'languages';
 
+const LIST_SECTIONS: readonly ListSection[] = [
+  'work',
+  'education',
+  'skills',
+  'interests',
+  'volunteer',
+  'projects',
+  'awards',
+  'publications',
+  'certificates',
+  'languages',
+];
+
 /**
  * Parallel arrays of CMS ids for each list section.
  *
@@ -112,6 +125,10 @@ interface EditorState {
   originalCmsIds: CmsIdMap;
   theme: ThemeId;
   resumeId: string | null;
+  /** Client-only identity for the currently loaded document. */
+  documentKey: string | null;
+  /** Client-only version of the current resume snapshot. */
+  documentRevision: number;
   /** CMS `updatedAt` captured at load time — used for staleness checks on save. */
   loadedUpdatedAt: string | null;
   /** True while the startup dialog is waiting for user selection. */
@@ -173,6 +190,10 @@ function buildIdMap(cms: CmsResume): CmsIdMap {
     languages: (cms.resumeLanguages ?? []).map((x) => x.id),
     profiles: (cms.basicInformation?.profiles ?? []).map((x) => x.id),
   };
+}
+
+function createLocalDocumentKey(): string {
+  return `local:${crypto.randomUUID()}`;
 }
 
 function cloneIdMap(map: CmsIdMap): CmsIdMap {
@@ -311,6 +332,47 @@ const EMPTY_JSON_BUFFER: JsonBufferState = {
   error: null,
 };
 
+function reconcileIdList(
+  previousItems: readonly unknown[],
+  nextItems: readonly unknown[],
+  previousIds: readonly (string | null)[],
+): Array<string | null> {
+  const idsByContent = new Map<string, Array<string | null>>();
+  previousItems.forEach((item, index) => {
+    const key = JSON.stringify(item) ?? 'undefined';
+    const ids = idsByContent.get(key) ?? [];
+    ids.push(previousIds[index] ?? null);
+    idsByContent.set(key, ids);
+  });
+
+  return nextItems.map((item) => {
+    const ids = idsByContent.get(JSON.stringify(item) ?? 'undefined');
+    return ids?.shift() ?? null;
+  });
+}
+
+function reconcileCmsIds(
+  previousResume: JsonResume,
+  nextResume: JsonResume,
+  previousIds: CmsIdMap,
+): CmsIdMap {
+  const reconciled = emptyIdMap();
+  for (const section of LIST_SECTIONS) {
+    const key = SECTION_TO_RESUME_KEY[section];
+    reconciled[section] = reconcileIdList(
+      (previousResume[key] as readonly unknown[] | undefined) ?? [],
+      (nextResume[key] as readonly unknown[] | undefined) ?? [],
+      previousIds[section],
+    );
+  }
+  reconciled.profiles = reconcileIdList(
+    previousResume.basics?.profiles ?? [],
+    nextResume.basics?.profiles ?? [],
+    previousIds.profiles,
+  );
+  return reconciled;
+}
+
 export const useEditorStore = create<EditorState>()((set) => ({
   resume: {},
   original: {},
@@ -319,6 +381,8 @@ export const useEditorStore = create<EditorState>()((set) => ({
   originalCmsIds: emptyIdMap(),
   theme: DEFAULT_THEME,
   resumeId: null,
+  documentKey: null,
+  documentRevision: 0,
   loadedUpdatedAt: null,
   isStartup: true,
 
@@ -332,17 +396,23 @@ export const useEditorStore = create<EditorState>()((set) => ({
   setResume: (resume) =>
     set((prev) => ({
       ...mutateResumeState(prev, resume),
+      cmsIds: reconcileCmsIds(prev.resume, resume, prev.cmsIds),
+      documentRevision: prev.documentRevision + 1,
     })),
   patchResume: (updater) =>
     set((prev) => {
       const nextResume = updater(prev.resume);
       return {
         ...mutateResumeState(prev, nextResume),
+        cmsIds: reconcileCmsIds(prev.resume, nextResume, prev.cmsIds),
+        documentRevision: prev.documentRevision + 1,
       };
     }),
   commitResumeTransaction: (resume, editorIds) =>
     set((prev) => ({
       ...mutateResumeState(prev, resume, cloneEditorIds(editorIds)),
+      cmsIds: reconcileCmsIds(prev.resume, resume, prev.cmsIds),
+      documentRevision: prev.documentRevision + 1,
     })),
   setJsonBufferState: (jsonBuffer) => set({ jsonBuffer }),
   setTheme: (theme) => set({ theme }),
@@ -354,6 +424,9 @@ export const useEditorStore = create<EditorState>()((set) => ({
       originalCms: cms,
       cmsIds: ids,
       originalCmsIds: cloneIdMap(ids),
+      resumeId: cms.id,
+      documentKey: `cms:${cms.id}`,
+      documentRevision: 0,
       loadedUpdatedAt: cms.updatedAt ?? null,
       editorIds: createEditorIdsFromResume(json),
       workspaceLoadState: 'ready',
@@ -373,6 +446,8 @@ export const useEditorStore = create<EditorState>()((set) => ({
       originalCmsIds: cloneIdMap(ids),
       loadedUpdatedAt: null,
       resumeId: null,
+      documentKey: createLocalDocumentKey(),
+      documentRevision: 0,
       editorIds: createEditorIdsFromResume(json),
       workspaceLoadState: 'ready',
       documentEpoch: newEpoch(),
@@ -388,6 +463,8 @@ export const useEditorStore = create<EditorState>()((set) => ({
       cmsIds: emptyIdMap(),
       originalCmsIds: emptyIdMap(),
       resumeId: null,
+      documentKey: null,
+      documentRevision: 0,
       loadedUpdatedAt: null,
       isStartup: true,
       theme: prev.theme,
@@ -397,7 +474,26 @@ export const useEditorStore = create<EditorState>()((set) => ({
       editorIds: { work: [], projects: [] },
       jsonBuffer: EMPTY_JSON_BUFFER,
     })),
-  setResumeId: (resumeId) => set({ resumeId }),
+  setResumeId: (resumeId) =>
+    set((prev) => {
+      if (prev.resumeId === resumeId) return prev;
+      return {
+        resume: {},
+        original: {},
+        originalCms: null,
+        cmsIds: emptyIdMap(),
+        originalCmsIds: emptyIdMap(),
+        resumeId,
+        documentKey: null,
+        documentRevision: 0,
+        loadedUpdatedAt: null,
+        workspaceLoadState: 'unloaded',
+        documentEpoch: newEpoch(),
+        revision: 0,
+        editorIds: { work: [], projects: [] },
+        jsonBuffer: EMPTY_JSON_BUFFER,
+      };
+    }),
   setIsStartup: (isStartup) => set({ isStartup }),
 
   addItem: (section, item) =>
@@ -421,6 +517,7 @@ export const useEditorStore = create<EditorState>()((set) => ({
       return {
         ...mutateResumeState(prev, resume, editorIds),
         cmsIds,
+        documentRevision: prev.documentRevision + 1,
       };
     }),
 
@@ -446,6 +543,7 @@ export const useEditorStore = create<EditorState>()((set) => ({
       return {
         ...mutateResumeState(prev, resume, editorIds),
         cmsIds,
+        documentRevision: prev.documentRevision + 1,
       };
     }),
 
@@ -476,6 +574,7 @@ export const useEditorStore = create<EditorState>()((set) => ({
       return {
         ...mutateResumeState(prev, resume, editorIds),
         cmsIds,
+        documentRevision: prev.documentRevision + 1,
       };
     }),
 }));

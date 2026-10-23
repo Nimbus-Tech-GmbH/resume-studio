@@ -1,91 +1,141 @@
 # resume-studio
 
-Edit your resume. See it live. Export it fast.
+<div align="flex flex-row items-center justify-center">
+  <img src="apps/web/public/logo.png" alt="resume-studio logo" width="50" />
+  <h2>resume-studio</h2>
+</div>
 
-`resume-studio` is a pnpm monorepo for a JSON Resume editor:
-- React/Vite web app (`apps/web`)
-- Fastify render service (`apps/render-service`)
-- Fastify auth broker with Better Auth + Cognito (`apps/auth-service`)
-- AI gateway service for tailoring requests (`apps/ai-service`)
-- Shared transformer/theme/graphql/ai-contract packages (`packages/*`)
+Edit your resume. See it live. Ship it.
 
-## Current status
+Real-time resume editor web app. Loads resume data from the Keystone CMS GraphQL API and renders live previews via multiple [JSON Resume](https://jsonresume.org/) themes. Persistence is currently disabled (save pipeline retained, see below).
 
-- **Guest mode:** fully usable for local create/import/edit/preview/print.
-- **Authenticated mode:** sign-in + CMS read/load paths are wired.
-- **Persistence:** save pipeline exists and is tested, but save UI is currently not exposed.
+> **Status:** Guest mode available (no auth required). Authenticated mode working: Better Auth + Cognito OAuth, with user account sync between resume-studio auth DB and Keystone CMS.
 
-## Quick start
+## Features
 
-Requirements:
-- Node `>= 20.11`
-- pnpm `>= 9`
+- **Guest mode** — try the editor immediately without signing in. Create and import resumes locally, preview and export freely. No data is saved to the CMS.
+- **Authenticated mode** — sign in via Cognito (Better Auth broker) to load existing resumes from the CMS and edit them. User accounts are automatically synced between resume-studio and Keystone. Persistence is available when deployed. Create new resumes locally first; new resume sync is queued for a future milestone.
+- Startup dialog — on launch, shows existing resumes as selectable cards (authenticated) or prompts to create/import (guest). User accounts automatically synced from Keystone on first sign-in. Fetching/empty/error/guest states handled gracefully.
+- Create new resumes from the header `+` button or the startup dialog — populates the editor locally with a blank template. No CMS round-trip (persistence currently disabled).
+- Edit any JSON Resume section: basics, work (with highlights), education, skills, interests, volunteer, projects, certificates, languages, awards, publications.
+- Live preview updates 300 ms after last keystroke, in a sandboxed iframe — with skeleton/overlay loading states so edits never flash blank.
+- Loading states: resume picker uses shadcn `Skeleton` / `Spinner`; preview/print surfaces use the presentation package's own skeleton, refresh overlay, and retry UI.
+- Save button is hidden for all users while persistence is disabled (a "Save disabled" badge shows when signed in). The typed mutation-plan save pipeline remains in place and tested (see `docs/SAVE_PIPELINE.md`).
+- Import JSON Resume files from the startup dialog.
+- Schema-aligned validation: email/phone regexes and required-field rules mirror the Keystone CMS; legacy select values surface as non-blocking warnings. Powered by Zod.
+- CMS `select` fields render as dropdowns (skill level, language fluency) with options mirrored from the schema.
+- Theme switcher — 9 vendored in-repo themes: `developer-mono`, `flat`, `modern-classic`, `writers-portfolio`, `nordic-minimal`, `graph-paper-grid`, `monochrome-noir`, `new-york-editorial`, `claude`.
+- Preview / print flow — opens a dedicated `/print` page with the rendered resume in a full-height iframe; use the browser's **Print → Save as PDF** to export.
+- Drag-and-drop reorder for work, education, and skills.
+- Empty states — both editor and preview panes show "No resume selected" when no resume is loaded.
+
+## Architecture
+
+```
+Browser (React 19 SPA)
+  ├─ AuthProvider (Better Auth session gating)
+  ├─ editor state (Zustand)
+  ├─ TanStack Query cache (gated by isAuthenticated)
+  ├─ shadcn/ui primitives (radix-mira style) + Tailwind CSS v4
+  ├─ @dnd-kit sortable lists
+  └─ @resume-studio/resume-presentation (preview/print lifecycle + iframe)
+        │  uses @resume-studio/studio-contracts PresentationInputV1
+        │
+        ├─ /api/auth ──→ Vite proxy (dev) / render-service proxy (prod) ──→ Auth Service
+        │ POST /render (debounced 300ms)
+        ▼
+Render Service (Fastify)                ← dev: port 8787, prod: port 5173
+  ├─ serves SPA static files (prod only)
+  ├─ /api/auth prod proxy → auth-service
+  ├─ 9 vendored themes (lazy-loaded)
+  ├─ LRU cache (SHA-1 keyed)
+  └─ IP allowlist + CORS
+        │
+        ▼
+Auth Service (Fastify)                 ← port 4000, 127.0.0.1 bound
+  ├─ Better Auth + Cognito OAuth broker
+  └─ Postgres `auth` schema (never touches Keystone public schema)
+        │
+        │
+Keystone CMS GraphQL (external — nt-keystone-cms)
+```
+
+**Dev mode:** web (Vite, port 5173), render-service (Fastify, port 8787) and auth-service (Fastify, port 4000) run as separate processes; Vite proxies `/api/auth` to the auth-service so the browser stays single-origin at 5173.
+**Prod (Docker):** single container — render-service serves the SPA from `/`, handles `/render` on port 5173, and proxies `/api/auth` to the in-image auth-service on port 4000.
+
+## Repo Layout
+
+```
+resume-studio/
+├── apps/
+│   ├── web/              # React + Vite SPA (port 5173)
+│   │   └── src/
+│   │       ├── auth/     # AuthContext (guest/authenticated toggle)
+│   │       ├── shell/    # Studio frame, header, responsive layouts
+│   │       ├── workspace/# Resume workspace, print handoff, logout lifecycle
+│   │       ├── editor/   # Form editor, save, resume picker
+│   │       ├── state/    # Zustand store
+│   │       └── ...
+│   ├── render-service/   # Fastify + resumed (port 8787)
+│   └── auth-service/     # Fastify + Better Auth + Cognito (port 4000)
+├── packages/
+│   ├── studio-contracts/    # Versioned presentation input/status types
+│   ├── resume-presentation/ # Preview/print lifecycle, transport, UI, harness
+│   ├── transformer/     # CMS ⇄ JSON Resume codecs + toCms diff planner
+│   ├── graphql-client/  # hand-written GraphQL operations
+│   ├── themes/          # pinned JSON Resume theme registry
+│   └── vendor/          # vendored upstream JSON Resume themes (9)
+└── docs/
+    ├── README.md                     # Documentation index
+    ├── NORTHFLANK_DEPLOYMENT.md      # Production deployment
+    ├── MIGRATIONS.md                 # Database migrations
+    ├── LOCAL_DEV.md                  # Local setup
+    ├── ARCHITECTURE.md               # System design
+    ├── QUICK_REFERENCE.md            # Command cheatsheet
+    ├── SAVE_PIPELINE.md              # Data flow
+    ├── CONTRIBUTING.md               # Code style & guidelines
+    ├── CONNECTION_DIAGRAMS.md        # Architecture diagrams
+    ├── DOMAIN_RELATIONSHIP.md        # CMS schema
+    ├── FUNCTIONAL_REQUIREMENTS.md    # Features
+    └── KNOWN_ISSUES.md               # Limitations
+```
+
+## Getting Started
+
+Requires Node ≥ 20.11 and pnpm ≥ 9.
 
 ```sh
 pnpm install
 cp .env.example .env
-pnpm dev
+pnpm dev            # runs web + render-service + auth-service in parallel
 ```
 
-Dev services:
-- Web: `http://localhost:5173`
-- Render service: `http://localhost:8787`
-- Auth service: `http://127.0.0.1:4000` (reached by browser through `/api/auth` proxy)
-- AI service: `http://127.0.0.1:4100` (reached by browser through `/api/ai` proxy)
-
-## Common scripts
+Or run individually:
 
 ```sh
-pnpm dev
-pnpm dev:web
-pnpm dev:render
-pnpm dev:auth
-pnpm dev:ai
+pnpm dev:web        # http://localhost:5173
+pnpm dev:render     # http://localhost:8787
+pnpm dev:auth       # http://127.0.0.1:4000 (proxied via /api/auth)
+```
 
+**Guest mode** works without Keystone running — no GraphQL calls are made. Click the `+` button or "Create New Resume" to start editing locally. Preview and export work via the render service.
+
+**Authenticated mode** requires the auth-service (Needs Postgres + Cognito creds in `.env`, see [docs/LOCAL_DEV.md](./docs/LOCAL_DEV.md)) and the Keystone CMS running at `http://localhost:3000` with `http://localhost:5173` and `http://localhost:8787` in its `CORS_ORIGIN`. Click **Sign in** in the startup dialog (or the user icon in the header) to start the Cognito OAuth flow. The auth-service must have the callback URL `http://localhost:5173/api/auth/callback/cognito` registered on the Cognito app client.
+
+Other scripts:
+
+```sh
+pnpm test           # vitest across workspace (96 tests)
 pnpm typecheck
-pnpm lint
-pnpm test
-pnpm build
-pnpm codegen
+pnpm lint           # eslint (root flat config)
+pnpm build          # tsc + vite production build
+pnpm codegen        # regenerate GraphQL types (needs Keystone reachable)
 ```
 
-## Repo layout
+## Documentation
 
-```txt
-apps/
-  web/
-  render-service/
-  auth-service/
-  ai-service/
+See the [docs/](./docs/) folder for complete guides:
 
-packages/
-  transformer/
-  graphql-client/
-  themes/
-  ai-contracts/
-  vendor/
-
-docs/
-  ARCHITECTURE.md
-  FUNCTIONAL_REQUIREMENTS.md
-  SAVE_PIPELINE.md
-  DOMAIN_RELATIONSHIP.md
-  LOCAL_DEV.md
-  DEPLOYMENT.md
-  CONTRIBUTING.md
-  KNOWN_ISSUES.md
-```
-
-## Documentation map
-
-- System design: `docs/ARCHITECTURE.md`
-- Feature requirements and file touchpoints: `docs/FUNCTIONAL_REQUIREMENTS.md`
-- Save planner/executor details: `docs/SAVE_PIPELINE.md`
-- Domain/schema mapping notes: `docs/DOMAIN_RELATIONSHIP.md`
-- Local setup and auth wiring: `docs/LOCAL_DEV.md`
-- Deployment: `docs/DEPLOYMENT.md`
-- Open constraints/risks: `docs/KNOWN_ISSUES.md`
-
-## License
-
-See `LICENSE`.
+| Guide | Purpose |
+|---|---|
+... (+46 lines) [see remaining: rtk proxy git show origin/main:README.md | tail -n +141]

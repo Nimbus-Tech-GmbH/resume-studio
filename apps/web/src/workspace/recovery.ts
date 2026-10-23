@@ -28,6 +28,8 @@ function buildPersistedRecord(scope: string): PersistedWorkspaceRecord {
       originalCmsIds: editor.originalCmsIds,
       theme: editor.theme,
       resumeId: editor.resumeId,
+      documentKey: editor.documentKey,
+      documentRevision: editor.documentRevision,
       loadedUpdatedAt: editor.loadedUpdatedAt,
       isStartup: editor.isStartup,
       workspaceLoadState: editor.workspaceLoadState,
@@ -92,6 +94,14 @@ export function useWorkspaceRecovery(): { startupDialogOpen: boolean } {
         if (record?.version === 1) {
           useEditorStore.setState({
             ...record.editor,
+            // Records written before document identity was added still need a
+            // stable key so preview and print work after restore.
+            documentKey:
+              record.editor.documentKey ??
+              (record.editor.resumeId
+                ? `cms:${record.editor.resumeId}`
+                : `local:${record.editor.documentEpoch}`),
+            documentRevision: record.editor.documentRevision ?? 0,
             isStartup: resolveStartupAfterRestore(
               isLogout,
               record.editor.isStartup,

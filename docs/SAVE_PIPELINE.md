@@ -1,86 +1,118 @@
 # Save Pipeline
 
-Focused reference for persistence planning/execution.
-
-This document intentionally covers **save internals only**.
-General app architecture and load/preview flows are documented in
-`docs/ARCHITECTURE.md`.
+This document contains the complete save pipeline architecture for debugging and extending persistence.
 
 ---
 
-## 1) Current product state
+## Load Flow
 
-- The typed save pipeline remains implemented and tested.
-- UI exposure of save is controlled by product state; consult current web UI behavior before assuming end-user save availability.
+```
+ResumePicker → useResume(id) → fromCms(cms) → loadFromCms({ json, cms })
+```
 
----
+## Load (guest mode / local create / import)
 
-## 2) Save critical path
+```
+StartupDialog/ResumePicker → loadFromJson(EMPTY_RESUME) or loadFromJson(importedJson)
+  → store populated locally, resumeId = null, originalCms = null
+  → No GraphQL calls. Preview/export/print work. Save button hidden.
+```
 
-`SaveButton` orchestration:
+## Edit Flow
 
-1. Guard on required store state (`resumeId`, `originalCms`)
-2. Staleness check (`fetchResumeUpdatedAt` vs `loadedUpdatedAt`)
-3. Plan (`toCms`) → `{ ops, errors }`
-4. Stop on planner errors
-5. Execute ops sequentially in order: **creates → updates → deletes**
-6. On all-success: invalidate resume query and reload from server
-7. On partial failure: report failure, no client rollback
-
----
-
-## 3) Planner (`packages/transformer/src/toCms.ts`)
-
-Inputs:
-- `current`, `original` (`JsonResume`)
-- `originalCms`
-- `cmsIds`, `originalCmsIds`
-- `resumeId`
-
-Output:
-- `MutationOp[]`
-- planner `errors`
-
-Core row lifecycle:
-- `cmsIds[i] === null` → create op
-- existing ID + changed payload → update op
-- ID removed from current map but present in original map → delete op
-
-Special cases:
-- `work.highlights` as dedicated row CRUD
-- `certificates` via `ResumeCertification` join handling + `updateCertification`
-- `basics.location` / `basics.profiles` as separate row ops
-- `basics.image` relation payload on change (`create/disconnect`) — track A3/S2 caveat
+```
+form/JSON action → store.resume + documentRevision → PresentationInputV1
+  → PreviewPresentation (one 300ms debounce) → POST /render
+```
 
 ---
 
-## 4) GraphQL mapping (`packages/graphql-client/src/operations.ts`)
+## Save Flow (the critical path)
 
-Every `MutationOp.kind` must map to a schema-accurate mutation document.
-
-When adding/changing an op kind:
-- update `MutationOp` union
-- add/update GraphQL document
-- update executor switch
-- keep exhaustive switch guarantees intact
-
----
-
-## 5) Executor (`apps/web/src/graphql/executeSave.ts`)
-
-- Buckets ops by kind prefix for deterministic ordering.
-- Executes sequentially and returns per-op success/failure results.
-- Does not attempt transaction-style rollback.
+```
+SaveButton onClick:
+  1. Staleness: fetchResumeUpdatedAt(id) ≠ loadedUpdatedAt? → BLOCK
+  2. Plan: toCms({current, original, originalCms, cmsIds, originalCmsIds, resumeId})
+     → { ops: MutationOp[], errors: ValidationError[] }
+  3. Errors? → show, stop
+  4. Execute: sort ops (creates → updates → deletes), run sequentially
+  5. All ok → invalidateQueries → refetch re-seeds store
+     Failed → toast; local state untouched (no rollback — A1)
+```
 
 ---
 
-## 6) Debugging checklist
+## Zustand Store Invariants
 
-1. Verify mutation/input shape in `schema.graphql`.
-2. Verify document in `operations.ts` matches schema.
-3. Trace planner branch in `toCms.ts` for the affected section.
-4. Verify `executeSave.ts` handles the op kind.
-5. Confirm transformer tests cover the changed planner behavior.
+1. `resume` = only thing forms mutate
+2. `cmsIds[section][i] === null` → row added locally → save emits create
+3. ID in `originalCmsIds` but absent from `cmsIds` → emit delete
+4. `loadFromCms` resets everything atomically
+5. `loadFromJson` populates the store for local imports/creates — `resumeId = null`, `originalCms = null`, all `cmsIds` are null
 
-Recommended test focus:
-- `packages/transformer/src/toCms.test.ts`
+---
+
+## The Mutation Pipeline (how saves work)
+
+### Step 1: `toCms.ts` — the planner
+
+Diffs `current` (live editor state) against `original` (load snapshot) using `originalCms` (CMS row data) and `cmsIds`/`originalCmsIds` (row ID tracking).
+
+Produces `MutationOp[]` — a discriminated union:
+
+```ts
+type MutationOp =
+  | { kind: 'createResumeWork'; data: Record<string, unknown> }
+  | { kind: 'updateResumeWork'; id: string; data: Record<string, unknown> }
+  | { kind: 'deleteResumeWork'; id: string };
+// ... one variant per entity × operation
+```
+
+**How row lifecycle works:**
+
+- New row (`cmsIds[i] === null`) → `create*` op with `resume: { connect: { id } }`
+- Existing row with changes → `update*` op with diffed scalars
+- Row removed from list → `delete*` op
+
+**Special cases:**
+
+- `work.highlights` → separate `ResumeHighlight` row ops (create/update/delete), NOT nested in work update
+- `certificates` → shared global list accessed via `ResumeCertification` join table; create/delete go through `updateResume { resumeCertifications: { create/disconnect } }`; edits via `updateCertification` using `Certification.id`
+- `basics.location` → separate `ResumeLocation` row ops
+- `basics.profiles` → separate `ResumeProfile` row ops
+- `basics.image` → relation payload `{ create: { src } }` or `{ disconnect: true }` (A3 — CMS-side unverified)
+
+### Step 2: `operations.ts` — GraphQL documents
+
+Each `MutationOp.kind` maps to a named GraphQL mutation document. **These names MUST match `schema.graphql` exactly.**
+
+Schema pattern: `createResumeWork(data: ResumeWorkCreateInput!): ResumeWork`
+Operation: `mutation CreateResumeWork($data: ResumeWorkCreateInput!) { createResumeWork(data: $data) { id } }`
+
+### Step 3: `executeSave.ts` — the executor
+
+`runOne(op)` switch on `op.kind` → `gqlClient.request(DOCUMENT, variables)`.
+
+Ops sorted: bucket 0 (creates) → bucket 1 (updates) → bucket 2 (deletes). Within each bucket, order matches planner output.
+
+---
+
+## Debugging Save/Persistence Issues
+
+1. **Check `schema.graphql` first.** Find the mutation name, input types, and field types. This is the source of truth.
+2. **Compare with `operations.ts`.** Verify: mutation name matches, variable types match, return fields are sufficient.
+3. **Check `toCms.ts` planner.** Trace the diff function for the affected section. Key questions:
+   - Does the diff detect the change? (scalar comparison, relation matching)
+   - Does it emit the right `kind`? (create vs update vs delete)
+   - Does the data payload match the schema input type?
+4. **Check `executeSave.ts`.** Verify the `runOne` case exists and passes correct variables.
+5. **Check `types.ts`.** Verify `Cms*` interface matches what the GraphQL query actually returns.
+
+---
+
+## Verification Checklist for Save Changes
+
+- `schema.graphql` mutation name matches `operations.ts` document name
+- `toCms.ts` data payload shape matches schema input type
+- `executeSave.ts` has a case for every new `MutationOp` kind (exhaustive switch enforces this)
+- Tests in `packages/transformer/src/toCms.test.ts` cover the changed diff function
