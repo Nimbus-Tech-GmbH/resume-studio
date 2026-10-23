@@ -307,10 +307,11 @@ SaveButton onClick:
 ### Print flow
 
 ```
-ExportMenu → localStorage['print-<random-hex>'] = JSON{resume, theme}
+ExportMenu → localStorage['print-<24-hex>'] =
+             JSON{version: 1, createdAt, payload: {resume, theme}}
   → window.open('/print?k=<key>', noopener)
-PrintPage → validates + consumes/removes payload → PresentationInputV1
-  → PrintPresentation (immediate render) → sandboxed iframe → window.print()
+PrintPage → validates version/TTL/key → consumes/removes entry → PresentationInputV1
+  → PrintPresentation (immediate render) → iframe → window.print()
 ```
 
 `localStorage` is used only as a random-key cross-tab handoff because the print
@@ -318,6 +319,11 @@ tab has no editor store or auth lifecycle. Payload content never enters the URL;
 the payload is removed when consumed. Versioned handoffs expire after 5 minutes
 and stale entries are swept on application bootstrap and later exports, covering
 blocked or failed tabs.
+
+The print surface iframe is sandboxed with `allow-same-origin allow-modals`;
+`allow-modals` is required or Chromium silently ignores `window.print()`. The
+preview surface stays at `allow-same-origin` only (see
+`packages/resume-presentation/src/components.tsx`).
 
 ## 4. Render service internals (`apps/render-service/src`)
 

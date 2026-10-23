@@ -18,10 +18,14 @@ import {
 import { defaultPresentationTransport } from './httpTransport';
 import './styles.css';
 
+export const PREVIEW_IFRAME_SANDBOX = 'allow-same-origin';
+export const PRINT_IFRAME_SANDBOX = 'allow-same-origin allow-modals';
+
 export interface PresentationComponentProps extends PresentationProps {
   readonly transport?: PresentationTransport;
   readonly className?: string;
   readonly title?: string;
+  readonly sandbox?: string;
 }
 
 export interface PrintPresentationActions {
@@ -91,6 +95,7 @@ interface PresentationSurfaceProps {
   readonly iframeRef?: RefObject<HTMLIFrameElement | null>;
   readonly className?: string;
   readonly title: string;
+  readonly sandbox: string;
   readonly toolbar?: ReactNode;
 }
 
@@ -100,6 +105,7 @@ function PresentationSurface({
   iframeRef,
   className,
   title,
+  sandbox,
   toolbar,
 }: PresentationSurfaceProps) {
   const classes = className ? `rs-presentation ${className}` : 'rs-presentation';
@@ -114,7 +120,7 @@ function PresentationSurface({
             ref={iframeRef}
             className="rs-presentation__frame"
             title={title}
-            sandbox="allow-same-origin"
+            sandbox={sandbox}
             srcDoc={snapshot.html ?? ''}
           />
         ) : null}
@@ -163,6 +169,7 @@ export function PreviewPresentation({
   onStatusChange,
   className,
   title = 'Resume preview',
+  sandbox = PREVIEW_IFRAME_SANDBOX,
 }: PresentationComponentProps) {
   const lifecycle = usePresentationLifecycle(
     input,
@@ -176,6 +183,7 @@ export function PreviewPresentation({
       retry={lifecycle.retry}
       className={className}
       title={title}
+      sandbox={sandbox}
     />
   );
 }
@@ -186,6 +194,7 @@ export function PrintPresentation({
   onStatusChange,
   className,
   title = 'Resume print preview',
+  sandbox = PRINT_IFRAME_SANDBOX,
   renderToolbar,
 }: PrintPresentationProps) {
   const lifecycle = usePresentationLifecycle(input, transport, onStatusChange, 0);
@@ -216,6 +225,7 @@ export function PrintPresentation({
       iframeRef={iframeRef}
       className={className}
       title={title}
+      sandbox={sandbox}
       toolbar={toolbar}
     />
   );

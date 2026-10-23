@@ -1,4 +1,9 @@
-export { PreviewPresentation, PrintPresentation } from './components';
+export {
+  PREVIEW_IFRAME_SANDBOX,
+  PRINT_IFRAME_SANDBOX,
+  PreviewPresentation,
+  PrintPresentation,
+} from './components';
 export {
   createInitialPresentationSnapshot,
   createPresentationController,

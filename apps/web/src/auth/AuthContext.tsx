@@ -27,13 +27,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAuthenticated,
       isLoading: isPending,
       login: async () => {
-        try {
-          await signIn.social({ provider: 'cognito' });
-        } catch (error) {
-          // Error already handled by Better Auth redirect flow.
-          // Do not log error details to avoid exposing tokens to console/extensions.
-          throw error;
-        }
+        // Errors propagate to Better Auth's redirect flow. Do not log error
+        // details to avoid exposing tokens to console/extensions.
+        await signIn.social({ provider: 'cognito' });
       },
       logout: async () => {
         await signOut();

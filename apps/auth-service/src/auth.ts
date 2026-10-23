@@ -1,4 +1,4 @@
-import { betterAuth } from 'better-auth';
+import { betterAuth, type User } from 'better-auth';
 import { prismaAdapter } from '@better-auth/prisma-adapter';
 import { prisma } from './db.js';
 import { env } from './env.js';
@@ -41,12 +41,12 @@ export const auth = betterAuth({
   },
   trustedOrigins: env.TRUSTED_ORIGINS,
   callbacks: {
-    async signUpUser(user: any): Promise<any> {
-      await linkKeystoneUser(user.id, user.email, user.name ?? '');
+    async signUpUser(user: User): Promise<User> {
+      await linkKeystoneUser(user.id, user.email);
       return user;
     },
-    async signInUser(user: any): Promise<any> {
-      await linkKeystoneUser(user.id, user.email, user.name ?? '');
+    async signInUser(user: User): Promise<User> {
+      await linkKeystoneUser(user.id, user.email);
       return user;
     },
   },
@@ -73,11 +73,7 @@ function validateEmailFormat(email: string): boolean {
  *
  * Note: Errors logged via console.error (executed during auth.handler call).
  */
-async function linkKeystoneUser(
-  authId: string,
-  email: string,
-  name: string
-): Promise<void> {
+async function linkKeystoneUser(authId: string, email: string): Promise<void> {
   // Validate inputs
   if (!authId || !email) {
     console.error('[auth] Invalid user data: missing authId or email');

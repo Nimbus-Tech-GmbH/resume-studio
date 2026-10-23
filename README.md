@@ -19,7 +19,7 @@ Real-time resume editor web app. Loads resume data from the Keystone CMS GraphQL
 - Create new resumes from the header `+` button or the startup dialog — populates the editor locally with a blank template. No CMS round-trip (persistence currently disabled).
 - Edit any JSON Resume section: basics, work (with highlights), education, skills, interests, volunteer, projects, certificates, languages, awards, publications.
 - Live preview updates 300 ms after last keystroke, in a sandboxed iframe — with skeleton/overlay loading states so edits never flash blank.
-- Loading states throughout via shadcn `Skeleton` / `Spinner`: resume picker, preview first paint + refresh overlay, print page.
+- Loading states: resume picker uses shadcn `Skeleton` / `Spinner`; preview/print surfaces use the presentation package's own skeleton, refresh overlay, and retry UI.
 - Save button is hidden for all users while persistence is disabled (a "Save disabled" badge shows when signed in). The typed mutation-plan save pipeline remains in place and tested (see `docs/SAVE_PIPELINE.md`).
 - Import JSON Resume files from the startup dialog.
 - Schema-aligned validation: email/phone regexes and required-field rules mirror the Keystone CMS; legacy select values surface as non-blocking warnings. Powered by Zod.
@@ -38,7 +38,8 @@ Browser (React 19 SPA)
   ├─ TanStack Query cache (gated by isAuthenticated)
   ├─ shadcn/ui primitives (radix-mira style) + Tailwind CSS v4
   ├─ @dnd-kit sortable lists
-  └─ iframe preview (JSON Resume themes)
+  └─ @resume-studio/resume-presentation (preview/print lifecycle + iframe)
+        │  uses @resume-studio/studio-contracts PresentationInputV1
         │
         ├─ /api/auth ──→ Vite proxy (dev) / render-service proxy (prod) ──→ Auth Service
         │ POST /render (debounced 300ms)
@@ -70,13 +71,16 @@ resume-studio/
 │   ├── web/              # React + Vite SPA (port 5173)
 │   │   └── src/
 │   │       ├── auth/     # AuthContext (guest/authenticated toggle)
+│   │       ├── shell/    # Studio frame, header, responsive layouts
+│   │       ├── workspace/# Resume workspace, print handoff, logout lifecycle
 │   │       ├── editor/   # Form editor, save, resume picker
-│   │       ├── preview/  # iframe preview + render client
 │   │       ├── state/    # Zustand store
 │   │       └── ...
 │   ├── render-service/   # Fastify + resumed (port 8787)
 │   └── auth-service/     # Fastify + Better Auth + Cognito (port 4000)
 ├── packages/
+│   ├── studio-contracts/    # Versioned presentation input/status types
+│   ├── resume-presentation/ # Preview/print lifecycle, transport, UI, harness
 │   ├── transformer/     # CMS ⇄ JSON Resume codecs + toCms diff planner
 │   ├── graphql-client/  # hand-written GraphQL operations
 │   ├── themes/          # pinned JSON Resume theme registry

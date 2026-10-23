@@ -137,31 +137,37 @@ HTML inside a sandboxed iframe, refreshed 300ms after the last keystroke.
 **Files**
 | File | Change |
 |---|---|
-| `apps/web/src/preview/PreviewFrame.tsx` | Debounce, iframe, loading overlay, error card |
-| `apps/web/src/preview/renderClient.ts` | HTTP call; `VITE_RENDER_ENDPOINT` |
+| `packages/resume-presentation/src/components.tsx` | Portable preview surface, iframe, loading/error UI |
+| `packages/resume-presentation/src/controller.ts` | 300ms document debounce, abort/stale-generation guards, retry |
+| `packages/resume-presentation/src/httpTransport.ts` | HTTP call; host injects `VITE_RENDER_ENDPOINT` |
+| `apps/web/src/workspace/ResumeWorkspace.tsx` | Builds `PresentationInputV1` from store state |
 | `apps/render-service/src/render.ts` | Server-side render pipeline |
 
 **Rules**
-1. Debounce 300ms; abort in-flight requests on newer edits (AbortController).
-2. Theme render errors must NOT blank the editor: service returns an HTML
-   error card; client shows transport errors in a non-destructive panel.
-3. Iframe sandbox: `allow-same-origin allow-scripts` (print page adds
-   `allow-modals`). Never load theme JS outside the iframe.
-4. Empty/initial state renders whatever the theme does with `{}` — no special
+1. One 300ms document debounce per surface; abort in-flight requests on newer
+   edits (AbortController) and generation-guard success/error handlers.
+2. Theme changes render immediately with the latest snapshot; document-key
+   changes clear old HTML immediately; revision refreshes retain prior HTML
+   under the overlay.
+3. Theme render errors must NOT blank the editor: service returns an HTML
+   error card; client shows transport errors in a non-destructive panel with
+   Retry. Same-document failures retain prior HTML.
+4. Iframe sandbox: `allow-same-origin` for preview. The print surface adds
+   `allow-modals` so `window.print()` works. Never load theme JS outside the
+   iframe.
+5. Empty/initial state renders whatever the theme does with `{}` — no special
    casing in the client.
-5. **Loading states:**
-   - First render (no HTML yet): skeleton placeholder (`Skeleton` component,
-     `components/ui/skeleton.tsx`) mimicking a resume layout — heading line,
-     text lines, content block. Wrapped in `role="status"` + aria-label.
+6. **Loading states:** package-owned `.rs-presentation__*` UI.
+   - First render (no HTML yet): skeleton card announced with `role="status"`.
    - Re-renders after first paint: keep previous HTML visible, overlay a
-     translucent `bg-background/50` layer. Never unmount the iframe between
-     edits — prevents white flash and scroll-position loss.
-   - Never use raw `animate-pulse` divs or ad-hoc spinners; use the shadcn
-     `Skeleton` / `Spinner` components.
+     translucent layer. Never unmount the iframe between revisions —
+     prevents white flash and scroll-position loss.
 
 **AC**
 - [ ] Typing pauses 300ms → exactly one render request.
-- [ ] Render-service down → error panel; typing still works; recovery when up.
+- [ ] Stale success/error from a superseded request cannot update current state.
+- [ ] Theme change → one immediate render with latest document snapshot.
+- [ ] Render-service down → error panel; typing still works; Retry recovers when up.
 - [ ] Theme that throws → red error card inside iframe; editor usable.
 
 ---
@@ -309,20 +315,28 @@ path (A4).
 **Files**
 | File | Change |
 |---|---|
-| `apps/web/src/editor/ExportMenu.tsx` | Payload handoff |
-| `apps/web/src/PrintPage.tsx` | Print view |
-| `apps/web/src/main.tsx` | Route split (`/print`) |
+| `apps/web/src/editor/ExportMenu.tsx` | Writes versioned payload + opens `/print` |
+| `apps/web/src/workspace/printHandoff.ts` | Validate, consume, TTL, and sweep helpers |
+| `apps/web/src/PrintPage.tsx` | Consumes handoff, builds input, renders print surface |
+| `apps/web/src/main.tsx` | Bootstrap sweep + route split (`/print`) |
+| `packages/resume-presentation/src/components.tsx` | Print surface, sandbox, print action |
 
 **Rules**
-1. Payload travels via localStorage key `print-<timestamp>` (tabs don't share
-   Zustand). Key is single-use: removed after read.
-2. Iframe sandbox includes `allow-modals` so `window.print()` works.
-3. `@media print` CSS in `index.css` hides chrome; keep it print-safe.
-4. Loading state: skeleton block + `Spinner` + "Rendering resume…" text,
-   wrapped in `role="status"`. Same components as FR-3.
+1. Payload travels via localStorage key `print-<24 hex>` as
+   `{ version: 1, createdAt, payload: { resume, theme } }`. Content never
+   enters the URL. Key is single-use: removed before render.
+2. Handoffs expire after 5 minutes; stale entries are swept on bootstrap and
+   each export.
+3. Print iframe sandbox includes `allow-same-origin allow-modals` so
+   `window.print()` works.
+4. `@media print` CSS in `index.css` hides chrome; keep it print-safe.
+5. Loading/error UI comes from the presentation package: first render shows a
+   skeleton with `role="status"`; failures expose Retry. The payload is
+   consumed before render, so reload cannot retry from storage.
 
 **AC**
 - [ ] Missing/expired/corrupt key → friendly error + Back button, no crash.
+- [ ] Handoff is removed after read and swept after TTL.
 - [ ] Print dialog produces paginated vector PDF.
 
 ---
@@ -450,7 +464,9 @@ pnpm build       # web: tsc -b && vite build; render: vite build (SSR bundle)
 5. **Loading states:** use shadcn `Skeleton` (placeholder shapes) and
    `Spinner` (inline pending indicators). No raw `animate-pulse` divs, no
    ad-hoc `Loader2 animate-spin` markup. Buttons: compose Spinner +
-   `disabled`, no `isPending` prop.
+   `disabled`, no `isPending` prop. Exception: portable
+   `packages/resume-presentation` surfaces own scoped CSS/loading UI so they
+   can run outside `apps/web`.
 6. **Tailwind v4.** This project runs Tailwind v4 (`@import "tailwindcss"`),
    so current shadcn registry classes apply as-is. Never introduce Tailwind
    v3-only syntax or a `tailwind.config.ts`; tokens are the CSS variables in
