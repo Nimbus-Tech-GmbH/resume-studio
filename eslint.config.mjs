@@ -39,6 +39,13 @@ export default tseslint.config(
     },
   },
   {
+    // Node services/scripts intentionally write operational logs to stdout/stderr.
+    files: ['apps/auth-service/**/*.{ts,tsx}', 'apps/render-service/**/*.{ts,tsx}'],
+    rules: {
+      'no-console': 'off',
+    },
+  },
+  {
     files: ['apps/web/src/**/*.{ts,tsx}'],
     plugins: {
       'react-hooks': reactHooks,

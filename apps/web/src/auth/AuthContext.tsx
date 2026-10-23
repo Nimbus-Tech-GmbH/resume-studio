@@ -27,19 +27,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAuthenticated,
       isLoading: isPending,
       login: async () => {
-        // eslint-disable-next-line no-console -- sign-in diagnostics for deployed auth
-        console.info('[auth] sign-in started', {
-          origin: window.location.origin,
-        });
-        try {
-          const result = await signIn.social({ provider: 'cognito' });
-          // eslint-disable-next-line no-console -- sign-in diagnostics for deployed auth
-          console.info('[auth] sign-in response', result);
-        } catch (error) {
-          // eslint-disable-next-line no-console -- sign-in diagnostics for deployed auth
-          console.error('[auth] sign-in failed', error);
-          throw error;
-        }
+        // Errors propagate to Better Auth's redirect flow. Do not log error
+        // details to avoid exposing tokens to console/extensions.
+        await signIn.social({ provider: 'cognito' });
       },
       logout: async () => {
         await signOut();

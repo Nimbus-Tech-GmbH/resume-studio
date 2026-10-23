@@ -21,7 +21,8 @@ StartupDialog/ResumePicker → loadFromJson(EMPTY_RESUME) or loadFromJson(import
 ## Edit Flow
 
 ```
-form onChange → patchResume → store.resume → PreviewFrame (300ms debounce) → POST /render
+form/JSON action → store.resume + documentRevision → PresentationInputV1
+  → PreviewPresentation (one 300ms debounce) → POST /render
 ```
 
 ---
@@ -63,16 +64,18 @@ Produces `MutationOp[]` — a discriminated union:
 type MutationOp =
   | { kind: 'createResumeWork'; data: Record<string, unknown> }
   | { kind: 'updateResumeWork'; id: string; data: Record<string, unknown> }
-  | { kind: 'deleteResumeWork'; id: string }
-  // ... one variant per entity × operation
+  | { kind: 'deleteResumeWork'; id: string };
+// ... one variant per entity × operation
 ```
 
 **How row lifecycle works:**
+
 - New row (`cmsIds[i] === null`) → `create*` op with `resume: { connect: { id } }`
 - Existing row with changes → `update*` op with diffed scalars
 - Row removed from list → `delete*` op
 
 **Special cases:**
+
 - `work.highlights` → separate `ResumeHighlight` row ops (create/update/delete), NOT nested in work update
 - `certificates` → shared global list accessed via `ResumeCertification` join table; create/delete go through `updateResume { resumeCertifications: { create/disconnect } }`; edits via `updateCertification` using `Certification.id`
 - `basics.location` → separate `ResumeLocation` row ops

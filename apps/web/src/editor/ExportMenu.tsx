@@ -7,6 +7,11 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Download, FileJson, FileText } from 'lucide-react';
+import {
+  PRINT_HANDOFF_TTL_MS,
+  removePrintHandoff,
+  writePrintHandoff,
+} from '@/workspace/printHandoff';
 
 export function ExportMenu() {
   const resume = useEditorStore((s) => s.resume);
@@ -26,18 +31,21 @@ export function ExportMenu() {
   };
 
   const exportPdf = () => {
-    const key = `print-${Date.now()}`;
-    const payload = JSON.stringify({ resume, theme });
+    let key: string;
+    let storage: Storage;
     try {
-      localStorage.setItem(key, payload);
+      storage = window.localStorage;
+      key = writePrintHandoff(storage, { resume, theme });
     } catch {
       // eslint-disable-next-line no-console -- intentional error before early return
       console.error('Failed to write print payload to localStorage');
       return;
     }
+
     const url = new URL('/print', window.location.origin);
     url.searchParams.set('k', key);
     window.open(url.toString(), '_blank', 'noopener,noreferrer');
+    window.setTimeout(() => removePrintHandoff(storage, key), PRINT_HANDOFF_TTL_MS);
   };
 
   return (

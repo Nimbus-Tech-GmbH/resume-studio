@@ -40,10 +40,9 @@ export function SaveButton() {
       })
 
       if (plan.errors.length > 0) {
+        // Generic error message to user; log details server-side if needed
         toast.error(
-          `${plan.errors.length} field error(s): ${plan.errors
-            .map((error) => error.path)
-            .join(", ")}`
+          "Validation failed. Please check individual fields and try again."
         )
         return
       }
@@ -87,8 +86,7 @@ export function SaveButton() {
           })
           return "Saved successfully"
         },
-        error: (error) =>
-          error instanceof Error ? error.message : "Save failed",
+        error: () => "Save failed. Please try again.",
       })
     } finally {
       setSaving(false)

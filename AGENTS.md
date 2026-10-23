@@ -10,6 +10,8 @@ This is a pnpm monorepo for a resume editor:
 - `apps/render-service`: Fastify/Vite SSR renderer.
 - `apps/auth-service`: Fastify Better Auth + Cognito broker (Postgres `auth` schema).
 - `packages/transformer`: pure CMS ⇄ JSON Resume codecs and save planner.
+- `packages/studio-contracts`: versioned presentation input/status types (types only).
+- `packages/resume-presentation`: preview/print lifecycle, transport, portable iframe UI, harness.
 - `packages/graphql-client`: GraphQL documents.
 - `packages/themes`: theme registry/loaders.
 - `packages/vendor`: vendored JSON Resume themes.
@@ -23,6 +25,7 @@ Read the nearest nested `AGENTS.md` before editing files in a subproject.
 - Auth requests go through `/api/auth`, proxied by Vite (dev) or render-service (prod) to the auth-service — the browser must stay single-origin at 5173.
 - Guest mode performs no GraphQL calls; local create/import/preview/export must continue working.
 - `packages/transformer` must remain dependency-free and runnable in browser and Node.
+- `packages/studio-contracts` contains types only; `packages/resume-presentation` must not import web-private paths, auth, GraphQL, CMS IDs, or editor state.
 - The render service is stateless and must remain localhost-only.
 - The auth-service is localhost-only (bound to `127.0.0.1:4000`) and only reachable via the proxies; it must never expose `public` schema DB access.
 - `schema.graphql` is a read-only CMS schema snapshot; verify live drift with codegen when available.
@@ -36,6 +39,10 @@ Read the nearest nested `AGENTS.md` before editing files in a subproject.
 | Auth (service) | `apps/auth-service/src/auth.ts`, `apps/auth-service/src/server.ts`, `apps/auth-service/src/db.ts` |
 | Auth proxy | `apps/render-service/src/server.ts` (`/api/auth/*`) |
 | Store | `apps/web/src/state/editorStore.ts` |
+| Presentation contract | `packages/studio-contracts/src/types.ts` |
+| Presentation lifecycle | `packages/resume-presentation/src/controller.ts` |
+| Presentation surfaces | `packages/resume-presentation/src/components.tsx` |
+| Print handoff | `apps/web/src/workspace/printHandoff.ts` |
 | CMS → editor | `packages/transformer/src/fromCms.ts` |
 | Editor → CMS planner | `packages/transformer/src/toCms.ts` |
 | GraphQL documents | `packages/graphql-client/src/operations.ts` |

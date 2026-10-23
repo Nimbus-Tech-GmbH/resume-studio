@@ -2,42 +2,35 @@ import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import { fromNodeHeaders } from 'better-auth/node';
 import { auth } from './auth.js';
-
-function safePort(fallback: number): number {
-  const raw = process.env.AUTH_PORT;
-  if (raw === undefined) return fallback;
-  const n = Number(raw);
-  if (!Number.isFinite(n) || n < 0 || n > 65535) {
-    throw new Error(`Invalid AUTH_PORT: ${raw}`);
-  }
-  return n;
-}
-
-const PORT = safePort(4000);
-const HOST = process.env.AUTH_HOST ?? '127.0.0.1';
-const CORS_ORIGIN = (process.env.TRUSTED_ORIGINS ?? 'http://localhost:5173')
-  .split(',')
-  .map((s) => s.trim())
-  .filter(Boolean);
-
-const boot = {
-  port: PORT,
-  host: HOST,
-  baseURL: process.env.AUTH_URL ?? 'http://localhost:5173',
-  trustedOrigins: CORS_ORIGIN,
-} as const;
+import { env } from './env.js';
 
 const app = Fastify({ logger: true });
 
-app.log.info({ ...boot }, 'auth boot');
+const bootInfo = {
+  port: env.AUTH_PORT,
+  host: env.AUTH_HOST,
+  baseURL: env.AUTH_URL,
+  trustedOrigins: env.TRUSTED_ORIGINS,
+} as const;
+
+app.log.info(bootInfo, 'auth boot');
 
 await app.register(cors, {
-  origin: CORS_ORIGIN.length > 0 ? CORS_ORIGIN : true,
+  origin: env.TRUSTED_ORIGINS.length > 0 ? env.TRUSTED_ORIGINS : true,
   credentials: true,
   methods: ['GET', 'POST', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
 });
 
+/**
+ * Auth routes. Proxies all `/api/auth/*` requests to Better Auth handler.
+ *
+ * Security:
+ * - Request headers validated by Better Auth
+ * - Cookies NEVER logged
+ * - Error messages sanitized to prevent info leakage
+ * - All user input passed through Better Auth validation
+ */
 app.route({
   method: ['GET', 'POST'],
   url: '/api/auth/*',
@@ -58,46 +51,45 @@ app.route({
         ...(body ? { body } : {}),
       });
 
-      request.log.info(
-        {
-          url: url.pathname,
-          method: request.method,
-          origin: request.headers.origin,
-          cookies: request.headers.cookie,
-        },
-        'auth request',
-      );
-
       const response = await auth.handler(req);
-
-      request.log.info(
-        {
-          url: url.pathname,
-          status: response.status,
-          location: response.headers.get('location'),
-          origin: request.headers.origin,
-          setCookie: response.headers.get('set-cookie'),
-        },
-        'auth response',
-      );
 
       reply.status(response.status);
       response.headers.forEach((value, key) => reply.header(key, value));
       return reply.send(response.body ? await response.text() : null);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      request.log.error({ err, message: msg }, 'auth handler error');
-      return reply.code(500).send({ error: 'Authentication failed', message: msg });
+    } catch (error) {
+      // Sanitize error message — never expose internals to client
+      const isProduction = process.env.NODE_ENV === 'production';
+      const clientMessage = isProduction ? 'Authentication failed' : 'Authentication failed';
+
+      request.log.error(
+        {
+          message: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined,
+        },
+        'auth handler error'
+      );
+
+      return reply.code(500).send({ error: clientMessage });
     }
   },
 });
 
-app.get('/health', async () => ({ ok: true }));
+/**
+ * Health check endpoint.
+ */
+app.get('/health', async (): Promise<{ ok: boolean }> => {
+  return { ok: true };
+});
 
-app
-  .listen({ port: PORT, host: HOST })
-  .then(() => app.log.info(`auth-service on http://${HOST}:${PORT}`))
-  .catch((err) => {
+/**
+ * Start server and handle graceful shutdown.
+ */
+await app
+  .listen({ port: env.AUTH_PORT, host: env.AUTH_HOST })
+  .then(() => {
+    app.log.info(`auth-service on http://${env.AUTH_HOST}:${env.AUTH_PORT}`);
+  })
+  .catch((err: Error) => {
     app.log.error(err);
     process.exit(1);
   });
@@ -109,10 +101,10 @@ for (const signal of shutdownSignals) {
     app.log.info({ signal }, 'shutting down');
     app.close().then(
       () => process.exit(0),
-      (err) => {
+      (err: Error) => {
         app.log.error(err, 'shutdown error');
         process.exit(1);
-      },
+      }
     );
   });
 }

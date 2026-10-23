@@ -74,7 +74,7 @@ async function main() {
     email: string;
   }
 
-  let keystoneUsers: KeystoneUser[] = [];
+  let keystoneUsers: KeystoneUser[];
 
   try {
     const res = await fetch(keystoneEndpoint, {
