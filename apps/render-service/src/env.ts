@@ -23,5 +23,5 @@ export const env = {
     ? process.env.RENDER_ALLOWED_IPS.split(',').map((s) => s.trim()).filter(Boolean)
     : [],
   AUTH_TARGET: process.env.AUTH_TARGET ?? 'http://127.0.0.1:4000',
-  AI_TARGET: process.env.AI_TARGET ?? 'http://127.0.0.1:4100',
+  OPENCODE_TARGET: process.env.OPENCODE_TARGET ?? 'https://opencode.ai',
 } as const;

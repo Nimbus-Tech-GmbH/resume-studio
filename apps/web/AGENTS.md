@@ -11,6 +11,22 @@
 - For load bugs, inspect `RESUME_FIELDS`, `CmsResume`, and `fromCms.ts` together.
 - For validation bugs, inspect `apps/web/src/validation/schema.ts` and CMS validation definitions.
 
+## AI tailoring
+
+- Ollama or the OpenCode inference API. The browser calls it through `@resume-studio/ai/browser`; there is no `/api/ai` route.
+- `packages/ai` owns the Vercel AI SDK setup, the OpenCode OpenAI-compatible provider, prompt, strict Zod response schema, JSON Resume validation, change ledger, grouping, and apply/undo transforms.
+- The model returns one JSON object with exactly `resume`, `changes`, and `gaps`; validate with `validateTailoredResponse` and `assertJsonResumeValid` before display or persistence.
+- `resume` is the accept-all preview. Never replace the editor document with it.
+- Partial accept starts from the editor document and applies only the selected change groups.
+- Contact fields in `WITHHELD_PATHS` are stripped from the model copy and restored from the editor copy.
+- Model listing uses Ollama's `/v1/models` index or the OpenCode `/inference/v1/models` catalog. All inference goes through the Vercel AI SDK. OpenCode API keys stay in memory only and are stripped from recovery records.
+- OpenCode inference is proxied through `/api/ai/opencode/*` in Vite (dev) and render-service (prod) because it does not send browser CORS headers.
+- JSON Resume MCP is opt-in only, sends resume data to `jsonresume.org`, and may call only `validate_resume`, `get_resume_schema`, and `check_ats`.
+- Preserve JSON-editor synchronization checks (`jsonBuffer.isValid` / `!isDirty`) before Generate and Apply.
+- Apply through `commitResumeTransaction` only — never `loadFromJson`, GraphQL save, or CMS mutations.
+- Refresh restores conversation, analysis, decisions, and settings without credentials.
+- Logout / clear recovery: abort any in-flight AI request.
+
 ## Key files
 
 | File | Purpose |
@@ -22,6 +38,7 @@
 | `src/validation/schema.ts` | zod schema mirroring CMS validations |
 | `src/graphql/executeSave.ts` | Runs `MutationOp[]` against CMS sequentially |
 | `src/components/StartupDialog.tsx` | Launch dialog — guest Sign in, resume list, create/import |
+| `src/features/ai-tailoring/` | AI panel, Ollama client, strict validation/apply/undo |
 | `src/components/ui/` | shadcn components (Tailwind v4) |
 
 ## Debugging tips

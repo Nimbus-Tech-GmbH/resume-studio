@@ -22,22 +22,16 @@ COPY apps/auth-service ./apps/auth-service
 RUN pnpm --filter @resume-studio/auth-service db:generate
 RUN pnpm --filter @resume-studio/auth-service deploy --legacy /app/auth-service
 
-# ── AI: deploy ai-service + deps ─────────────────────────────────
-FROM base AS ai-build
-COPY apps/ai-service ./apps/ai-service
-RUN pnpm --filter @resume-studio/ai-service deploy --legacy /app/ai-service
-
-# ── Final: render-service + web static files + auth + ai ─────────
+# ── Final: render-service + web static files + auth ──────────────
 FROM node:20-alpine
 WORKDIR /app
 COPY --from=render-build /app/apps/render-service/dist ./dist
 COPY --from=render-build /app/apps/web/dist ./public
 COPY --from=auth-build /app/auth-service ./
-COPY --from=ai-build /app/ai-service ./
 COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 EXPOSE 5173
-# NOTE: auth-service and ai-service run from source via tsx, so `pnpm deploy`
+# NOTE: auth-service runs from source via tsx, so `pnpm deploy`
 # must keep devDependencies. Adding --prod to deploy above breaks startup.
 # Prisma 7 contract files must be present for db.ts to import them at runtime.
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

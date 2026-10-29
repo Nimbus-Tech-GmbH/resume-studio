@@ -1,10 +1,13 @@
+import type { ReactNode } from "react"
 import { Circle } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 interface PanelHeaderProps {
   title: string
   status?: "live" | "error" | "warning"
+  statusLabel?: string
   className?: string
+  action?: ReactNode
 }
 
 const statusStyles: Record<NonNullable<PanelHeaderProps["status"]>, string> = {
@@ -13,7 +16,7 @@ const statusStyles: Record<NonNullable<PanelHeaderProps["status"]>, string> = {
   error: "text-red-500",
 }
 
-export function PanelHeader({ title, status, className }: PanelHeaderProps) {
+export function PanelHeader({ title, status, statusLabel, className, action }: PanelHeaderProps) {
   return (
     <div
       className={cn(
@@ -22,9 +25,13 @@ export function PanelHeader({ title, status, className }: PanelHeaderProps) {
       )}
     >
       <span className="truncate">{title}</span>
-      {status && (
+      {(status || action) && (
         <span className="flex items-center gap-1.5">
-          <Circle className={cn("size-2 fill-current animate-pulse", statusStyles[status])} />
+          {status && (
+            <Circle className={cn("size-2 fill-current animate-pulse", statusStyles[status])} />
+          )}
+          {statusLabel && <span className="text-[0.625rem]">{statusLabel}</span>}
+          {action}
         </span>
       )}
     </div>

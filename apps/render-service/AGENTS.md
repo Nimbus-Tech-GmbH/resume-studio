@@ -7,6 +7,7 @@
 - When `AUTH_TARGET` is set in env, `/api/auth/*` is proxied to the auth-service so the SPA stays single-origin (plain node http pass-through; hop-by-hop headers stripped). Only GET/POST.
 - Dev script loads the root `.env` (`--env-file=../../.env`) — render listens on `RENDER_PORT`.
 - After dependency/import changes, build this package and verify `dist/server.js` runs without `node_modules`.
+- AI tailoring is browser-only and local Ollama only. This service must not proxy or host inference.
 
 ## Key files
 

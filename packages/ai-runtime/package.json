@@ -1,0 +1,26 @@
+{
+  "name": "@resume-studio/ai-runtime",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./browser": "./src/browser.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "node --import tsx --test src/*.test.ts"
+  },
+  "dependencies": {
+    "@ai-sdk/openai": "^3.0.131",
+    "@resume-studio/ai-contracts": "workspace:*",
+    "ai": "^6.0.314"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.43",
+    "tsx": "^4.23.13",
+    "typescript": "^5.9.3"
+  }
+}

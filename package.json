@@ -11,7 +11,6 @@
     "dev:web": "pnpm --filter @resume-studio/web dev",
     "dev:render": "pnpm --filter @resume-studio/render-service dev",
     "dev:auth": "pnpm --filter @resume-studio/auth-service dev",
-    "dev:ai": "pnpm --filter @resume-studio/ai-service dev",
     "build": "pnpm -r build",
     "test": "pnpm -r test",
     "lint": "eslint .",

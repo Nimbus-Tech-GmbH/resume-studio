@@ -12,6 +12,9 @@ export const AI_ERROR_CODES = [
   'STALE_CONTEXT',
   'APPLY_CONFLICT',
   'STORAGE_FAILED',
+  'INVALID_CONFIGURATION',
+  'REQUEST_TOO_LARGE',
+  'CAPABILITY_UNSUPPORTED',
 ] as const;
 
 export type AiErrorCode = (typeof AI_ERROR_CODES)[number];

@@ -27,24 +27,28 @@ function asOptionalNonNegativeInt(value: unknown, field: string): number | undef
   return value;
 }
 
-export type ProviderKind = 'local' | 'cloud';
+export type ProviderKind = 'local';
 
-/** Providers the AI service can talk to. */
-export const PROVIDER_IDS = [
-  'mock',
-  'openai-compatible',
-  'ollama',
-  'apple-foundation-models',
-] as const;
+/** Only Ollama is supported for now. */
+export const PROVIDER_IDS = ['ollama'] as const;
 
 export type ProviderId = (typeof PROVIDER_IDS)[number];
 
-export function parseProviderId(input: unknown): ProviderId {
-  const provider = asString(input, 'providerId');
-  if ((PROVIDER_IDS as readonly string[]).includes(provider)) {
-    return provider as ProviderId;
-  }
+export function destinationForProvider(_providerId: ProviderId): 'local' {
+  return 'local';
+}
+
+export function migrateProviderId(input: string): ProviderId {
+  if (input === 'ollama') return 'ollama';
   throw new Error('Invalid providerId');
+}
+
+export function parseProviderId(input: unknown): ProviderId {
+  return migrateProviderId(asString(input, 'providerId'));
+}
+
+export function parseLiveProviderId(input: unknown): ProviderId {
+  return migrateProviderId(asString(input, 'providerId'));
 }
 
 export interface ProviderCapability {
@@ -76,7 +80,7 @@ export interface ConnectionResult {
 
 export function parseProviderKind(input: unknown): ProviderKind {
   const kind = asString(input, 'provider.kind');
-  if (kind === 'local' || kind === 'cloud') return kind;
+  if (kind === 'local') return kind;
   throw new Error('Invalid provider.kind');
 }
 

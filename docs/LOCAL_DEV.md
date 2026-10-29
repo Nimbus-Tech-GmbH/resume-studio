@@ -91,7 +91,7 @@ Milestone 0-9 wire the load flow but do not seed. Use Keystone's admin UI (`http
 pnpm dev
 ```
 
-This runs `apps/web`, `apps/render-service`, and `apps/auth-service` in parallel. Log lines are prefixed with the workspace name.
+This runs `apps/*` in parallel (web, render, auth). Log lines are prefixed with the workspace name.
 
 Or one at a time:
 
@@ -100,6 +100,10 @@ pnpm dev:web
 pnpm dev:render
 pnpm dev:auth
 ```
+
+AI tailoring uses a local Ollama server, called directly from the browser. Start
+Ollama separately and allow the app origin through `OLLAMA_ORIGINS`; see
+[AI_TAILORING.md](./AI_TAILORING.md).
 
 ### Presentation harness
 
@@ -129,6 +133,7 @@ configured `VITE_RENDER_ENDPOINT` explicitly.
 | Auth service   | http://localhost:4000 | 127.0.0.1  |
 | Render service | http://localhost:8787 | 127.0.0.1  |
 | Keystone CMS   | http://localhost:3000 | (external) |
+| Ollama         | http://localhost:11434 | (external) |
 
 ## Environment variables
 
@@ -147,6 +152,9 @@ See `.env.example`:
 - `DIRECT_URL` — (Optional, only if `DATABASE_URL` is pooled) Postgres **direct** connection for migrations. Needed when running `prisma migrate` or `prisma db push` if your `DATABASE_URL` uses PgBouncer or similar. For local dev without a pooler, omit this — Prisma falls back to `DATABASE_URL`.
 - `COGNITO_CLIENT_ID`, `COGNITO_CLIENT_SECRET`, `COGNITO_DOMAIN`, `COGNITO_REGION`, `COGNITO_USERPOOL_ID` — Cognito app client (server-side only).
 - `BETTER_AUTH_SECRET` — session secret; use `openssl rand -base64 32`.
+
+AI tailoring has no server-side environment variables. The Ollama endpoint and
+model are stored in the browser connection profile (non-secret).
 
 ## Regenerating GraphQL types
 

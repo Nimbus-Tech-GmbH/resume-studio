@@ -32,7 +32,7 @@ const HOP_BY_HOP = new Set([
 ]);
 
 function mountProxy(
-  prefix: '/api/auth' | '/api/ai',
+  prefix: '/api/auth',
   targetEnv: string | undefined,
   errorLabel: string,
 ): void {
@@ -48,7 +48,10 @@ function mountProxy(
     method: ['GET', 'POST'],
     url: `${prefix}/*`,
     async handler(req, reply) {
-      req.log.debug({ method: req.method, url: req.url, target: remote }, `${prefix} proxy request`);
+      req.log.debug(
+        { method: req.method, url: req.url, target: remote },
+        `${prefix} proxy request`,
+      );
       reply.hijack();
       const body = req.body === undefined ? null : JSON.stringify(req.body);
 
@@ -60,6 +63,7 @@ function mountProxy(
       headers.host = parsedTarget.host;
       if (body !== null) headers['content-length'] = Buffer.byteLength(body).toString();
 
+      let upstreamClosed = false;
       const out = httpRequest(
         {
           hostname: parsedTarget.hostname,
@@ -80,19 +84,58 @@ function mountProxy(
               resHeaders[key] = Array.isArray(value) ? value.join(', ') : value;
             }
           }
-          req.log.debug({ status, location: resHeaders.location }, `${prefix} proxy response`);
+          // Preserve upstream content-type.
+          req.log.debug({ status }, `${prefix} proxy response`);
+          if (reply.raw.headersSent || reply.raw.writableEnded) {
+            res.destroy();
+            return;
+          }
           reply.raw.writeHead(status, resHeaders);
-          res.on('data', (chunk) => reply.raw.write(chunk));
-          res.on('end', () => reply.raw.end());
+
+          const onDrain = () => {
+            res.resume();
+          };
+
+          res.on('data', (chunk) => {
+            if (reply.raw.writableEnded || reply.raw.destroyed) {
+              res.destroy();
+              return;
+            }
+            const ok = reply.raw.write(chunk);
+            if (!ok) {
+              res.pause();
+              reply.raw.once('drain', onDrain);
+            }
+          });
+          res.on('end', () => {
+            if (!reply.raw.writableEnded) reply.raw.end();
+          });
           res.on('error', (err) => {
             req.log.error({ message: err.message }, `${prefix} proxy downstream error`);
-            reply.raw.destroy(err as Error);
+            if (!reply.raw.destroyed) reply.raw.destroy();
           });
         },
       );
+
+      const abortUpstream = () => {
+        if (upstreamClosed) return;
+        upstreamClosed = true;
+        out.destroy();
+      };
+
+      req.raw.on('aborted', abortUpstream);
+      reply.raw.on('close', () => {
+        if (!reply.raw.writableEnded) abortUpstream();
+      });
+
       out.on('error', (err) => {
         req.log.error({ message: err.message }, `${prefix} proxy error`);
-        if (!reply.raw.headersSent) reply.code(502).send({ error: errorLabel });
+        if (!reply.raw.headersSent && !reply.raw.writableEnded) {
+          reply.raw.writeHead(502, { 'content-type': 'application/json; charset=utf-8' });
+          reply.raw.end(JSON.stringify({ error: errorLabel }));
+          return;
+        }
+        if (!reply.raw.destroyed) reply.raw.destroy();
       });
       if (body !== null) out.write(body);
       out.end();
@@ -103,7 +146,54 @@ function mountProxy(
 }
 
 mountProxy('/api/auth', env.AUTH_TARGET, 'auth-service unreachable');
-mountProxy('/api/ai', env.AI_TARGET, 'ai-service unreachable');
+
+/**
+ * OpenCode inference does not send CORS headers, so the browser cannot call it
+ * directly. Proxy the OpenAI-compatible family through the app origin. The
+ * upstream API key is forwarded from the browser and never logged.
+ */
+const opencodeTarget = new URL(env.OPENCODE_TARGET);
+app.route({
+  method: ['GET', 'POST'],
+  url: '/api/ai/opencode/*',
+  bodyLimit: 5 * 1024 * 1024,
+  async handler(req, reply) {
+    const path = req.url.replace(/^\/api\/ai\/opencode/, '/inference');
+    const headers: Record<string, string> = { accept: 'application/json' };
+    if (typeof req.headers.authorization === 'string') {
+      headers.authorization = req.headers.authorization;
+    }
+    if (typeof req.headers['content-type'] === 'string') {
+      headers['content-type'] = req.headers['content-type'];
+    }
+    const body =
+      req.method === 'GET' || req.body === undefined
+        ? undefined
+        : JSON.stringify(req.body);
+    const url = new URL(path, opencodeTarget);
+    try {
+      const upstream = await fetch(url, {
+        method: req.method,
+        headers,
+        body,
+        signal: AbortSignal.timeout(120_000),
+      });
+      const contentType = upstream.headers.get('content-type');
+      if (contentType) reply.header('content-type', contentType);
+      req.log.debug({ status: upstream.status }, 'opencode inference proxy response');
+      return reply
+        .status(upstream.status)
+        .send(Buffer.from(await upstream.arrayBuffer()));
+    } catch (error) {
+      req.log.error(
+        { message: error instanceof Error ? error.message : String(error) },
+        'opencode inference proxy error',
+      );
+      return reply.code(502).send({ error: 'OpenCode inference unreachable' });
+    }
+  },
+});
+app.log.info(`proxying /api/ai/opencode → ${opencodeTarget.origin}/inference`);
 
 const webDist = resolve(import.meta.dirname, '../web-dist');
 if (existsSync(webDist)) {

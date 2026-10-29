@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '@/auth/AuthContext';
 import { useEditorStore } from '@/state/editorStore';
 import { useTailoringStore } from '@/features/ai-tailoring/state/tailoringStore';
-import { clearTailoringApiKey } from '@/features/ai-tailoring/credentialStore';
+import { connectionForPersistence } from '@/features/ai-tailoring/connections/providers';
 import { clearWorkspace, loadWorkspace, saveWorkspace } from './repository';
 import { isLogoutTransition, isScopeHydrated, resolveStartupAfterRestore, shouldShowStartupDialog } from './hydration';
 import type { PersistedWorkspaceRecord } from './schema';
@@ -17,7 +17,7 @@ function buildPersistedRecord(scope: string): PersistedWorkspaceRecord {
   const tailoring = useTailoringStore.getState();
 
   return {
-    version: 1,
+    version: 2,
     scope,
     updatedAt: Date.now(),
     editor: {
@@ -42,14 +42,16 @@ function buildPersistedRecord(scope: string): PersistedWorkspaceRecord {
       workspaceId: tailoring.workspaceId,
       jobText: tailoring.jobText,
       jobVersion: tailoring.jobVersion,
-      answerVersion: tailoring.answerVersion,
+      connectionVersion: tailoring.connectionVersion,
+      conversationVersion: tailoring.conversationVersion,
       status: tailoring.status,
       errorMessage: tailoring.errorMessage,
+      errorCode: tailoring.errorCode,
       lastAnalysis: tailoring.lastAnalysis,
-      proposalDecisions: tailoring.proposalDecisions,
-      proposalEdits: tailoring.proposalEdits,
-      connection: tailoring.connection,
+      changeDecisions: tailoring.changeDecisions,
+      connection: connectionForPersistence(tailoring.connection),
       lastApplied: tailoring.lastApplied,
+      messages: tailoring.messages,
     },
   };
 }
@@ -69,8 +71,6 @@ export function useWorkspaceRecovery(): { startupDialogOpen: boolean } {
     const previousScope = loadedScope.current;
     loadedScope.current = scope;
 
-    // Logging out leaves the signed-in account, so its local workspace goes
-    // away and the startup dialog has to reopen.
     const isLogout = isLogoutTransition(previousScope, scope);
 
     if (
@@ -79,7 +79,7 @@ export function useWorkspaceRecovery(): { startupDialogOpen: boolean } {
       previousScope.startsWith('account:')
     ) {
       void clearWorkspace(previousScope);
-      clearTailoringApiKey();
+      useTailoringStore.getState().interruptActiveRequest();
     }
 
     let canceled = false;
@@ -91,11 +91,9 @@ export function useWorkspaceRecovery(): { startupDialogOpen: boolean } {
         const record = await loadWorkspace(scope);
         if (canceled) return;
 
-        if (record?.version === 1) {
+        if (record?.version === 2) {
           useEditorStore.setState({
             ...record.editor,
-            // Records written before document identity was added still need a
-            // stable key so preview and print work after restore.
             documentKey:
               record.editor.documentKey ??
               (record.editor.resumeId
@@ -108,10 +106,13 @@ export function useWorkspaceRecovery(): { startupDialogOpen: boolean } {
             ),
             recoveryStatus: 'recovered',
           });
-          useTailoringStore.setState({
+          useTailoringStore.getState().hydrateFromRecovery({
             ...record.tailoring,
+            activeRequestId: null,
+            streamingAssistantText: '',
             panelOpen: false,
           });
+          // Credentials are never persisted.
         } else {
           useEditorStore.setState({ recoveryStatus: 'idle' });
         }

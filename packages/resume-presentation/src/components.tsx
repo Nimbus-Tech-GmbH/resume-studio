@@ -1,5 +1,6 @@
 import {
   useCallback,
+  useEffect,
   useLayoutEffect,
   useRef,
   useState,
@@ -26,6 +27,8 @@ export interface PresentationComponentProps extends PresentationProps {
   readonly className?: string;
   readonly title?: string;
   readonly sandbox?: string;
+  /** Grow the iframe to its document height so an outer container scrolls. */
+  readonly autoHeight?: boolean;
 }
 
 export interface PrintPresentationActions {
@@ -97,6 +100,7 @@ interface PresentationSurfaceProps {
   readonly title: string;
   readonly sandbox: string;
   readonly toolbar?: ReactNode;
+  readonly autoHeight?: boolean;
 }
 
 function PresentationSurface({
@@ -107,9 +111,63 @@ function PresentationSurface({
   title,
   sandbox,
   toolbar,
+  autoHeight = false,
 }: PresentationSurfaceProps) {
+  const internalIframeRef = useRef<HTMLIFrameElement>(null);
+  const frameRef = iframeRef ?? internalIframeRef;
+  const [contentHeight, setContentHeight] = useState<number | null>(null);
   const classes = className ? `rs-presentation ${className}` : 'rs-presentation';
   const hasHtml = snapshot.html !== null;
+
+  const measureContentHeight = useCallback(() => {
+    const document = frameRef.current?.contentDocument;
+
+    if (!document) {
+      return;
+    }
+
+    const nextHeight = Math.max(
+      document.documentElement?.scrollHeight ?? 0,
+      document.body?.scrollHeight ?? 0,
+    );
+
+    if (nextHeight > 0) {
+      setContentHeight(nextHeight);
+    }
+  }, [frameRef]);
+
+  useLayoutEffect(() => {
+    if (autoHeight) {
+      setContentHeight(null);
+    }
+  }, [autoHeight, snapshot.html]);
+
+  useEffect(() => {
+    if (!autoHeight) {
+      return;
+    }
+
+    const frame = frameRef.current;
+
+    if (!frame || typeof ResizeObserver === 'undefined') {
+      return;
+    }
+
+    let width = Math.round(frame.getBoundingClientRect().width);
+    const observer = new ResizeObserver((entries) => {
+      const nextWidth = Math.round(entries[0]?.contentRect.width ?? 0);
+
+      if (nextWidth === 0 || nextWidth === width) {
+        return;
+      }
+
+      width = nextWidth;
+      measureContentHeight();
+    });
+
+    observer.observe(frame);
+    return () => observer.disconnect();
+  }, [autoHeight, frameRef, measureContentHeight, snapshot.html]);
 
   return (
     <section className={classes} data-status={snapshot.status}>
@@ -117,11 +175,18 @@ function PresentationSurface({
       <div className="rs-presentation__viewport">
         {hasHtml ? (
           <iframe
-            ref={iframeRef}
+            ref={frameRef}
             className="rs-presentation__frame"
             title={title}
             sandbox={sandbox}
             srcDoc={snapshot.html ?? ''}
+            scrolling={autoHeight ? 'no' : undefined}
+            style={
+              autoHeight && contentHeight !== null
+                ? { height: `${contentHeight}px` }
+                : undefined
+            }
+            onLoad={autoHeight ? measureContentHeight : undefined}
           />
         ) : null}
 
@@ -170,6 +235,7 @@ export function PreviewPresentation({
   className,
   title = 'Resume preview',
   sandbox = PREVIEW_IFRAME_SANDBOX,
+  autoHeight = false,
 }: PresentationComponentProps) {
   const lifecycle = usePresentationLifecycle(
     input,
@@ -184,6 +250,7 @@ export function PreviewPresentation({
       className={className}
       title={title}
       sandbox={sandbox}
+      autoHeight={autoHeight}
     />
   );
 }

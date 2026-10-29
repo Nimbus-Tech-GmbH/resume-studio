@@ -1,20 +1,22 @@
-import { useEffect, useRef, useState } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import type { ReactCodeMirrorRef } from '@uiw/react-codemirror';
 import CodeMirror from '@uiw/react-codemirror';
 import { json } from '@codemirror/lang-json';
 import { githubLight, githubDark } from '@uiw/codemirror-theme-github';
-import { Upload } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import type { JsonResume } from '@resume-studio/transformer';
 import { useEditorStore } from '@/state/editorStore';
-import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 function formatJson(obj: unknown): string {
   return JSON.stringify(obj, null, 2);
 }
 
-export function JsonEditor() {
+export interface JsonEditorHandle {
+  openFilePicker(): void;
+}
+
+export const JsonEditor = forwardRef<JsonEditorHandle>(function JsonEditor(_props, ref) {
   const resume = useEditorStore((s) => s.resume);
   const setResume = useEditorStore((s) => s.setResume);
   const setJsonBufferState = useEditorStore((s) => s.setJsonBufferState);
@@ -25,6 +27,10 @@ export function JsonEditor() {
   const isLocalEdit = useRef(false);
   const editorRef = useRef<ReactCodeMirrorRef>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useImperativeHandle(ref, () => ({
+    openFilePicker: () => fileInputRef.current?.click(),
+  }), []);
 
   const [doc, setDoc] = useState(() => formatJson(resume));
 
@@ -87,24 +93,13 @@ export function JsonEditor() {
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
-      <div className="flex shrink-0 items-center justify-between border-b px-4 py-1.5">
-        <span className="text-xs font-medium text-muted-foreground">JSON</span>
-        <Button
-          variant="outline"
-          size="lg"
-          className="cursor-pointer"
-          onClick={() => fileInputRef.current?.click()}
-        >
-          <Upload className="size-3" />
-        </Button>
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept=".json"
-          className="hidden"
-          onChange={handleFileUpload}
-        />
-      </div>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".json"
+        className="hidden"
+        onChange={handleFileUpload}
+      />
 
       <div className="min-h-0 flex-1 overflow-hidden">
         <CodeMirror
@@ -140,4 +135,4 @@ export function JsonEditor() {
       )}
     </div>
   );
-}
+});

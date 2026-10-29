@@ -1,105 +1,94 @@
-import {
-  AnalysisEnvelopeSchema,
-  type AnalysisEnvelope,
-} from '@resume-studio/ai-contracts';
-import { getTailoringApiKey } from '../credentialStore';
-import type { TailoringSnapshot } from '../analysis/snapshot';
-import type { ConnectionProfile } from '../state/tailoringStore';
+import type {
+  ConnectionProfile,
+  ConnectionResult,
+  TailoringEvent,
+  TailoringRequestIdentity,
+} from '@resume-studio/ai';
+import { connectionForRequest } from './providers';
 
-export interface AnalyzeRequest {
-  workspaceId: string;
-  documentEpoch: string;
-  baseRevision: number;
-  jobVersion: number;
-  answerVersion: number;
-  jobText: string;
-  snapshot: TailoringSnapshot;
+export interface TailoringRunRequest {
+  identity: TailoringRequestIdentity;
   connection: ConnectionProfile;
+  /** Full editor resume, used to restore withheld fields into the preview. */
+  sourceResume: Record<string, unknown>;
+  resume: Record<string, unknown>;
+  withheldPaths: string[];
+  jobDescription: string;
+  userConstraints?: string;
+  abortSignal: AbortSignal;
+  onEvent: (event: TailoringEvent) => void;
 }
 
-interface ConnectionTestResponse {
-  ok: boolean;
-  code?: string;
-  message?: string;
+function diagnoseFailure(error: unknown, connection: ConnectionProfile): string {
+  const message = error instanceof Error ? error.message : String(error);
+  const lower = message.toLowerCase();
+  const origin = typeof window !== 'undefined' ? window.location.origin : '(unknown origin)';
+
+  if (connection.providerId === 'opencode') {
+    if (/failed to fetch|networkerror|load failed/i.test(message)) {
+      return [
+        `Could not reach the OpenCode inference API at ${connection.endpoint}.`,
+        `Current app origin: ${origin}.`,
+        'Check the API key, network access, and that the selected model is available on your OpenCode plan.',
+      ].join(' ');
+    }
+    return message || `Could not reach the OpenCode inference API at ${connection.endpoint}.`;
+  }
+
+  if (/failed to fetch|networkerror|load failed/i.test(message)) {
+    return [
+      `Could not reach Ollama at ${connection.endpoint}.`,
+      `Current app origin: ${origin}.`,
+      'Permit this exact origin via OLLAMA_ORIGINS (do not use *).',
+      'Chrome may also require Local Network Access permission for loopback from a public site.',
+      'Check Ollama is running and CORS allows this origin.',
+    ].join(' ');
+  }
+  if (/cors/i.test(lower)) {
+    return `CORS blocked local access to ${connection.endpoint}. Permit origin ${origin} on Ollama.`;
+  }
+  if (/permission|local network/i.test(lower)) {
+    return `Browser denied local-network access to ${connection.endpoint}. Grant Local Network Access for ${origin}.`;
+  }
+  return message || 'Ollama connection failed.';
 }
 
-function buildHeaders(): HeadersInit {
-  const key = getTailoringApiKey();
-  return {
-    'content-type': 'application/json',
-    ...(key ? { 'x-resume-studio-ai-key': key } : {}),
-  };
-}
-
-export async function testAiConnection(connection: ConnectionProfile): Promise<ConnectionTestResponse> {
-  let res: Response;
+/**
+ * The browser talks directly to the configured provider through the Vercel AI
+ * SDK. Ollama is loopback-only; OpenCode inference is reached over HTTPS with
+ * an API key. There is no server-side /api/ai proxy.
+ */
+export async function runTailoringRequest(request: TailoringRunRequest): Promise<void> {
+  const { runTailoring, normalizeProviderError } = await import('@resume-studio/ai/browser');
 
   try {
-    res = await fetch('/api/ai/test', {
-      method: 'POST',
-      headers: buildHeaders(),
-      body: JSON.stringify({
-        providerId: connection.providerId,
-        destination: connection.destination,
-        endpoint: connection.endpoint,
-        model: connection.model,
-      }),
+    for await (const event of runTailoring({
+      connection: connectionForRequest(request.connection),
+      identity: request.identity,
+      sourceResume: request.sourceResume,
+      resume: request.resume,
+      withheldPaths: request.withheldPaths,
+      jobDescription: request.jobDescription,
+      userConstraints: request.userConstraints,
+      abortSignal: request.abortSignal,
+    })) {
+      request.onEvent(event);
+    }
+  } catch (error) {
+    const normalized = normalizeProviderError(error);
+    request.onEvent({
+      type: 'error',
+      requestId: request.identity.requestId,
+      code: normalized.code,
+      message:
+        normalized.code === 'CONNECTION_FAILED'
+          ? diagnoseFailure(error, request.connection)
+          : normalized.message,
     });
-  } catch {
-    return {
-      ok: false,
-      code: 'CONNECTION_FAILED',
-      message: 'AI service unreachable.',
-    };
   }
-
-  let body: ConnectionTestResponse;
-  try {
-    body = (await res.json()) as ConnectionTestResponse;
-  } catch {
-    return {
-      ok: false,
-      code: 'CONNECTION_FAILED',
-      message: `AI service returned an unreadable response (HTTP ${res.status}).`,
-    };
-  }
-
-  // A completed test reports its outcome in the body, so `ok: false` can come
-  // back with HTTP 200.
-  if (!res.ok || !body.ok) {
-    return {
-      ok: false,
-      code: body.code ?? 'CONNECTION_FAILED',
-      message: body.message ?? 'Connection test failed',
-    };
-  }
-  return body;
 }
 
-export async function runAiAnalysis(request: AnalyzeRequest): Promise<AnalysisEnvelope> {
-  let res: Response;
-
-  try {
-    res = await fetch('/api/ai/proposals', {
-      method: 'POST',
-      headers: buildHeaders(),
-      body: JSON.stringify(request),
-    });
-  } catch {
-    throw new Error('AI service unreachable.');
-  }
-
-  let body: unknown;
-  try {
-    body = await res.json();
-  } catch {
-    throw new Error(`AI service returned an unreadable response (HTTP ${res.status}).`);
-  }
-
-  if (!res.ok) {
-    const maybe = body as { message?: string; code?: string };
-    throw new Error(maybe.message ?? maybe.code ?? 'AI request failed');
-  }
-
-  return AnalysisEnvelopeSchema.parse(body);
+export async function testAiConnection(connection: ConnectionProfile): Promise<ConnectionResult> {
+  const { testConnection } = await import('@resume-studio/ai/browser');
+  return testConnection(connectionForRequest(connection));
 }

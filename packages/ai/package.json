@@ -1,0 +1,28 @@
+{
+  "name": "@resume-studio/ai",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./browser": "./src/browser.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "node --import tsx --test src/*.test.ts"
+  },
+  "dependencies": {
+    "@ai-sdk/mcp": "1.0.0",
+    "@ai-sdk/openai-compatible": "^2.0.87",
+    "@jsonresume/schema": "^1.7.0",
+    "ai": "^6.0.314",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.43",
+    "tsx": "^4.23.13",
+    "typescript": "^5.9.3"
+  }
+}

@@ -129,5 +129,6 @@ Do not paste full logs into the response. Report the failing command and the rel
 - Use `caveman` for all conversations until specifically requested otherwise.
 
 ## Non-negotiables
+
 - ALWAYS use `caveman` skill for all conversations until specifically requested otherwise.
 - Never create docs unless specifically asked.

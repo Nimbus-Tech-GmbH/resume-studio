@@ -14,6 +14,7 @@ import { useMediaQuery } from '@/hooks/use-media-query';
 
 const MOBILE_TABS = [
   { id: 'editor', label: 'Editor' },
+  { id: 'ai', label: 'AI' },
   { id: 'preview', label: 'Preview' },
 ] as const;
 
@@ -26,11 +27,9 @@ export interface StudioShellProps {
     onLogout: () => Promise<void>;
   };
   documentSelector: ReactNode;
-  editorModeControl: ReactNode;
-  resumeThemeControl: ReactNode;
-  exportActions: ReactNode;
   validationStatus: ReactNode;
   editor: ReactNode;
+  aiChat: ReactNode;
   preview: ReactNode;
   startup: ReactNode;
   workspaceBadges?: ReactNode;
@@ -52,11 +51,9 @@ export function StudioShell(props: StudioShellProps) {
 function StudioFrame({
   session,
   documentSelector,
-  editorModeControl,
-  resumeThemeControl,
-  exportActions,
   validationStatus,
   editor,
+  aiChat,
   preview,
   workspaceBadges,
   extraActions,
@@ -69,9 +66,6 @@ function StudioFrame({
       <StudioHeader
         session={session}
         documentSelector={documentSelector}
-        editorModeControl={editorModeControl}
-        resumeThemeControl={resumeThemeControl}
-        exportActions={exportActions}
         workspaceBadges={workspaceBadges}
         extraActions={extraActions}
       />
@@ -81,12 +75,13 @@ function StudioFrame({
       <main className="min-h-0 flex-1 overflow-hidden px-3 pb-3 sm:px-4 sm:pb-4">
         <div className="border-border bg-background h-full overflow-hidden rounded-xl border shadow-sm">
           {isDesktop ? (
-            <DesktopLayout editor={editor} preview={preview} />
+            <DesktopLayout editor={editor} aiChat={aiChat} preview={preview} />
           ) : (
             <MobileLayout
               tab={mobileTab}
               onTabChange={setMobileTab}
               editor={editor}
+              aiChat={aiChat}
               preview={preview}
             />
           )}
@@ -99,9 +94,6 @@ function StudioFrame({
 interface StudioHeaderProps {
   session: StudioShellProps['session'];
   documentSelector: ReactNode;
-  editorModeControl: ReactNode;
-  resumeThemeControl: ReactNode;
-  exportActions: ReactNode;
   workspaceBadges?: ReactNode;
   extraActions?: ReactNode;
 }
@@ -109,9 +101,6 @@ interface StudioHeaderProps {
 function StudioHeader({
   session,
   documentSelector,
-  editorModeControl,
-  resumeThemeControl,
-  exportActions,
   workspaceBadges,
   extraActions,
 }: StudioHeaderProps) {
@@ -130,8 +119,6 @@ function StudioHeader({
 
         <Separator orientation="vertical" />
         {documentSelector}
-        <Separator orientation="vertical" />
-        {editorModeControl}
       </div>
 
       <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
@@ -154,10 +141,8 @@ function StudioHeader({
         >
           {theme === 'dark' ? <Sun className="size-3.5" /> : <Moon className="size-3.5" />}
         </IconButton>
-        {resumeThemeControl}
         <Separator orientation="vertical" />
         {extraActions}
-        {exportActions}
         <IconButton title={session.isAuthenticated ? 'Logout' : 'Login'} onClick={handleAuthToggle}>
           {session.isAuthenticated ? (
             <LogOut className="size-3.5" />
@@ -186,14 +171,26 @@ function IconButton({
   );
 }
 
-function DesktopLayout({ editor, preview }: { editor: ReactNode; preview: ReactNode }) {
+function DesktopLayout({
+  editor,
+  aiChat,
+  preview,
+}: {
+  editor: ReactNode;
+  aiChat: ReactNode;
+  preview: ReactNode;
+}) {
   return (
-    <ResizablePanelGroup orientation="horizontal" autoSave="editor-layout">
-      <ResizablePanel defaultSize="50%" minSize="20%">
+    <ResizablePanelGroup orientation="horizontal" autoSave="editor-ai-preview-layout">
+      <ResizablePanel defaultSize="34%" minSize="18%">
         {editor}
       </ResizablePanel>
       <ResizableHandle withHandle />
-      <ResizablePanel defaultSize="50%" minSize="20%">
+      <ResizablePanel defaultSize="28%" minSize="18%">
+        {aiChat}
+      </ResizablePanel>
+      <ResizableHandle withHandle />
+      <ResizablePanel defaultSize="38%" minSize="18%">
         {preview}
       </ResizablePanel>
     </ResizablePanelGroup>
@@ -204,11 +201,13 @@ function MobileLayout({
   tab,
   onTabChange,
   editor,
+  aiChat,
   preview,
 }: {
   tab: MobileTabId;
   onTabChange: (tab: MobileTabId) => void;
   editor: ReactNode;
+  aiChat: ReactNode;
   preview: ReactNode;
 }) {
   return (
@@ -228,6 +227,9 @@ function MobileLayout({
       <div className="min-h-0 flex-1">
         <TabsContent value="editor" className="h-full mt-0">
           {editor}
+        </TabsContent>
+        <TabsContent value="ai" className="h-full mt-0">
+          {aiChat}
         </TabsContent>
         <TabsContent value="preview" className="h-full mt-0">
           {preview}

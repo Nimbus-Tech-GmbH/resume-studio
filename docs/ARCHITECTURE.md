@@ -9,7 +9,7 @@ see [KNOWN_ISSUES.md](./KNOWN_ISSUES.md).
 
 ## 1. System overview
 
-Four cooperating processes:
+Four cooperating processes (plus external CMS):
 
 ```
 ┌────────────────────────────────┐
@@ -23,6 +23,8 @@ Four cooperating processes:
 │       ├─ GraphQL ──────┐   │   │   [gated by isAuthenticated]
 │       └─ POST /render  │   │   │
 │          (debounced 300ms)│   │
+│                                │
+│  Local Ollama ◀── direct loopback (AI tailoring)
 └─────────────────────────┼───┼─┘
                           │   │
               ┌───────────┴───────────────┐
@@ -35,7 +37,6 @@ Four cooperating processes:
 │ Better Auth + Cognito    │  │ POST /render              │
 │ Postgres `auth` schema   │  │  → theme render fn        │
 │ (separate DB)            │  │  → postProcess            │
-│                          │  │  → LRU cache              │
 │                          │  │ /api/auth/* (prod proxy)  │
 │                          │  │ /health                   │
 └────────────┬─────────────┘  └────────────┬──────────────┘
@@ -54,6 +55,9 @@ Four cooperating processes:
               │ ./schema.ts + .graphql.   │
               └───────────────────────────┘
 ```
+
+AI tailoring details: [AI_TAILORING.md](./AI_TAILORING.md). It runs against
+local Ollama; applying AI change groups never saves to CMS.
 
 - **Web** is the only user-facing surface. It never talks to the database.
   In **guest mode** (default), no GraphQL calls are made — create/import/preview/export work locally.
@@ -82,6 +86,8 @@ packages/
   studio-contracts/       Versioned presentation input/status types (types only)
   resume-presentation/    Preview/print rendering lifecycle, transport, iframe UI, harness
   transformer/            CMS ⇄ JSON Resume codecs + diff planner (pure TS)
+  ai-contracts/           AI tailoring response contract + strict validator/apply
+  ai-runtime/             Ollama generation, prompt assembly, budget checks
   graphql-client/         Hand-written GraphQL operations (+ codegen placeholder)
   themes/                 Theme registry: id → lazy import of vendored package
   vendor/jsonresume-theme-*   Vendored upstream JSON Resume themes (9)
@@ -93,7 +99,8 @@ Dependency direction (enforced by convention):
 web ──▶ resume-presentation ──▶ studio-contracts ──▶ transformer (types only)
  ├──▶ studio-contracts
  ├──▶ transformer
- └──▶ graphql-client
+ ├──▶ graphql-client
+ └──▶ ai-runtime ──▶ ai-contracts
 
 render-service ──▶ transformer
                └──▶ themes ──▶ vendor/*

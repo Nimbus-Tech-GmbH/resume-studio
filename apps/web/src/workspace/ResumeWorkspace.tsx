@@ -1,17 +1,18 @@
-import { useCallback, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { PresentationInputV1 } from '@resume-studio/studio-contracts';
 import {
   createHttpPresentationTransport,
   PreviewPresentation,
 } from '@resume-studio/resume-presentation';
 import { DEFAULT_THEME, THEMES, type ThemeId } from '@resume-studio/themes';
-import { BadgeInfo, Code, FormInput, Palette } from 'lucide-react';
+import { BadgeInfo, Code, FormInput, Palette, Upload } from 'lucide-react';
 
 import { useAuth } from '@/auth/AuthContext';
 import { PanelHeader } from '@/components/PanelHeader';
 import { StartupDialog } from '@/components/StartupDialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { ButtonGroup } from '@/components/ui/button-group';
 import { TailoringPanel } from '@/features/ai-tailoring';
 import { useTailoringStore } from '@/features/ai-tailoring/state/tailoringStore';
 import { useWorkspaceRecovery } from './recovery';
@@ -25,7 +26,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { EditorPane } from '@/editor/EditorPane';
 import { ExportMenu } from '@/editor/ExportMenu';
-import { JsonEditor } from '@/editor/JsonEditor';
+import { JsonEditor, type JsonEditorHandle } from '@/editor/JsonEditor';
 import { ResumePicker } from '@/editor/ResumePicker';
 import { ValidationBanner } from '@/editor/ValidationBanner';
 import type { StudioShellProps } from '@/shell/StudioShell';
@@ -90,10 +91,10 @@ export function ResumeWorkspace({ children }: ResumeWorkspaceProps) {
       onLogout: handleLogout,
     },
     documentSelector: <ResumePicker />,
-    editorModeControl: <EditorModeControl mode={viewMode} onModeChange={setViewMode} />,
-    resumeThemeControl: <ResumeThemeControl />,
-    exportActions: <ExportMenu />,
-    extraActions: <TailoringPanel />,
+
+
+
+    aiChat: <TailoringPanel />,
     workspaceBadges: (
       <WorkspaceBadges
         recoveryStatus={recoveryStatus}
@@ -104,8 +105,8 @@ export function ResumeWorkspace({ children }: ResumeWorkspaceProps) {
       />
     ),
     validationStatus: <ValidationBanner />,
-    editor: <EditorPanel name={name} empty={isEmpty} viewMode={viewMode} />,
-    preview: <PreviewPanel pdfName={pdfName} status={previewStatus} input={presentationInput} />,
+    editor: <EditorPanel name={name} empty={isEmpty} viewMode={viewMode} onViewModeChange={setViewMode} />,
+    preview: <PreviewPanel pdfName={pdfName} status={previewStatus} input={presentationInput} actions={<div className="flex items-center gap-1"><ResumeThemeControl /><ExportMenu /></div>} />,
     startup: <StartupDialog open={startupDialogOpen} onOpenChange={setIsStartup} />,
   });
 }
@@ -160,15 +161,17 @@ function WorkspacePanel({
   status,
   empty,
   children,
+  action,
 }: {
   title: string;
   status?: PreviewStatus;
   empty: boolean;
   children: ReactNode;
+  action?: ReactNode;
 }) {
   return (
     <div className="flex h-full flex-col overflow-hidden">
-      <PanelHeader title={title} status={empty ? undefined : status} />
+      <PanelHeader title={title} status={empty ? undefined : status} action={action} />
       <div className="min-h-0 flex-1 overflow-hidden">
         {empty ? (
           <div className="flex h-full items-center justify-center">
@@ -186,14 +189,24 @@ function EditorPanel({
   name,
   empty,
   viewMode,
+  onViewModeChange,
 }: {
   name: string;
   empty: boolean;
   viewMode: ViewMode;
+  onViewModeChange: (mode: ViewMode) => void;
 }) {
+  const jsonEditorRef = useRef<JsonEditorHandle>(null);
+
   return (
-    <WorkspacePanel title={name} empty={empty}>
-      {viewMode === 'json' ? <JsonEditor /> : <EditorPane />}
+    <WorkspacePanel
+      title={name}
+      empty={empty}
+      action={
+        <EditorModeControl mode={viewMode} onModeChange={onViewModeChange} jsonEditorRef={jsonEditorRef}/>
+      }
+    >
+      {viewMode === 'json' ? <JsonEditor ref={jsonEditorRef} /> : <EditorPane />}
     </WorkspacePanel>
   );
 }
@@ -202,20 +215,23 @@ function PreviewPanel({
   pdfName,
   status,
   input,
+  actions,
 }: {
   pdfName: string;
   status: PreviewStatus;
   input: PresentationInputV1 | null;
+  actions: ReactNode;
 }) {
   return (
-    <WorkspacePanel title={pdfName} status={status} empty={input === null}>
+    <WorkspacePanel title={pdfName} status={status} empty={input === null} action={actions}>
       {input === null ? null : (
-        <div className="h-full p-6">
+        <div className="h-full overflow-y-auto p-6">
           <PreviewPresentation
             key={input.document.key}
             input={input}
             transport={presentationTransport}
             className="resume-workspace-presentation"
+            autoHeight
           />
         </div>
       )}
@@ -226,37 +242,48 @@ function PreviewPanel({
 function EditorModeControl({
   mode,
   onModeChange,
+  jsonEditorRef
 }: {
   mode: ViewMode;
-  onModeChange: (mode: ViewMode) => void;
+    onModeChange: (mode: ViewMode) => void;
+    jsonEditorRef: React.RefObject<JsonEditorHandle | null>
 }) {
   return (
-    <div className="flex items-center gap-0.5 rounded-md border p-0.5">
-      <ModeButton title="JSON editor" active={mode === 'json'} onClick={() => onModeChange('json')}>
-        <Code className="size-3.5" />
+    <ButtonGroup>
+      <Button
+        variant="outline"
+        size="icon"
+        className="cursor-pointer"
+        onClick={() => jsonEditorRef.current?.openFilePicker()}
+        title="Upload JSON resume"
+        aria-label="Upload JSON resume"
+      >
+        <Upload />
+      </Button>
+      <ModeButton title="JSON editor" onClick={() => onModeChange('json')}>
+        <Code className={mode === 'json' ? "text-destructive" : "text-default"} />
       </ModeButton>
-      <ModeButton title="Form editor" active={mode === 'form'} onClick={() => onModeChange('form')}>
-        <FormInput className="size-3.5" />
+      <ModeButton title="Form editor" onClick={() => onModeChange('form')}>
+        <FormInput className={mode === 'form' ? "text-destructive" : "text-default"} />
       </ModeButton>
-    </div>
+    </ButtonGroup>
   );
 }
 
 function ModeButton({
   title,
-  active,
   onClick,
   children,
 }: {
   title: string;
-  active: boolean;
   onClick: () => void;
   children: ReactNode;
 }) {
   return (
     <Button
-      variant={active ? 'secondary' : 'ghost'}
-      size="icon-xs"
+      variant="outline"
+      className="cursor-pointer"
+      size="icon"
       onClick={onClick}
       title={title}
       aria-label={title}
@@ -274,7 +301,7 @@ function ResumeThemeControl() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="text-primary">
+        <Button variant="outline" className="cursor-pointer text-primary" size="xs">
           <Palette />
           {activeTheme}
         </Button>

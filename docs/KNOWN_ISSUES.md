@@ -63,6 +63,20 @@ Living list of active application and schema constraints.
 - **Impact:** They are local-session data unless explicitly connected to CMS flow.
 - **Status:** Intentional.
 
+### A12. AI context budget is an estimate
+
+- **Where:** `packages/ai-runtime/src/budget.ts`
+- **What:** Preflight uses a conservative chars/token estimate, not Ollama’s tokenizer.
+- **Impact:** May reject some prompts that would fit, or (rarely) still hit model overflow — both surface as `CONTEXT_TOO_LARGE` with no silent truncation.
+- **Status:** Intentional fail-closed behavior; see `docs/AI_TAILORING.md`.
+
+### A13. Hosted HTTPS → local HTTP AI bridges need browser permission
+
+- **Where:** Browser Local Network Access / Ollama CORS
+- **What:** Public HTTPS origins calling loopback may require explicit permission and exact `OLLAMA_ORIGINS`.
+- **Impact:** Ollama can fail with actionable diagnostics even when the bridge is running.
+- **Status:** Documented limitation.
+
 ---
 
 ## Schema issues

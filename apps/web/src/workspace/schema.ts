@@ -1,4 +1,8 @@
-import type { AnalysisEnvelope, ProposalDecision } from '@resume-studio/ai-contracts';
+import type {
+  AiErrorCode,
+  AnalysisEnvelope,
+  TailoringMessage,
+} from '@resume-studio/ai';
 import type { CmsResume, JsonResume } from '@resume-studio/transformer';
 import type {
   CmsIdMap,
@@ -9,6 +13,7 @@ import type {
 import type { ThemeId } from '@resume-studio/themes';
 import type {
   AppliedAiTransaction,
+  ChangeDecision,
   ConnectionProfile,
 } from '@/features/ai-tailoring/state/tailoringStore';
 
@@ -35,29 +40,88 @@ export interface PersistedTailoringState {
   workspaceId: string;
   jobText: string;
   jobVersion: number;
-  answerVersion: number;
+  connectionVersion: number;
+  conversationVersion: number;
   status:
     | 'idle'
-    | 'extracting'
-    | 'comparing'
+    | 'validating'
+    | 'streaming'
+    | 'validating-output'
     | 'ready'
-    | 'needs-language'
     | 'failed'
     | 'cancelled'
     | 'interrupted'
     | 'outdated';
   errorMessage: string | null;
+  errorCode: AiErrorCode | null;
   lastAnalysis: AnalysisEnvelope | null;
-  proposalDecisions: Record<string, ProposalDecision>;
-  proposalEdits: Record<string, string>;
+  changeDecisions: Record<string, ChangeDecision>;
   connection: ConnectionProfile;
   lastApplied: AppliedAiTransaction | null;
+  messages: TailoringMessage[];
 }
 
-export interface PersistedWorkspaceRecord {
+/** Fields kept only for reading records written before the Ollama-only contract. */
+interface LegacyTailoringFields {
+  answerVersion?: number;
+  proposalDecisions?: Record<string, unknown>;
+  proposalEdits?: Record<string, unknown>;
+  assertions?: unknown[];
+}
+
+export interface PersistedWorkspaceRecordV1 {
   version: 1;
+  scope: string;
+  updatedAt: number;
+  editor: PersistedEditorState;
+  tailoring: Omit<
+    PersistedTailoringState,
+    | 'connectionVersion'
+    | 'conversationVersion'
+    | 'errorCode'
+    | 'messages'
+    | 'status'
+    | 'changeDecisions'
+    | 'lastAnalysis'
+  > &
+    LegacyTailoringFields & {
+      lastAnalysis?: unknown;
+      status:
+        | PersistedTailoringState['status']
+        | 'extracting'
+        | 'comparing'
+        | 'needs-language';
+      connectionVersion?: number;
+      conversationVersion?: number;
+      errorCode?: AiErrorCode | null;
+      messages?: TailoringMessage[];
+      changeDecisions?: Record<string, unknown>;
+    };
+}
+
+/**
+ * Version 2 is also used by records written before the Ollama-only rewrite, so
+ * migration must tolerate the previous tailoring fields and discard anything
+ * that does not match the current contract.
+ */
+export type PersistedWorkspaceRecordV2Legacy = Omit<PersistedWorkspaceRecord, 'tailoring'> & {
+  tailoring: Omit<PersistedTailoringState, 'lastAnalysis' | 'lastApplied' | 'changeDecisions'> &
+    LegacyTailoringFields & {
+      lastAnalysis?: unknown;
+      lastApplied?: unknown;
+      changeDecisions?: Record<string, unknown>;
+    };
+};
+
+export interface PersistedWorkspaceRecord {
+  version: 2;
   scope: string;
   updatedAt: number;
   editor: PersistedEditorState;
   tailoring: PersistedTailoringState;
 }
+
+export type AnyPersistedWorkspaceRecord =
+  | PersistedWorkspaceRecordV1
+  | PersistedWorkspaceRecordV2Legacy
+  | PersistedWorkspaceRecord;

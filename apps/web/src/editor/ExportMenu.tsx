@@ -51,7 +51,7 @@ export function ExportMenu() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="secondary" title="Export resume">
+        <Button variant="outline" title="Export resume" className="cursor-pointer" size="xs">
           <Download className="h-3.5 w-3.5" />
           Export
         </Button>
